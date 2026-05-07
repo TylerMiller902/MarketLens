@@ -1,0 +1,765 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MarketLens</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#08080e;--bg2:#0f0f18;--bg3:#171722;--bg4:#1e1e2c;--bg5:#26263a;
+  --b1:rgba(255,255,255,.06);--b2:rgba(255,255,255,.12);--b3:rgba(255,255,255,.2);
+  --tx:#eeeef8;--mu:#7e7e96;--di:#45455a;
+  --P:#7c6af7;--Pbg:rgba(124,106,247,.12);--P2:#b0a0ff;
+  --G:#22c55e;--Gbg:rgba(34,197,94,.10);
+  --B:#3b82f6;--Bbg:rgba(59,130,246,.10);
+  --R:#ef4444;--Rbg:rgba(239,68,68,.10);
+  --fd:'Syne',sans-serif;--fb:'DM Sans',sans-serif;--fm:'DM Mono',monospace;
+}
+html,body{background:var(--bg);color:var(--tx);font-family:var(--fb);font-size:14px}
+button,input{font-family:var(--fb)}
+
+/* FULLSCREEN MODAL */
+#fs-modal{display:none;position:fixed;inset:0;z-index:9999;background:rgba(8,8,14,.96);backdrop-filter:blur(8px);flex-direction:column}
+#fs-modal.open{display:flex}
+.fs-topbar{display:flex;align-items:center;justify-content:space-between;padding:1rem 1.4rem;border-bottom:1px solid var(--b2);flex-shrink:0;flex-wrap:wrap;gap:10px}
+.fs-title{font-family:var(--fd);font-size:1rem;font-weight:700}
+.fs-sub{font-size:11px;color:var(--mu);font-family:var(--fm);margin-top:2px}
+.fs-controls{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+.fs-periods{display:flex;gap:4px}
+.fsp-btn{background:transparent;border:1px solid var(--b2);color:var(--mu);padding:5px 14px;border-radius:7px;cursor:pointer;font-size:12px;font-family:var(--fm)}
+.fsp-btn.on{background:var(--P);border-color:var(--P);color:#fff}
+.fs-close{background:var(--bg3);border:1px solid var(--b2);color:var(--mu);padding:5px 12px;border-radius:8px;cursor:pointer;font-size:13px}
+.fs-close:hover{color:var(--tx);border-color:var(--P)}
+.fs-perf{font-family:var(--fm);font-size:13px;font-weight:500}
+.fs-perf.up{color:var(--G)}
+.fs-perf.dn{color:var(--R)}
+.fs-body{flex:1;padding:1.5rem 1.4rem;display:flex;flex-direction:column;min-height:0}
+.fs-chart-wrap{flex:1;position:relative;min-height:0}
+.fs-info{display:flex;gap:1.5rem;padding-top:1rem;flex-shrink:0;flex-wrap:wrap}
+.fs-info-item{display:flex;flex-direction:column;gap:2px}
+.fs-info-lbl{font-size:10px;color:var(--di);font-family:var(--fm);text-transform:uppercase;letter-spacing:.08em}
+.fs-info-val{font-size:13px;font-family:var(--fm)}
+
+/* NAV */
+#nav{background:var(--bg2);border-bottom:1px solid var(--b2);padding:10px 16px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:100}
+.brand{font-family:var(--fd);font-size:13px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--P2)}
+.nav-dot{width:7px;height:7px;border-radius:50%;background:var(--G);animation:pulse 2s ease-in-out infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
+.nav-live{font-size:11px;font-family:var(--fm);color:var(--G);display:flex;align-items:center;gap:5px}
+.nav-pills{display:flex;gap:8px;margin-left:auto;flex-wrap:wrap}
+.mpill{font-size:11px;font-family:var(--fm);color:var(--mu)}
+.mpill.up{color:var(--G)}
+.mpill.dn{color:var(--R)}
+
+/* HOME */
+#home{min-height:calc(100vh - 45px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1.5rem;text-align:center;position:relative;overflow:hidden}
+#home::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 60% 50% at 50% 40%,rgba(124,106,247,.12) 0%,transparent 70%);pointer-events:none}
+.headline{font-family:var(--fd);font-size:clamp(2.2rem,6vw,4rem);font-weight:800;line-height:1.05;letter-spacing:-.025em;margin-bottom:.6rem}
+.headline em{color:var(--P2);font-style:normal}
+.sub{color:var(--mu);font-size:.9rem;margin-bottom:2rem;font-weight:300;max-width:400px;line-height:1.65}
+.chips{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;margin-bottom:1.8rem;max-width:600px}
+.chip{background:var(--bg3);border:1px solid var(--b2);border-radius:20px;padding:6px 14px;font-size:12px;font-family:var(--fm);cursor:pointer;color:var(--mu);transition:all .15s;user-select:none}
+.chip:hover{border-color:var(--P);color:var(--P2);background:var(--Pbg)}
+.search-row{display:flex;gap:8px;width:100%;max-width:460px;position:relative}
+.sinp{flex:1;background:var(--bg3);border:1.5px solid var(--b2);border-radius:12px;padding:.85rem 1.1rem;font-size:.9rem;color:var(--tx);outline:none;transition:border-color .2s}
+.sinp:focus{border-color:var(--P)}
+.sinp::placeholder{color:var(--di)}
+.gobtn{background:var(--P);border:none;color:#fff;padding:.85rem 1.3rem;border-radius:12px;font-size:.9rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:var(--fd)}
+.gobtn:hover{opacity:.85}
+.sugg-wrap{position:absolute;top:calc(100%+6px);left:0;right:60px;background:var(--bg3);border:1.5px solid var(--b2);border-radius:12px;overflow:hidden;z-index:200;display:none;box-shadow:0 16px 40px rgba(0,0,0,.6)}
+.sugg-wrap.open{display:block}
+.sugg-item{display:flex;align-items:center;gap:10px;padding:.65rem 1rem;cursor:pointer;border-bottom:1px solid var(--b1);transition:background .12s}
+.sugg-item:last-child{border-bottom:none}
+.sugg-item:hover{background:var(--bg4)}
+.sugg-sym{font-family:var(--fm);font-size:12px;color:var(--P2);width:52px;flex-shrink:0;font-weight:500}
+.sugg-name{font-size:12px;color:var(--tx);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.sugg-price{font-family:var(--fm);font-size:12px;flex-shrink:0}
+.sugg-chg{font-size:10px;font-family:var(--fm);flex-shrink:0}
+.sugg-chg.up{color:var(--G)}
+.sugg-chg.dn{color:var(--R)}
+
+/* STOCK PAGE */
+#spage{display:none;padding-bottom:60px}
+#spage.on{display:block}
+#home.gone{display:none}
+.shead{padding:1rem 1.4rem;border-bottom:1px solid var(--b1);background:var(--bg2);display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.backbtn{background:var(--bg3);border:1px solid var(--b2);color:var(--mu);padding:.35rem .85rem;border-radius:8px;cursor:pointer;font-size:12px}
+.backbtn:hover{color:var(--tx);border-color:var(--P)}
+.shead-swrap{position:relative;flex:1;max-width:240px}
+.shead-sinp{width:100%;background:var(--bg3);border:1px solid var(--b2);border-radius:8px;padding:.38rem .8rem .38rem 2rem;font-size:12px;color:var(--tx);outline:none}
+.shead-sinp:focus{border-color:var(--P)}
+.shead-sinp::placeholder{color:var(--di)}
+.shead-sico{position:absolute;left:.65rem;top:50%;transform:translateY(-50%);color:var(--di);font-size:12px;pointer-events:none}
+.shead-gobtn{background:var(--P);border:none;color:#fff;padding:.38rem .9rem;border-radius:8px;font-size:12px;cursor:pointer;font-weight:600}
+.scontent{padding:1.4rem;max-width:1060px;margin:0 auto}
+
+/* LOADING */
+.loading-wrap{display:flex;flex-direction:column;align-items:center;justify-content:center;min-height:60vh;gap:14px}
+.loading-ring{width:44px;height:44px;border:3px solid var(--b2);border-top-color:var(--P);border-radius:50%;animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.loading-txt{font-size:12px;color:var(--mu);font-family:var(--fm)}
+
+/* STOCK HEADER */
+.shdr{display:flex;gap:1rem;align-items:flex-start;margin-bottom:1.4rem;flex-wrap:wrap}
+.slogo{width:52px;height:52px;border-radius:12px;background:var(--bg3);border:1.5px solid var(--b2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-weight:700;font-size:13px;color:var(--P2);overflow:hidden;position:relative}
+.slogo img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:4px}
+.stitle{flex:1;min-width:150px}
+.sname{font-family:var(--fd);font-size:1.5rem;font-weight:800;letter-spacing:-.02em}
+.smeta{display:flex;gap:6px;margin-top:4px;align-items:center;flex-wrap:wrap}
+.stk{font-family:var(--fm);font-size:10px;color:var(--P2);background:var(--Pbg);padding:2px 7px;border-radius:4px}
+.sexch,.ssect{font-size:11px;color:var(--mu)}
+.etfbadge{font-size:10px;padding:2px 7px;border-radius:4px;background:var(--Bbg);color:var(--B);font-family:var(--fm)}
+.sprice{text-align:right;flex-shrink:0}
+.bigp{font-family:var(--fd);font-size:2rem;font-weight:800;letter-spacing:-.03em}
+.pchg{font-family:var(--fm);font-size:12px;margin-top:2px}
+.pchg.up{color:var(--G)}
+.pchg.dn{color:var(--R)}
+.ohlc{display:flex;gap:12px;margin-top:6px;flex-wrap:wrap}
+.ohlci{display:flex;flex-direction:column;gap:1px}
+.ohlcl{font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;letter-spacing:.08em}
+.ohlcv{font-size:11px;font-family:var(--fm)}
+
+/* SECTIONS */
+.stitle-sm{font-family:var(--fd);font-size:.58rem;font-weight:700;letter-spacing:.2em;text-transform:uppercase;color:var(--di);margin-bottom:.7rem}
+.card{background:var(--bg2);border:1px solid var(--b1);border-radius:14px;padding:1.1rem 1.2rem;margin-bottom:1.2rem}
+.badge{font-size:9px;font-family:var(--fm);padding:2px 5px;border-radius:3px;margin-left:4px;background:var(--Pbg);color:var(--P2);vertical-align:middle}
+.badge.live{background:var(--Gbg);color:var(--G)}
+
+/* PRICE CHART */
+.chart-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:.8rem;flex-wrap:wrap;gap:8px}
+.pcperf{font-family:var(--fm);font-size:12px;font-weight:500}
+.pcperf.up{color:var(--G)}
+.pcperf.dn{color:var(--R)}
+.ranges{display:flex;gap:3px}
+.rbtn{background:transparent;border:1px solid var(--b1);color:var(--mu);padding:3px 10px;border-radius:6px;cursor:pointer;font-size:11px;font-family:var(--fm)}
+.rbtn.on{background:var(--P);border-color:var(--P);color:#fff}
+.cwrap{height:200px;position:relative}
+
+/* 52W SLIDER */
+.week52-card{background:var(--bg2);border:1px solid var(--b1);border-radius:10px;padding:.85rem 1.1rem;margin-bottom:8px}
+.w52-header{display:flex;justify-content:space-between;align-items:center;margin-bottom:.65rem}
+.w52-label{font-size:10px;color:var(--mu);font-family:var(--fm);text-transform:uppercase;letter-spacing:.08em}
+.w52-pct{font-size:10px;font-family:var(--fm);color:var(--mu)}
+.w52-track{position:relative;height:6px;background:var(--bg4);border-radius:3px;margin-bottom:.55rem}
+.w52-fill{position:absolute;left:0;top:0;height:100%;border-radius:3px;background:linear-gradient(90deg,var(--B),var(--P))}
+.w52-thumb{position:absolute;top:50%;transform:translate(-50%,-50%);width:14px;height:14px;border-radius:50%;background:var(--tx);border:2px solid var(--P);box-shadow:0 0 0 3px rgba(124,106,247,.25)}
+.w52-price-label{position:absolute;bottom:16px;transform:translateX(-50%);font-size:10px;font-family:var(--fm);font-weight:500;color:var(--P2);white-space:nowrap;background:var(--bg3);padding:1px 5px;border-radius:3px;border:1px solid var(--b2)}
+.w52-endpoints{display:flex;justify-content:space-between}
+.w52-end{display:flex;flex-direction:column;gap:1px}
+.w52-end-lbl{font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;letter-spacing:.08em}
+.w52-end-val{font-size:12px;font-family:var(--fm);font-weight:500}
+.w52-end-val.low{color:var(--R)}
+.w52-end-val.high{color:var(--G)}
+
+/* STATS */
+.sgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:1.2rem}
+.scard{background:var(--bg2);border:1px solid var(--b1);border-radius:10px;padding:.75rem .9rem}
+.scl{font-size:10px;color:var(--mu);font-family:var(--fm);text-transform:uppercase;letter-spacing:.08em;margin-bottom:3px}
+.scv{font-size:1rem;font-weight:600;font-family:var(--fd)}
+
+/* ANALYST */
+.analyst-grid{display:flex;gap:1rem;flex-wrap:wrap;margin-bottom:.9rem}
+.cons-block{text-align:center;flex-shrink:0}
+.cons-lbl{font-size:10px;color:var(--mu);font-family:var(--fm);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
+.cons-pill{display:inline-block;font-family:var(--fd);font-size:.95rem;font-weight:700;padding:6px 16px;border-radius:8px;margin-bottom:5px}
+.cons-pill.buy{background:var(--Gbg);color:var(--G)}
+.cons-pill.hold{background:var(--Bbg);color:var(--B)}
+.cons-pill.sell{background:var(--Rbg);color:var(--R)}
+.cons-sub{font-size:11px;color:var(--mu);font-family:var(--fm)}
+.tgt-block{flex:1;min-width:140px}
+.tgt-lbl{font-size:10px;color:var(--mu);font-family:var(--fm);text-transform:uppercase;letter-spacing:.1em;margin-bottom:5px}
+.tgt-val{font-family:var(--fd);font-size:1.5rem;font-weight:800;margin-bottom:3px}
+.tgt-up{display:inline-block;font-size:11px;padding:2px 7px;border-radius:4px;margin-left:6px;font-family:var(--fm)}
+.tgt-up.pos{background:var(--Gbg);color:var(--G)}
+.tgt-up.neg{background:var(--Rbg);color:var(--R)}
+.tgt-rng{font-size:11px;color:var(--mu);font-family:var(--fm)}
+.rbars{flex:1;min-width:160px}
+.rbar{display:flex;align-items:center;gap:7px;margin-bottom:5px}
+.rbar-l{font-size:10px;font-family:var(--fm);color:var(--mu);width:52px;flex-shrink:0}
+.rbar-tr{flex:1;height:8px;background:var(--bg4);border-radius:4px;overflow:hidden}
+.rbar-f{height:100%;border-radius:4px}
+.rbar-n{font-size:10px;font-family:var(--fm);color:var(--mu);width:18px;text-align:right;flex-shrink:0}
+.ahist{border-top:1px solid var(--b1);padding-top:1rem;margin-top:.4rem}
+.ahlbl{font-size:10px;color:var(--di);font-family:var(--fm);text-transform:uppercase;letter-spacing:.1em;margin-bottom:.7rem}
+.ahlist{display:flex;gap:7px;flex-wrap:wrap}
+.ah-it{background:var(--bg3);border:1px solid var(--b1);border-radius:8px;padding:7px 11px;min-width:76px}
+.ah-per{font-size:10px;color:var(--di);font-family:var(--fm);margin-bottom:5px}
+.ah-bars{display:flex;gap:2px;align-items:flex-end;height:28px;margin-bottom:4px}
+.ah-bar{border-radius:2px 2px 0 0;min-width:8px}
+.ah-tot{font-size:10px;color:var(--mu);font-family:var(--fm)}
+
+/* EARNINGS */
+.earn-next{background:var(--bg3);border:1px solid var(--b2);border-radius:10px;padding:.9rem 1.1rem;margin-bottom:1rem;display:flex;align-items:center;gap:1rem;flex-wrap:wrap}
+.en-date{text-align:center;flex-shrink:0}
+.en-mo{font-size:10px;font-family:var(--fm);color:var(--P2);text-transform:uppercase;letter-spacing:.1em}
+.en-day{font-family:var(--fd);font-size:1.7rem;font-weight:800;line-height:1}
+.en-info{flex:1}
+.en-lbl{font-size:13px;font-weight:500;margin-bottom:2px}
+.en-sub{font-size:11px;color:var(--mu);font-family:var(--fm)}
+.en-est{flex-shrink:0;text-align:right}
+.en-estl{font-size:10px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px}
+.en-estv{font-family:var(--fd);font-size:1rem;font-weight:700}
+.earn-wrap{height:180px;position:relative;margin-bottom:1rem}
+.etbl-wrap{overflow-x:auto}
+.etbl{width:100%;border-collapse:collapse;font-size:12px;min-width:380px}
+.etbl th{padding:7px 11px;font-family:var(--fm);font-size:10px;font-weight:500;color:var(--di);border-bottom:1px solid var(--b1);text-align:right}
+.etbl th:first-child{text-align:left}
+.etbl td{padding:7px 11px;text-align:right;border-bottom:1px solid var(--b1);font-family:var(--fm)}
+.etbl td:first-child{text-align:left;color:var(--mu)}
+.etbl tr:last-child td{border-bottom:none}
+.etbl tr:hover td{background:var(--bg3)}
+.bp{display:inline-block;font-size:10px;padding:2px 6px;border-radius:4px;font-family:var(--fm);font-weight:500}
+.bp.beat{background:var(--Gbg);color:var(--G)}
+.bp.miss{background:var(--Rbg);color:var(--R)}
+.bp.inline{background:var(--Bbg);color:var(--B)}
+.surp-pos{color:var(--G)}
+.surp-neg{color:var(--R)}
+
+/* ABOUT / NEWS / HOLDINGS */
+.about-text{font-size:13px;line-height:1.7;color:var(--mu)}
+.about-meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-top:.8rem;padding-top:.8rem;border-top:1px solid var(--b1)}
+.ami{display:flex;flex-direction:column;gap:1px}
+.aml{font-size:10px;color:var(--di);font-family:var(--fm);text-transform:uppercase;letter-spacing:.07em}
+.amv{font-size:12px}
+.amv a{color:var(--P2);text-decoration:none}
+.ncard{background:var(--bg3);border:1px solid var(--b1);border-radius:9px;padding:.75rem 1rem;margin-bottom:7px;cursor:pointer;transition:border-color .15s;text-decoration:none;display:block}
+.ncard:hover{border-color:var(--b3)}
+.nhl{font-size:12px;font-weight:500;line-height:1.4;margin-bottom:4px;color:var(--tx)}
+.nmeta{display:flex;gap:7px}
+.nsrc{font-size:10px;color:var(--P2);font-family:var(--fm)}
+.ntime{font-size:10px;color:var(--di);font-family:var(--fm)}
+.hit{background:var(--bg3);border:1px solid var(--b1);border-radius:9px;padding:.7rem .9rem;display:flex;align-items:center;gap:8px;margin-bottom:7px}
+.hrnk{font-family:var(--fm);font-size:10px;color:var(--di);width:16px;flex-shrink:0}
+.hinf{flex:1;min-width:0}
+.hnm{font-size:12px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.htk{font-family:var(--fm);font-size:10px;color:var(--P2)}
+.hbar-wrap{width:80px;height:4px;background:var(--bg4);border-radius:3px;overflow:hidden;flex-shrink:0}
+.hbar-fill{height:100%;background:var(--P);border-radius:3px}
+.hw{font-family:var(--fm);font-size:11px;min-width:36px;text-align:right;flex-shrink:0}
+
+/* FINANCIALS */
+.ftabs{display:flex;border:1px solid var(--b1);border-radius:7px;overflow:hidden;width:fit-content;margin-bottom:.8rem}
+.ftab{padding:5px 14px;font-size:12px;cursor:pointer;background:transparent;color:var(--mu);border:none}
+.ftab.on{background:var(--bg3);color:var(--tx);font-weight:500}
+.ftbl-wrap{background:var(--bg2);border:1px solid var(--b1);border-radius:11px;overflow:hidden;overflow-x:auto}
+.ftbl{width:100%;border-collapse:collapse;font-size:12px;min-width:340px}
+.ftbl th{padding:7px 12px;font-family:var(--fm);font-size:10px;font-weight:500;color:var(--di);border-bottom:1px solid var(--b1);text-align:right}
+.ftbl th:first-child{text-align:left}
+.ftbl td{padding:7px 12px;text-align:right;border-bottom:1px solid var(--b1);color:var(--tx);font-family:var(--fm);font-size:12px}
+.ftbl td:first-child{text-align:left;color:var(--mu);font-size:11px}
+.ftbl tr:last-child td{border-bottom:none}
+.ftbl tr:hover td{background:var(--bg3)}
+.neg{color:var(--R)}
+
+/* FINANCIAL CHARTS */
+.charts-hdr{display:flex;justify-content:space-between;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:1.2rem}
+.charts-hdr h3{font-family:var(--fd);font-size:1rem;font-weight:700}
+.charts-hdr p{font-size:11px;color:var(--mu)}
+.gp-row{display:flex;gap:4px}
+.gpbtn{background:transparent;border:1px solid var(--b1);color:var(--mu);padding:4px 11px;border-radius:6px;cursor:pointer;font-size:11px;font-family:var(--fm)}
+.gpbtn.on{background:var(--P);border-color:var(--P);color:#fff}
+.c2{display:grid;grid-template-columns:repeat(auto-fit,minmax(250px,1fr));gap:10px;margin-bottom:10px}
+.ccard{background:var(--bg2);border:1px solid var(--b1);border-radius:14px;padding:1rem 1.1rem;cursor:pointer;transition:border-color .2s;position:relative}
+.ccard:hover{border-color:var(--b3)}
+.ccard-top{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:.3rem}
+.cctitle{font-size:12px;font-weight:500}
+.ccsub{font-size:10px;color:var(--mu);margin-bottom:.8rem}
+.cc-stat{margin-bottom:.8rem}
+.cc-val{font-family:var(--fd);font-size:1.1rem;font-weight:700}
+.cc-chg{font-size:10px;font-family:var(--fm);margin-top:1px}
+.cc-chg.pos{color:var(--G)}
+.cc-chg.neg{color:var(--R)}
+.cc-chg.neu{color:var(--mu)}
+.canv{height:160px;position:relative}
+.expand-ico{font-size:12px;color:var(--di)}
+.ccard:hover .expand-ico{color:var(--P2)}
+.dwrap{display:flex;align-items:center;gap:1rem;flex-wrap:wrap;padding-top:.3rem}
+.dc{width:120px;height:120px;flex-shrink:0}
+.dleg{flex:1;display:flex;flex-direction:column;gap:5px;min-width:90px}
+.dlrow{display:flex;align-items:center;gap:6px}
+.dldot{width:8px;height:8px;border-radius:2px;flex-shrink:0}
+.dlnm{font-size:11px;color:var(--mu);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.dlpct{font-size:11px;font-family:var(--fm)}
+
+.not-found{text-align:center;padding:3rem 1.5rem;color:var(--mu)}
+.not-found h3{font-family:var(--fd);font-size:1.1rem;color:var(--tx);margin-bottom:.4rem}
+
+@media(max-width:520px){.shdr,.analyst-grid{flex-direction:column}.sprice{text-align:left}.sgrid{grid-template-columns:repeat(2,1fr)}.scontent{padding:1rem}}
+</style>
+</head>
+<body>
+
+<!-- FULLSCREEN MODAL -->
+<div id="fs-modal">
+  <div class="fs-topbar">
+    <div><div class="fs-title" id="fs-title">Chart</div><div class="fs-sub" id="fs-sub"></div></div>
+    <div class="fs-controls">
+      <div id="fs-perf" class="fs-perf"></div>
+      <div class="fs-periods">
+        <button class="fsp-btn" data-gp="3">3Y</button>
+        <button class="fsp-btn" data-gp="5">5Y</button>
+        <button class="fsp-btn on" data-gp="10">10Y</button>
+        <button class="fsp-btn" data-gp="0">All</button>
+      </div>
+      <button class="fs-close" id="fs-close">✕ Close</button>
+    </div>
+  </div>
+  <div class="fs-body">
+    <div class="fs-chart-wrap"><canvas id="fs-canvas"></canvas></div>
+    <div class="fs-info" id="fs-info"></div>
+  </div>
+</div>
+
+<div id="nav">
+  <span class="brand">MarketLens</span>
+  <div class="nav-live"><span class="nav-dot"></span><span id="live-label">Connecting...</span></div>
+  <div class="nav-pills" id="nav-pills"></div>
+</div>
+
+<div id="home">
+  <h1 class="headline">Markets,<br><em>decoded.</em></h1>
+  <p class="sub">Real-time stock analysis powered by live Finnhub data.</p>
+  <div class="chips">
+    <span class="chip" data-t="AAPL">AAPL · Apple</span>
+    <span class="chip" data-t="MSFT">MSFT · Microsoft</span>
+    <span class="chip" data-t="NVDA">NVDA · Nvidia</span>
+    <span class="chip" data-t="TSLA">TSLA · Tesla</span>
+    <span class="chip" data-t="GOOGL">GOOGL · Alphabet</span>
+    <span class="chip" data-t="AMZN">AMZN · Amazon</span>
+    <span class="chip" data-t="META">META · Meta</span>
+    <span class="chip" data-t="SPY">SPY · S&amp;P 500 ETF</span>
+    <span class="chip" data-t="QQQ">QQQ · Nasdaq ETF</span>
+    <span class="chip" data-t="KO">KO · Coca-Cola</span>
+    <span class="chip" data-t="JNJ">JNJ · Johnson &amp; Johnson</span>
+    <span class="chip" data-t="BRK.B">BRK.B · Berkshire</span>
+  </div>
+  <div class="search-row">
+    <input id="sinp" class="sinp" placeholder="Search any stock or ETF…" autocomplete="off"/>
+    <div class="sugg-wrap" id="home-sugg"></div>
+    <button class="gobtn" id="gobtn">Analyze →</button>
+  </div>
+</div>
+
+<div id="spage">
+  <div class="shead">
+    <button class="backbtn" id="backbtn">← Home</button>
+    <div class="shead-swrap">
+      <span class="shead-sico">⌕</span>
+      <input id="shead-sinp" class="shead-sinp" placeholder="Switch ticker…" autocomplete="off"/>
+    </div>
+    <button class="shead-gobtn" id="shead-gobtn">Go</button>
+  </div>
+  <div class="scontent" id="scontent">
+    <div class="loading-wrap"><div class="loading-ring"></div><div class="loading-txt">Loading…</div></div>
+  </div>
+</div>
+
+<script>
+// ── Config ────────────────────────────────────────────────
+const API = 'https://marketlens-production-031f.up.railway.app';
+
+// ── Helpers ───────────────────────────────────────────────
+const $=id=>document.getElementById(id);
+const esc=s=>String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+const f$=(n,dp=2)=>n!=null&&!isNaN(n)?`$${Number(n).toFixed(dp)}`:'—';
+const fB=n=>{if(n==null||isNaN(n))return'—';const x=Number(n);return x>=1e12?`$${(x/1e12).toFixed(2)}T`:x>=1e9?`$${(x/1e9).toFixed(2)}B`:x>=1e6?`$${(x/1e6).toFixed(1)}M`:'—'};
+const fP=(n,dp=1)=>n!=null&&!isNaN(n)?`${Number(n).toFixed(dp)}%`:'—';
+const sgn=n=>n>0?'+':'';
+const rgba=(h,a)=>{try{const r=parseInt(h.slice(1,3),16),g=parseInt(h.slice(3,5),16),b=parseInt(h.slice(5,7),16);return`rgba(${r},${g},${b},${a})`}catch{return h}};
+const P='#7c6af7',G='#22c55e',B='#3b82f6',R='#ef4444';
+const DCOLS=[P,G,B,R,'#a78bfa','#4ade80','#60a5fa','#f87171','#818cf8','#34d399'];
+const last=a=>a?.length?a[a.length-1]:null;
+const pctG=a=>a.map((v,i)=>i===0?null:a[i-1]&&Math.abs(a[i-1])>.0001?+((v-a[i-1])/Math.abs(a[i-1])*100).toFixed(1):null);
+const today=()=>new Date().toISOString().slice(0,10);
+const dAgo=n=>{const d=new Date();d.setDate(d.getDate()-n);return d.toISOString().slice(0,10)};
+
+Chart.defaults.color='#7e7e96';
+Chart.defaults.borderColor='rgba(255,255,255,0.05)';
+Chart.defaults.font.family='DM Mono';
+Chart.defaults.font.size=10;
+
+let PriceChart=null,EarnChart=null,FSChart=null,Charts={};
+let CurD=null,CurPH=null,CurPR='1Y',CurGP=10;
+let searchTimer=null;
+
+// ── API calls ─────────────────────────────────────────────
+async function apiFetch(path) {
+  const r = await fetch(`${API}${path}`);
+  if (!r.ok) throw new Error(`${r.status}`);
+  return r.json();
+}
+
+// ── Market overview pills ─────────────────────────────────
+async function loadMarketOverview() {
+  try {
+    const d = await apiFetch('/api/market-overview');
+    const names = {SPY:'S&P 500', QQQ:'NASDAQ', DIA:'DOW'};
+    $('nav-pills').innerHTML = Object.entries(d).map(([sym, q]) => {
+      if (!q?.c) return '';
+      const up = q.d >= 0;
+      return `<span class="mpill ${up?'up':'dn'}">${names[sym]} ${up?'▲':'▼'} ${Math.abs(q.dp||0).toFixed(2)}%</span>`;
+    }).join('<span style="color:var(--di)">·</span>');
+    $('live-label').textContent = 'Live Data';
+    $('live-label').style.color = 'var(--G)';
+  } catch(e) {
+    $('live-label').textContent = 'Connecting…';
+  }
+}
+loadMarketOverview();
+setInterval(loadMarketOverview, 30000);
+
+// ── Search ────────────────────────────────────────────────
+function setupSearch(inp, sugg) {
+  inp.addEventListener('input', () => {
+    clearTimeout(searchTimer);
+    sugg && sugg.classList.remove('open');
+    const q = inp.value.trim();
+    if (!q || !sugg) return;
+    searchTimer = setTimeout(() => runSearch(q, sugg), 320);
+  });
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter') {
+      const v = inp.value.trim().toUpperCase();
+      if (v) go(v);
+    }
+    if (e.key === 'Escape' && sugg) sugg.classList.remove('open');
+  });
+  document.addEventListener('click', e => {
+    if (sugg && !inp.contains(e.target) && !sugg.contains(e.target)) sugg.classList.remove('open');
+  });
+}
+
+async function runSearch(q, sugg) {
+  try {
+    const d = await apiFetch(`/api/search?q=${encodeURIComponent(q)}`);
+    const items = (d?.result || []).filter(r => r.symbol && r.description && !r.symbol.includes('.')).slice(0, 7);
+    if (!items.length) { sugg.classList.remove('open'); return; }
+
+    // Fetch quotes for suggestions
+    const quotes = await Promise.allSettled(items.map(it => apiFetch(`/api/quote/${it.symbol}`)));
+
+    sugg.innerHTML = items.map((it, i) => {
+      const q = quotes[i].status === 'fulfilled' ? quotes[i].value : {};
+      const up = (q.d || 0) >= 0;
+      return `<div class="sugg-item" data-sym="${esc(it.symbol)}">
+        <span class="sugg-sym">${esc(it.symbol)}</span>
+        <span class="sugg-name">${esc(it.description)}</span>
+        ${q.c ? `<span class="sugg-price">${f$(q.c)}</span>
+        <span class="sugg-chg ${up?'up':'dn'}">${up?'▲':'▼'}${Math.abs(q.dp||0).toFixed(2)}%</span>` : ''}
+      </div>`;
+    }).join('');
+
+    sugg.querySelectorAll('.sugg-item').forEach(el => {
+      el.addEventListener('click', () => { go(el.dataset.sym); sugg.classList.remove('open'); });
+    });
+    sugg.classList.add('open');
+  } catch(e) { sugg && sugg.classList.remove('open'); }
+}
+
+setupSearch($('sinp'), $('home-sugg'));
+setupSearch($('shead-sinp'), null);
+
+// Quick chips
+document.querySelectorAll('.chip').forEach(c => c.addEventListener('click', () => go(c.dataset.t)));
+$('gobtn').addEventListener('click', () => { const v=$('sinp').value.trim().toUpperCase(); if(v) go(v); });
+$('backbtn').addEventListener('click', goHome);
+$('shead-gobtn').addEventListener('click', () => { const v=$('shead-sinp').value.trim().toUpperCase(); if(v) go(v); });
+
+// ── Navigation ────────────────────────────────────────────
+function go(ticker) {
+  $('home').classList.add('gone');
+  $('spage').classList.add('on');
+  $('shead-sinp').value = '';
+  $('home-sugg').classList.remove('open');
+  window.scrollTo(0, 0);
+  destroyAll(); CurPR = '1Y'; CurGP = 10;
+  loadStock(ticker.toUpperCase());
+}
+function goHome() {
+  $('home').classList.remove('gone');
+  $('spage').classList.remove('on');
+  window.scrollTo(0, 0);
+  destroyAll();
+}
+function destroyAll() {
+  [PriceChart, EarnChart, FSChart, ...Object.values(Charts)].forEach(c => { try { if(c) c.destroy(); } catch {} });
+  PriceChart = EarnChart = FSChart = null; Charts = {};
+}
+
+// ── Load stock page ───────────────────────────────────────
+async function loadStock(ticker) {
+  $('scontent').innerHTML = `<div class="loading-wrap"><div class="loading-ring"></div><div class="loading-txt">Loading ${esc(ticker)}…</div></div>`;
+  try {
+    // Detect ETF by trying ETF-specific check
+    const isETF = ['SPY','QQQ','IVV','VOO','VTI','EFA','AGG','GLD','VNQ','ARKK','VGT','XLF','XLE','VWO'].includes(ticker);
+
+    const [stock, priceHistory] = await Promise.all([
+      apiFetch(`/api/stock/${ticker}?etf=${isETF?1:0}`),
+      apiFetch(`/api/candles/${ticker}`),
+    ]);
+
+    CurD = { ...stock, ticker, isETF };
+    CurPH = priceHistory;
+
+    renderPage();
+  } catch(e) {
+    $('scontent').innerHTML = `<div class="not-found"><h3>Could not load ${esc(ticker)}</h3><p>Check the ticker and try again. ${e.message}</p></div>`;
+  }
+}
+
+// ── Render page ───────────────────────────────────────────
+function renderPage() {
+  const { quote:q, profile:p, metrics:mt, news, recs, priceTarget:pt, earnings, earningsCal, etfHoldings, ticker, isETF } = CurD;
+  const m = mt?.metric || {};
+  const isUp = (q?.d || 0) >= 0;
+  const logoUrl = p?.logo || '';
+
+  // Analyst
+  const rec = recs?.[0] || {};
+  const tot = (rec.strongBuy||0)+(rec.buy||0)+(rec.hold||0)+(rec.sell||0)+(rec.strongSell||0);
+  const score = ((rec.strongBuy||0)*2+(rec.buy||0))/Math.max(1,tot);
+  const cons = score>0.8?'Strong Buy':score>0.5?'Buy':score>0.2?'Hold':'Sell';
+  const consCls = cons.includes('Buy')?'buy':cons==='Hold'?'hold':'sell';
+  const upside = pt?.targetMean && q?.c ? ((pt.targetMean - q.c)/q.c*100) : null;
+  const rBars = [
+    {l:'Strong Buy',n:rec.strongBuy||0,c:G},
+    {l:'Buy',n:rec.buy||0,c:'#4ade80'},
+    {l:'Hold',n:rec.hold||0,c:B},
+    {l:'Sell',n:rec.sell||0,c:'#f87171'},
+    {l:'Str Sell',n:rec.strongSell||0,c:R}
+  ];
+  const mxB = Math.max(...rBars.map(b=>b.n), 1);
+
+  // Stats from live Finnhub metrics
+  const mktCap = p?.marketCapitalization ? p.marketCapitalization*1e6 : null;
+  const stats = [
+    {l:'Market Cap', v:fB(mktCap)},
+    {l:'P/E Ratio', v:m.peBasicExclExtraTTM?m.peBasicExclExtraTTM.toFixed(1):'—'},
+    {l:'EPS (TTM)', v:m.epsTTM?f$(m.epsTTM):'—'},
+    {l:'Dividend Yield', v:m.dividendYieldIndicatedAnnual?fP(m.dividendYieldIndicatedAnnual):'—'},
+    {l:'Beta', v:m.beta?m.beta.toFixed(2):'—'},
+    {l:'Gross Margin', v:fP(m.grossMarginTTM)},
+    {l:'Net Margin', v:fP(m.netProfitMarginTTM)},
+    {l:'ROE', v:fP(m.roeTTM)},
+    {l:'ROA', v:fP(m.roaTTM)},
+    {l:'Current Ratio', v:m.currentRatioAnnual?m.currentRatioAnnual.toFixed(2):'—'},
+  ];
+
+  const w52h = m['52WeekHigh'], w52l = m['52WeekLow'];
+
+  // Earnings
+  const earns = earnings || [];
+  const upcoming = (earningsCal?.earningsCalendar || []).filter(e => e.date >= today())[0];
+
+  // News
+  const newsItems = (news || []).slice(0, 5);
+
+  // Holdings
+  const holdings = etfHoldings?.holdings || [];
+
+  // Financials (AI-estimated since free tier doesn't include full statements)
+  const Y = ['2021','2022','2023','2024'];
+  const noData = '<p style="padding:1rem;color:var(--mu);font-size:12px">Financial statements require Finnhub premium. Key metrics above are live.</p>';
+
+  $('scontent').innerHTML = `
+    <div class="shdr">
+      <div class="slogo">${esc(ticker.slice(0,4))}<img src="${esc(logoUrl)}" onerror="this.style.display='none'"/></div>
+      <div class="stitle">
+        <div class="sname">${esc(p?.name || ticker)}</div>
+        <div class="smeta">
+          <span class="stk">${esc(ticker)}</span>
+          ${p?.exchange?`<span class="sexch">${esc(p.exchange)}</span>`:''}
+          ${p?.finnhubIndustry?`<span class="ssect">· ${esc(p.finnhubIndustry)}</span>`:''}
+          ${isETF?'<span class="etfbadge">ETF</span>':''}
+        </div>
+        <div class="ohlc">
+          ${q?.o?`<div class="ohlci"><div class="ohlcl">Open</div><div class="ohlcv">${f$(q.o)}</div></div>`:''}
+          ${q?.h?`<div class="ohlci"><div class="ohlcl">High</div><div class="ohlcv" style="color:var(--G)">${f$(q.h)}</div></div>`:''}
+          ${q?.l?`<div class="ohlci"><div class="ohlcl">Low</div><div class="ohlcv" style="color:var(--R)">${f$(q.l)}</div></div>`:''}
+          ${q?.pc?`<div class="ohlci"><div class="ohlcl">Prev Close</div><div class="ohlcv">${f$(q.pc)}</div></div>`:''}
+        </div>
+      </div>
+      <div class="sprice">
+        <div class="bigp">${q?.c?f$(q.c):'—'}</div>
+        <div class="pchg ${isUp?'up':'dn'}">${isUp?'▲':'▼'} ${sgn(q?.d||0)}${f$(Math.abs(q?.d||0)).slice(1)} (${sgn(q?.dp||0)}${Math.abs(q?.dp||0).toFixed(2)}%)</div>
+        <div style="font-size:10px;color:var(--G);font-family:var(--fm);margin-top:2px">● Live · Finnhub</div>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="chart-top">
+        <div class="stitle-sm" style="margin:0">Price History <span class="badge live">Live</span></div>
+        <div style="display:flex;align-items:center;gap:10px;flex-wrap:wrap">
+          <div id="pcperf" class="pcperf"></div>
+          <div class="ranges">${['1M','3M','6M','1Y','5Y'].map(r=>`<button class="rbtn ${r==='1Y'?'on':''}" data-r="${r}">${r}</button>`).join('')}</div>
+        </div>
+      </div>
+      <div class="cwrap"><canvas id="pc"></canvas></div>
+    </div>
+
+    <div class="stitle-sm">Key Statistics <span class="badge live">Live</span></div>
+    <div class="sgrid">
+      ${stats.map(s=>`<div class="scard"><div class="scl">${esc(s.l)}</div><div class="scv">${esc(s.v)}</div></div>`).join('')}
+      ${build52W(q?.c, w52l, w52h)}
+    </div>
+
+    ${tot>0?`<div class="stitle-sm">Analyst Ratings <span class="badge live">Live</span></div>
+    <div class="card"><div class="analyst-grid">
+      <div class="cons-block"><div class="cons-lbl">Consensus</div><div class="cons-pill ${consCls}">${esc(cons)}</div><div class="cons-sub">${tot} analysts</div></div>
+      ${pt?.targetMean?`<div class="tgt-block"><div class="tgt-lbl">Price Target</div><div class="tgt-val">${f$(pt.targetMean)}<span class="tgt-up ${upside>=0?'pos':'neg'}">${upside>=0?'+':''}${upside?.toFixed(1)}%</span></div><div class="tgt-rng">Low ${f$(pt.targetLow)} · High ${f$(pt.targetHigh)}</div></div>`:''}
+      <div class="rbars">${rBars.map(b=>`<div class="rbar"><div class="rbar-l">${esc(b.l)}</div><div class="rbar-tr"><div class="rbar-f" style="width:${(b.n/mxB*100).toFixed(1)}%;background:${b.c}"></div></div><div class="rbar-n">${b.n}</div></div>`).join('')}</div>
+    </div>
+    ${(recs||[]).length>1?`<div class="ahist"><div class="ahlbl">Rating History</div><div class="ahlist">${(recs||[]).slice(0,5).map(r=>{const t=(r.strongBuy||0)+(r.buy||0)+(r.hold||0)+(r.sell||0)+(r.strongSell||0)||1,sc=24/t;return`<div class="ah-it"><div class="ah-per">${esc(r.period||'')}</div><div class="ah-bars"><div class="ah-bar" style="height:${Math.max(2,(r.strongBuy||0)*sc).toFixed(0)}px;width:8px;background:#16a34a"></div><div class="ah-bar" style="height:${Math.max(2,(r.buy||0)*sc).toFixed(0)}px;width:8px;background:${G}"></div>${r.hold?`<div class="ah-bar" style="height:${Math.max(2,r.hold*sc).toFixed(0)}px;width:8px;background:${B}"></div>`:''}</div><div class="ah-tot">${t} analysts</div></div>`;}).join('')}</div></div>`:''}
+    </div>`:''}
+
+    ${earns.length?`<div class="stitle-sm">Earnings <span class="badge live">Live</span></div>
+    <div class="card">
+      ${upcoming?`<div class="earn-next">
+        <div class="en-date"><div class="en-mo">${new Date(upcoming.date+'T12:00:00').toLocaleDateString('en-US',{month:'short'})}</div><div class="en-day">${new Date(upcoming.date+'T12:00:00').getDate()}</div></div>
+        <div class="en-info"><div class="en-lbl">Next Earnings Report</div><div class="en-sub">${upcoming.hour==='amc'?'After Market Close':'Before Market Open'}</div></div>
+        ${upcoming.epsEstimate!=null?`<div class="en-est"><div class="en-estl">EPS Est.</div><div class="en-estv">${f$(upcoming.epsEstimate)}</div></div>`:''}
+      </div>`:''}
+      <div class="earn-wrap"><canvas id="earnChart"></canvas></div>
+      <div class="etbl-wrap"><table class="etbl">
+        <thead><tr><th style="text-align:left">Period</th><th>Actual</th><th>Estimate</th><th>Surprise %</th><th>Result</th></tr></thead>
+        <tbody>${earns.map(e=>{const sp=e.surprisePercent||0,beat=Math.abs(sp)<2?'inline':sp>0?'beat':'miss';return`<tr><td>${esc(e.period||e.quarter||'')}</td><td>${e.actual!=null?f$(e.actual):'—'}</td><td>${e.estimate!=null?f$(e.estimate):'—'}</td><td class="${sp>0?'surp-pos':sp<0?'surp-neg':''}">${sp?`${sp>0?'+':''}${sp.toFixed(1)}%`:'—'}</td><td><span class="bp ${beat}">${beat==='beat'?'Beat':beat==='miss'?'Miss':'In Line'}</span></td></tr>`;}).join('')}</tbody>
+      </table></div>
+    </div>`:''}
+
+    ${p?.description?`<div class="stitle-sm">About</div><div class="card">
+      <div class="about-text">${esc(p.description)}</div>
+      <div class="about-meta">
+        ${p.employeeTotal?`<div class="ami"><div class="aml">Employees</div><div class="amv">${Number(p.employeeTotal).toLocaleString()}</div></div>`:''}
+        ${p.ipo?`<div class="ami"><div class="aml">IPO Date</div><div class="amv">${esc(p.ipo)}</div></div>`:''}
+        ${p.country?`<div class="ami"><div class="aml">Country</div><div class="amv">${esc(p.country)}</div></div>`:''}
+        ${p.weburl?`<div class="ami"><div class="aml">Website</div><div class="amv"><a href="${esc(p.weburl)}" target="_blank">${esc(p.weburl.replace(/https?:\/\//,''))}</a></div></div>`:''}
+      </div>
+    </div>`:''}
+
+    ${isETF&&holdings.length?`<div class="stitle-sm">Top Holdings <span class="badge live">Live</span></div>
+    ${holdings.slice(0,12).map((h,i)=>{const w=parseFloat(h.percent||h.weight||0),mx=parseFloat(holdings[0]?.percent||holdings[0]?.weight||10);return`<div class="hit"><div class="hrnk">${i+1}</div><div class="hinf"><div class="hnm">${esc(h.name||h.symbol||'')}</div><div class="htk">${esc(h.symbol||'')}</div></div><div class="hbar-wrap"><div class="hbar-fill" style="width:${Math.min(100,w/mx*100).toFixed(1)}%"></div></div><div class="hw">${Number(w).toFixed(2)}%</div></div>`;}).join('')}`:''}
+
+    ${newsItems.length?`<div class="stitle-sm">Recent News <span class="badge live">Live</span></div>
+    ${newsItems.map(n=>{const dt=new Date((n.datetime||0)*1000);const ts=isNaN(dt)?'':dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});return`<a class="ncard" href="${esc(n.url||'#')}" target="_blank"><div class="nhl">${esc(n.headline||'')}</div><div class="nmeta"><span class="nsrc">${esc(n.source||'')}</span><span class="ntime">${ts}</span></div></a>`;}).join('')}`:''}
+
+    <div style="border-top:1px solid var(--b2);margin:1.5rem 0 1.2rem;padding-top:1.4rem">
+      <div class="charts-hdr">
+        <div><h3>Financial Charts</h3><p>Tap any chart to expand · hover for values</p></div>
+        <div class="gp-row"><button class="gpbtn" data-gp="3">3Y</button><button class="gpbtn" data-gp="5">5Y</button><button class="gpbtn on" data-gp="10">10Y</button><button class="gpbtn" data-gp="0">All</button></div>
+      </div>
+      <p style="font-size:11px;color:var(--di);font-family:var(--fm);margin-bottom:1.2rem;background:var(--bg3);padding:8px 12px;border-radius:8px;border:1px solid var(--b1)">
+        📊 Price history and key metrics above are live from Finnhub. Full financial statement charts (revenue, margins, EPS history) require a Finnhub premium plan — upgrade at finnhub.io/pricing to unlock all charts with real historical data.
+      </p>
+    </div>
+  `;
+
+  // Wire events
+  $('scontent').querySelectorAll('.rbtn').forEach(btn=>{btn.addEventListener('click',()=>{$('scontent').querySelectorAll('.rbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');drawPrice(btn.dataset.r);});});
+  $('scontent').querySelectorAll('.gpbtn').forEach(btn=>{btn.addEventListener('click',()=>{$('scontent').querySelectorAll('.gpbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');CurGP=+btn.dataset.gp;});});
+
+  drawPrice('1Y');
+  if (earns.length) drawEarn(earns);
+}
+
+// ── 52W Slider ────────────────────────────────────────────
+function build52W(price, low, high) {
+  if (!low || !high || !price) return '';
+  const pct = Math.max(0, Math.min(100, ((price-low)/(high-low))*100));
+  return `<div class="week52-card" style="grid-column:1/-1">
+    <div class="w52-header"><span class="w52-label">52-Week Range</span><span class="w52-pct">${pct.toFixed(1)}% from low</span></div>
+    <div class="w52-track">
+      <div class="w52-fill" style="width:${pct}%"></div>
+      <div class="w52-price-label" style="left:${pct}%">${f$(price)}</div>
+      <div class="w52-thumb" style="left:${pct}%"></div>
+    </div>
+    <div class="w52-endpoints">
+      <div class="w52-end"><div class="w52-end-lbl">52W Low</div><div class="w52-end-val low">${f$(low)}</div></div>
+      <div class="w52-end"><div class="w52-end-lbl">52W High</div><div class="w52-end-val high">${f$(high)}</div></div>
+    </div>
+  </div>`;
+}
+
+// ── Price chart (LIVE candles) ────────────────────────────
+function drawPrice(r) {
+  CurPR = r;
+  const prices = CurPH?.[r] || [];
+  if (PriceChart) { PriceChart.destroy(); PriceChart = null; }
+  const canvas = $('pc'); if (!canvas) return;
+  if (!prices.length) {
+    canvas.parentElement.innerHTML = '<p style="color:var(--mu);font-size:12px;padding:1rem;text-align:center">No price history available for this range.</p>';
+    return;
+  }
+  const isUp = prices[prices.length-1] >= prices[0], color = isUp ? G : R;
+  PriceChart = new Chart(canvas, {type:'line',data:{labels:prices.map(()=>''),datasets:[{data:prices,borderColor:color,borderWidth:1.8,fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,200);g.addColorStop(0,rgba(color,.14));g.addColorStop(1,rgba(color,0));return g;},pointRadius:0,tension:.35}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:350},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{label:ctx=>`$${Number(ctx.raw).toFixed(2)}`}}},scales:{x:{display:false},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:10},callback:v=>`$${Number(v).toFixed(0)}`}}}}});
+  const diff=prices[prices.length-1]-prices[0],pct=diff/prices[0]*100,up=diff>=0;
+  const el=$('pcperf');if(el){el.className=`pcperf ${up?'up':'dn'}`;el.textContent=`${up?'▲':'▼'} ${up?'+':''}${diff.toFixed(2)} (${up?'+':''}${pct.toFixed(2)}%)`;}
+}
+
+// ── Earnings line chart (LIVE) ────────────────────────────
+function drawEarn(earns) {
+  const el = $('earnChart'); if (!el) return;
+  if (EarnChart) { EarnChart.destroy(); EarnChart = null; }
+  const rev = [...earns].reverse();
+  const labels = rev.map(e => e.period || e.quarter || '');
+  const actual = rev.map(e => e.actual);
+  const est = rev.map(e => e.estimate);
+  EarnChart = new Chart(el, {type:'line',data:{labels,datasets:[
+    {label:'Actual EPS',data:actual,borderColor:P,borderWidth:2.5,pointRadius:5,pointBackgroundColor:actual.map((a,i)=>a>=est[i]?G:R),pointBorderColor:actual.map((a,i)=>a>=est[i]?G:R),pointHoverRadius:7,tension:.3,fill:false},
+    {label:'Estimate EPS',data:est,borderColor:B,borderWidth:1.5,borderDash:[5,4],pointRadius:3,pointBackgroundColor:B,pointHoverRadius:5,tension:.3,fill:false}
+  ]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},plugins:{legend:{labels:{color:'#7e7e96',boxWidth:11,font:{size:10}}},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: $${Number(ctx.raw).toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:10},callback:v=>`$${v}`}}}}});
+}
+
+// ── Fullscreen Modal ──────────────────────────────────────
+const FSModal = $('fs-modal');
+let FSType = '', FSData = {};
+
+$('fs-close').addEventListener('click', closeFS);
+FSModal.addEventListener('click', e => { if(e.target===FSModal) closeFS(); });
+document.addEventListener('keydown', e => { if(e.key==='Escape') closeFS(); });
+FSModal.querySelectorAll('.fsp-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    FSModal.querySelectorAll('.fsp-btn').forEach(b=>b.classList.remove('on'));
+    btn.classList.add('on');
+    renderFSChart();
+  });
+});
+
+function closeFS() {
+  FSModal.classList.remove('open');
+  document.body.style.overflow = '';
+  if (FSChart) { FSChart.destroy(); FSChart = null; }
+}
+
+function openFS(type, title, sub) {
+  FSType = type;
+  $('fs-title').textContent = title;
+  $('fs-sub').textContent = sub;
+  FSModal.classList.add('open');
+  document.body.style.overflow = 'hidden';
+  renderFSChart();
+}
+
+function getFSGP() { return +([...FSModal.querySelectorAll('.fsp-btn')].find(b=>b.classList.contains('on'))?.dataset.gp || 10); }
+
+function renderFSChart() {
+  if (FSChart) { FSChart.destroy(); FSChart = null; }
+  const canvas = $('fs-canvas'); if (!canvas) return;
+  const prices = CurPH?.['1Y'] || [];
+  if (!prices.length) return;
+  const isUp = prices[prices.length-1] >= prices[0], color = isUp ? G : R;
+  FSChart = new Chart(canvas, {type:'line',data:{labels:prices.map(()=>''),datasets:[{data:prices,borderColor:color,borderWidth:2,fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,400);g.addColorStop(0,rgba(color,.15));g.addColorStop(1,rgba(color,0));return g;},pointRadius:0,tension:.35}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{label:ctx=>`$${Number(ctx.raw).toFixed(2)}`}}},scales:{x:{display:false},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:12}}}}}});
+  const diff=prices[prices.length-1]-prices[0],pct=diff/prices[0]*100,up=diff>=0;
+  const el=$('fs-perf');if(el){el.className=`fs-perf ${up?'up':'dn'}`;el.textContent=`${up?'▲':'▼'} ${up?'+':''}${diff.toFixed(2)} (${up?'+':''}${pct.toFixed(2)}%)`;}
+  $('fs-info').innerHTML = `
+    <div class="fs-info-item"><div class="fs-info-lbl">Current Price</div><div class="fs-info-val">${f$(CurD?.quote?.c)}</div></div>
+    <div class="fs-info-item"><div class="fs-info-lbl">52W High</div><div class="fs-info-val" style="color:var(--G)">${f$(CurD?.metrics?.metric?.['52WeekHigh'])}</div></div>
+    <div class="fs-info-item"><div class="fs-info-lbl">52W Low</div><div class="fs-info-val" style="color:var(--R)">${f$(CurD?.metrics?.metric?.['52WeekLow'])}</div></div>
+    <div class="fs-info-item"><div class="fs-info-lbl">Data Source</div><div class="fs-info-val" style="color:var(--G)">● Finnhub Live</div></div>
+  `;
+}
+</script>
+</body>
+</html>
