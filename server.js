@@ -138,24 +138,19 @@ app.get('/api/fmp/financials/:symbol', async (req,res) => {
       return +((debt-cash).toFixed(2));
     });
 
-    // P/E — try every possible field name FMP might use
+    // P/E — FMP stable API does NOT include peRatio directly.
+    // It provides earningsYield (e.g. 0.029) → P/E = 1 / earningsYield
     const getPE = k => {
-      const v = pick(k,
-        'peRatio','pe','priceEarningsRatio','priceToEarningsRatio',
-        'priceEarnings','pERatio','price_earnings_ratio'
-      );
-      return v!=null && v>0 && v<500 ? +v.toFixed(2) : null;
+      const ey = pick(k, 'earningsYield');
+      if(ey != null && ey > 0.001) return +((1/ey).toFixed(2));
+      return null;
     };
 
-    // ROIC — try every possible field name, handle decimal vs % format
+    // ROIC — FMP stable API uses 'returnOnInvestedCapital' as a decimal (0.52 = 52%)
     const getROIC = k => {
-      const v = pick(k,
-        'roic','returnOnInvestedCapital','returnOnInvestedCapitalTTM',
-        'roci','roicTTM','return_on_invested_capital'
-      );
-      if(v==null) return null;
-      // FMP sometimes returns as decimal (0.56) sometimes as percent (56)
-      // If abs value < 5, treat as decimal and multiply by 100
+      const v = pick(k, 'returnOnInvestedCapital', 'returnOnCapitalEmployed');
+      if(v == null) return null;
+      // Values are decimals like 0.52 — multiply by 100 to get percentage
       const pct = Math.abs(v) < 5 ? v*100 : v;
       return pct > -200 && pct < 1000 ? +pct.toFixed(2) : null;
     };
@@ -187,8 +182,8 @@ app.get('/api/fmp/financials/:symbol', async (req,res) => {
       roic:     km.map(getROIC),
 
       // Extra valuation metrics as bonus
-      pfcf:     km.map(k=>{const v=pick(k,'priceToFreeCashFlowsRatio','pfcfRatio','priceFCF','priceToFreeCashFlow');return v!=null&&v>0&&v<500?+v.toFixed(2):null;}),
-      evEbitda: km.map(k=>{const v=pick(k,'enterpriseValueOverEBITDA','evToEbitda','evEbitda');return v!=null&&v>0&&v<200?+v.toFixed(2):null;}),
+      pfcf:     km.map(k=>{const v=pick(k,'evToFreeCashFlow','freeCashFlowYield');return v!=null&&v>0&&v<500?+v.toFixed(2):null;}),
+      evEbitda: km.map(k=>{const v=pick(k,'evToEBITDA','evToSales');return v!=null&&v>0&&v<200?+v.toFixed(2):null;}),
 
       tableYears: income.slice(0,4).reverse().map(i=>i.calendarYear||i.date?.slice(0,4)),
       tableIncome:[
