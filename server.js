@@ -1,6 +1,7 @@
 /**
- * MarketLens — Proxy Server v2
+ * MarketLens — Proxy Server v2.1
  * Finnhub (free) for real-time data + FMP (Starter) for financial statements & price history
+ * Updated August 2025: FMP migrated from /api/v3/ to /stable/ endpoints
  */
 
 const express = require('express');
@@ -14,7 +15,7 @@ const PORT = process.env.PORT || 3000;
 const FINNHUB_KEY  = process.env.FINNHUB_KEY || 'PASTE_FINNHUB_KEY_HERE';
 const FMP_KEY      = process.env.FMP_KEY      || 'PASTE_FMP_KEY_HERE';
 const FH_BASE      = 'https://finnhub.io/api/v1';
-const FMP_BASE     = 'https://financialmodelingprep.com/api/v3';
+const FMP_BASE     = 'https://financialmodelingprep.com/stable';  // NEW stable endpoint
 
 app.use(cors());
 app.use(express.json());
@@ -23,18 +24,17 @@ app.use(express.static(path.join(__dirname, 'public')));
 // ── Cache ─────────────────────────────────────────────────
 const cache = new Map();
 const TTL = {
-  quote:       15_000,
-  profile:  86_400_000,
-  metrics:   3_600_000,
-  news:        300_000,
-  candle:      300_000,
-  rec:       3_600_000,
-  target:    3_600_000,
-  earnings:  3_600_000,
-  search:      600_000,
-  etf:       3_600_000,
-  fmpFin:    3_600_000,
-  fmpPrice:    300_000,
+  quote:      15_000,
+  profile: 86_400_000,
+  metrics:  3_600_000,
+  news:       300_000,
+  rec:      3_600_000,
+  target:   3_600_000,
+  earnings: 3_600_000,
+  search:     600_000,
+  etf:      3_600_000,
+  fmpFin:   3_600_000,
+  fmpPrice:   300_000,
 };
 const gc = k => { const e=cache.get(k); if(!e)return null; if(Date.now()>e.x){cache.delete(k);return null;} return e.d; };
 const sc = (k,d,ttl) => cache.set(k,{d,x:Date.now()+ttl});
@@ -42,15 +42,20 @@ const sc = (k,d,ttl) => cache.set(k,{d,x:Date.now()+ttl});
 // ── Fetch helpers ─────────────────────────────────────────
 async function fh(ep) {
   const sep = ep.includes('?')?'&':'?';
-  const r = await fetch(`${FH_BASE}${ep}${sep}token=${FINNHUB_KEY}`,{headers:{'User-Agent':'MarketLens/2.0'}});
+  const r = await fetch(`${FH_BASE}${ep}${sep}token=${FINNHUB_KEY}`,{headers:{'User-Agent':'MarketLens/2.1'}});
   if(!r.ok) throw new Error(`Finnhub ${r.status}`);
   return r.json();
 }
+
+// FMP new stable endpoint — symbol is now a query param, not path param
 async function fmp(ep) {
   const sep = ep.includes('?')?'&':'?';
-  const r = await fetch(`${FMP_BASE}${ep}${sep}apikey=${FMP_KEY}`,{headers:{'User-Agent':'MarketLens/2.0'}});
+  const r = await fetch(`${FMP_BASE}${ep}${sep}apikey=${FMP_KEY}`,{headers:{'User-Agent':'MarketLens/2.1'}});
   if(!r.ok) throw new Error(`FMP ${r.status}`);
-  return r.json();
+  const data = await r.json();
+  // Handle FMP error messages
+  if(data?.['Error Message']) throw new Error(`FMP: ${data['Error Message']}`);
+  return data;
 }
 
 // ── Date helpers ──────────────────────────────────────────
@@ -59,10 +64,9 @@ const dAgo   = n  => new Date(Date.now()-n*86_400_000).toISOString().slice(0,10)
 const dFwd   = n  => new Date(Date.now()+n*86_400_000).toISOString().slice(0,10);
 
 // ══════════════════════════════════════════════════════════
-//  FINNHUB ROUTES  (real-time data)
+//  FINNHUB ROUTES
 // ══════════════════════════════════════════════════════════
 
-// Search
 app.get('/api/search', async (req,res) => {
   const q=req.query.q||''; const ck=`search:${q}`;
   const hit=gc(ck); if(hit)return res.json(hit);
@@ -70,7 +74,6 @@ app.get('/api/search', async (req,res) => {
   catch(e){ res.status(500).json({error:e.message}); }
 });
 
-// Real-time quote
 app.get('/api/quote/:symbol', async (req,res) => {
   const {symbol}=req.params; const ck=`quote:${symbol}`;
   const hit=gc(ck); if(hit)return res.json(hit);
@@ -78,7 +81,6 @@ app.get('/api/quote/:symbol', async (req,res) => {
   catch(e){ res.status(500).json({error:e.message}); }
 });
 
-// Company profile
 app.get('/api/profile/:symbol', async (req,res) => {
   const {symbol}=req.params; const ck=`profile:${symbol}`;
   const hit=gc(ck); if(hit)return res.json(hit);
@@ -86,7 +88,6 @@ app.get('/api/profile/:symbol', async (req,res) => {
   catch(e){ res.status(500).json({error:e.message}); }
 });
 
-// Key metrics
 app.get('/api/metrics/:symbol', async (req,res) => {
   const {symbol}=req.params; const ck=`metrics:${symbol}`;
   const hit=gc(ck); if(hit)return res.json(hit);
@@ -94,17 +95,15 @@ app.get('/api/metrics/:symbol', async (req,res) => {
   catch(e){ res.status(500).json({error:e.message}); }
 });
 
-// Company news
 app.get('/api/news/:symbol', async (req,res) => {
   const {symbol}=req.params;
   const from=req.query.from||dAgo(60), to=req.query.to||today();
   const ck=`news:${symbol}:${from}:${to}`;
   const hit=gc(ck); if(hit)return res.json(hit);
-  try{ const d=await fh(`/company-news?symbol=${symbol}&from=${from}&to=${to}`); sc(ck,d,TTL.news); res.json(d); }
+  try{ const d=await fh(`/company-news?symbol=${symbol}&from=${from}&to=${to}`); sc(ck,d,TTL.rec); res.json(d); }
   catch(e){ res.status(500).json({error:e.message}); }
 });
 
-// Analyst recommendations
 app.get('/api/recommendations/:symbol', async (req,res) => {
   const {symbol}=req.params; const ck=`rec:${symbol}`;
   const hit=gc(ck); if(hit)return res.json(hit);
@@ -112,7 +111,6 @@ app.get('/api/recommendations/:symbol', async (req,res) => {
   catch(e){ res.status(500).json({error:e.message}); }
 });
 
-// Price target
 app.get('/api/price-target/:symbol', async (req,res) => {
   const {symbol}=req.params; const ck=`target:${symbol}`;
   const hit=gc(ck); if(hit)return res.json(hit);
@@ -120,7 +118,6 @@ app.get('/api/price-target/:symbol', async (req,res) => {
   catch(e){ res.status(500).json({error:e.message}); }
 });
 
-// Earnings history
 app.get('/api/earnings/:symbol', async (req,res) => {
   const {symbol}=req.params; const ck=`earnings:${symbol}`;
   const hit=gc(ck); if(hit)return res.json(hit);
@@ -128,17 +125,13 @@ app.get('/api/earnings/:symbol', async (req,res) => {
   catch(e){ res.status(500).json({error:e.message}); }
 });
 
-// Earnings calendar
 app.get('/api/earnings-calendar/:symbol', async (req,res) => {
-  const {symbol}=req.params;
-  const from=today(), to=dFwd(90);
-  const ck=`earncal:${symbol}`;
+  const {symbol}=req.params; const ck=`earncal:${symbol}`;
   const hit=gc(ck); if(hit)return res.json(hit);
-  try{ const d=await fh(`/calendar/earnings?from=${from}&to=${to}&symbol=${symbol}`); sc(ck,d,TTL.earnings); res.json(d); }
+  try{ const d=await fh(`/calendar/earnings?from=${today()}&to=${dFwd(90)}&symbol=${symbol}`); sc(ck,d,TTL.earnings); res.json(d); }
   catch(e){ res.status(500).json({error:e.message}); }
 });
 
-// ETF holdings
 app.get('/api/etf-holdings/:symbol', async (req,res) => {
   const {symbol}=req.params; const ck=`etf:${symbol}`;
   const hit=gc(ck); if(hit)return res.json(hit);
@@ -146,20 +139,17 @@ app.get('/api/etf-holdings/:symbol', async (req,res) => {
   catch(e){ res.status(500).json({error:e.message}); }
 });
 
-// Market overview pills
 app.get('/api/market-overview', async (req,res) => {
-  const ck='market-overview';
-  const hit=gc(ck); if(hit)return res.json(hit);
+  const ck='market-overview'; const hit=gc(ck); if(hit)return res.json(hit);
   try{
     const [SPY,QQQ,DIA]=await Promise.all([fh('/quote?symbol=SPY'),fh('/quote?symbol=QQQ'),fh('/quote?symbol=DIA')]);
     const d={SPY,QQQ,DIA}; sc(ck,d,TTL.quote); res.json(d);
   }catch(e){ res.status(500).json({error:e.message}); }
 });
 
-// Batch Finnhub endpoint — all real-time data in one call
+// Batch Finnhub — all real-time data in one call
 app.get('/api/stock/:symbol', async (req,res) => {
-  const {symbol}=req.params;
-  const isETF=req.query.etf==='1';
+  const {symbol}=req.params; const isETF=req.query.etf==='1';
   try{
     const calls=[
       fh(`/quote?symbol=${symbol}`),
@@ -179,24 +169,25 @@ app.get('/api/stock/:symbol', async (req,res) => {
 });
 
 // ══════════════════════════════════════════════════════════
-//  FMP ROUTES  (financial statements + price history)
+//  FMP ROUTES — using new /stable/ endpoints
 // ══════════════════════════════════════════════════════════
 
-// FMP Financial statements — income, balance sheet, cash flow
+// Financial statements — income, balance sheet, cash flow
 app.get('/api/fmp/financials/:symbol', async (req,res) => {
-  const {symbol}=req.params;
-  const ck=`fmp-fin:${symbol}`;
+  const {symbol}=req.params; const ck=`fmp-fin:${symbol}`;
   const hit=gc(ck); if(hit)return res.json(hit);
   try{
+    // NEW stable endpoint format: symbol is a query param, not path param
     const [income,balance,cashflow]=await Promise.all([
-      fmp(`/income-statement/${symbol}?period=annual&limit=10`),
-      fmp(`/balance-sheet-statement/${symbol}?period=annual&limit=10`),
-      fmp(`/cash-flow-statement/${symbol}?period=annual&limit=10`),
+      fmp(`/income-statement?symbol=${symbol}&period=annual&limit=10`),
+      fmp(`/balance-sheet-statement?symbol=${symbol}&period=annual&limit=10`),
+      fmp(`/cash-flow-statement?symbol=${symbol}&period=annual&limit=10`),
     ]);
 
+    // Ensure we got arrays back
     if(!Array.isArray(income)||!income.length) return res.json(null);
 
-    // FMP returns newest first — reverse to oldest first for chart ordering
+    // FMP returns newest first — reverse to oldest first for charts
     const inc=[...income].reverse();
     const bal=[...balance].reverse();
     const cf =[...cashflow].reverse();
@@ -214,21 +205,19 @@ app.get('/api/fmp/financials/:symbol', async (req,res) => {
       freeCashFlow:   cf.map(c=>+((c.freeCashFlow||0)/1e9).toFixed(2)),
       operatingCF:    cf.map(c=>+((c.operatingCashFlow||0)/1e9).toFixed(2)),
       capex:          cf.map(c=>+((c.capitalExpenditure||0)/1e9).toFixed(2)),
-      fcfMargin:      cf.map((c,i)=>{
-        const rev=inc[i]?.revenue;
-        return rev?+((c.freeCashFlow||0)/rev*100).toFixed(2):0;
-      }),
-      dividendPerShare: cf.map((c,i)=>{
+      fcfMargin:      cf.map((c,i)=>{const rev=inc[i]?.revenue;return rev?+((c.freeCashFlow||0)/rev*100).toFixed(2):0;}),
+      dividendPerShare:cf.map((c,i)=>{
         const shares=inc[i]?.weightedAverageShsOutDil;
         const paid=Math.abs(c.dividendsPaid||0);
         return shares&&shares>0?+(paid/shares).toFixed(2):0;
       }),
-      totalDebt:      bal.map(b=>+((b.totalDebt||0)/1e9).toFixed(2)),
-      totalEquity:    bal.map(b=>+((b.totalStockholdersEquity||0)/1e9).toFixed(2)),
-      cash:           bal.map(b=>+((b.cashAndCashEquivalents||0)/1e9).toFixed(2)),
-      // Raw 4-year tables for the Financials section
+      totalDebt:    bal.map(b=>+((b.totalDebt||0)/1e9).toFixed(2)),
+      totalEquity:  bal.map(b=>+((b.totalStockholdersEquity||0)/1e9).toFixed(2)),
+      cash:         bal.map(b=>+((b.cashAndCashEquivalents||0)/1e9).toFixed(2)),
+
+      // Last 4 years for the financials table display
       tableYears: income.slice(0,4).reverse().map(i=>i.calendarYear||i.date?.slice(0,4)),
-      tableIncome: [
+      tableIncome:[
         {l:'Revenue',          vals:income.slice(0,4).reverse().map(i=>`$${((i.revenue||0)/1e9).toFixed(2)}B`)},
         {l:'Gross Profit',     vals:income.slice(0,4).reverse().map(i=>`$${((i.grossProfit||0)/1e9).toFixed(2)}B`)},
         {l:'Operating Income', vals:income.slice(0,4).reverse().map(i=>`$${((i.operatingIncome||0)/1e9).toFixed(2)}B`)},
@@ -238,17 +227,17 @@ app.get('/api/fmp/financials/:symbol', async (req,res) => {
         {l:'Gross Margin',     vals:income.slice(0,4).reverse().map(i=>`${((i.grossProfitRatio||0)*100).toFixed(2)}%`)},
         {l:'Net Margin',       vals:income.slice(0,4).reverse().map(i=>`${((i.netIncomeRatio||0)*100).toFixed(2)}%`)},
       ],
-      tableBalance: [
-        {l:'Total Assets',    vals:balance.slice(0,4).reverse().map(b=>`$${((b.totalAssets||0)/1e9).toFixed(2)}B`)},
-        {l:'Cash',            vals:balance.slice(0,4).reverse().map(b=>`$${((b.cashAndCashEquivalents||0)/1e9).toFixed(2)}B`)},
-        {l:'Total Debt',      vals:balance.slice(0,4).reverse().map(b=>`$${((b.totalDebt||0)/1e9).toFixed(2)}B`)},
-        {l:'Total Equity',    vals:balance.slice(0,4).reverse().map(b=>`$${((b.totalStockholdersEquity||0)/1e9).toFixed(2)}B`)},
+      tableBalance:[
+        {l:'Total Assets',  vals:balance.slice(0,4).reverse().map(b=>`$${((b.totalAssets||0)/1e9).toFixed(2)}B`)},
+        {l:'Cash',          vals:balance.slice(0,4).reverse().map(b=>`$${((b.cashAndCashEquivalents||0)/1e9).toFixed(2)}B`)},
+        {l:'Total Debt',    vals:balance.slice(0,4).reverse().map(b=>`$${((b.totalDebt||0)/1e9).toFixed(2)}B`)},
+        {l:'Total Equity',  vals:balance.slice(0,4).reverse().map(b=>`$${((b.totalStockholdersEquity||0)/1e9).toFixed(2)}B`)},
       ],
-      tableCF: [
-        {l:'Operating CF',    vals:cashflow.slice(0,4).reverse().map(c=>`$${((c.operatingCashFlow||0)/1e9).toFixed(2)}B`)},
-        {l:'Free Cash Flow',  vals:cashflow.slice(0,4).reverse().map(c=>`$${((c.freeCashFlow||0)/1e9).toFixed(2)}B`)},
-        {l:'CapEx',           vals:cashflow.slice(0,4).reverse().map(c=>`$${((c.capitalExpenditure||0)/1e9).toFixed(2)}B`)},
-        {l:'Dividends Paid',  vals:cashflow.slice(0,4).reverse().map(c=>`$${(Math.abs(c.dividendsPaid||0)/1e9).toFixed(2)}B`)},
+      tableCF:[
+        {l:'Operating CF',   vals:cashflow.slice(0,4).reverse().map(c=>`$${((c.operatingCashFlow||0)/1e9).toFixed(2)}B`)},
+        {l:'Free Cash Flow', vals:cashflow.slice(0,4).reverse().map(c=>`$${((c.freeCashFlow||0)/1e9).toFixed(2)}B`)},
+        {l:'CapEx',          vals:cashflow.slice(0,4).reverse().map(c=>`$${((c.capitalExpenditure||0)/1e9).toFixed(2)}B`)},
+        {l:'Dividends Paid', vals:cashflow.slice(0,4).reverse().map(c=>`$${(Math.abs(c.dividendsPaid||0)/1e9).toFixed(2)}B`)},
       ],
     };
 
@@ -257,14 +246,15 @@ app.get('/api/fmp/financials/:symbol', async (req,res) => {
   }catch(e){ res.status(500).json({error:e.message}); }
 });
 
-// FMP Price history — daily close prices for all chart ranges
+// FMP Price history — new stable endpoint
 app.get('/api/fmp/prices/:symbol', async (req,res) => {
-  const {symbol}=req.params;
-  const ck=`fmp-prices:${symbol}`;
+  const {symbol}=req.params; const ck=`fmp-prices:${symbol}`;
   const hit=gc(ck); if(hit)return res.json(hit);
   try{
-    const data=await fmp(`/historical-price-full/${symbol}?serietype=line`);
-    const historical=data?.historical||[];
+    // NEW: /stable/historical-price-eod/light?symbol=AAPL
+    const data=await fmp(`/historical-price-eod/light?symbol=${symbol}`);
+    // Response is an array: [{date, price, volume}, ...]
+    const historical=Array.isArray(data)?data:[];
     if(!historical.length) return res.json({});
 
     const now=Date.now();
@@ -272,8 +262,8 @@ app.get('/api/fmp/prices/:symbol', async (req,res) => {
       const cutoff=new Date(now-days*86_400_000).toISOString().slice(0,10);
       return historical
         .filter(d=>d.date>=cutoff)
-        .reverse()
-        .map(d=>+d.close.toFixed(2));
+        .reverse() // oldest first
+        .map(d=>+(d.price||d.close||0).toFixed(2)); // new API uses 'price', old used 'close'
     };
 
     const ph={
@@ -290,13 +280,19 @@ app.get('/api/fmp/prices/:symbol', async (req,res) => {
 });
 
 // ── Health check ──────────────────────────────────────────
-app.get('/health', (req,res)=>res.json({status:'ok',cached:cache.size,uptime:process.uptime()}));
+app.get('/health',(req,res)=>res.json({
+  status:'ok',
+  cached:cache.size,
+  uptime:process.uptime(),
+  finnhub:FINNHUB_KEY.slice(0,8)+'...',
+  fmp:FMP_KEY.slice(0,8)+'...',
+}));
 
 // ── SPA fallback ──────────────────────────────────────────
-app.get('*', (req,res)=>res.sendFile(path.join(__dirname,'public','index.html')));
+app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'public','index.html')));
 
 app.listen(PORT,()=>{
-  console.log(`\n✅ MarketLens v2 running → http://localhost:${PORT}`);
+  console.log(`\n✅ MarketLens v2.1 running → http://localhost:${PORT}`);
   console.log(`   Finnhub: ${FINNHUB_KEY.slice(0,8)}...`);
-  console.log(`   FMP:     ${FMP_KEY.slice(0,8)}...\n`);
+  console.log(`   FMP:     ${FMP_KEY.slice(0,8)}... (stable endpoints)\n`);
 });
