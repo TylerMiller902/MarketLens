@@ -1,7 +1,6 @@
 /**
- * MarketLens — Proxy Server v2.2
- * Finnhub (free) + FMP (Starter) — stable endpoints
- * New: key metrics history + insider transactions
+ * MarketLens — Proxy Server v2.3
+ * Fixed: key metrics field name discovery + fallback parsing
  */
 
 const express = require('express');
@@ -20,7 +19,6 @@ app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
-// ── Cache ─────────────────────────────────────────────────
 const cache = new Map();
 const TTL = {
   quote:      15_000, profile: 86_400_000, metrics:  3_600_000,
@@ -33,18 +31,26 @@ const sc = (k,d,ttl) => cache.set(k,{d,x:Date.now()+ttl});
 
 async function fh(ep) {
   const sep=ep.includes('?')?'&':'?';
-  const r=await fetch(`${FH_BASE}${ep}${sep}token=${FINNHUB_KEY}`,{headers:{'User-Agent':'MarketLens/2.2'}});
+  const r=await fetch(`${FH_BASE}${ep}${sep}token=${FINNHUB_KEY}`,{headers:{'User-Agent':'MarketLens/2.3'}});
   if(!r.ok) throw new Error(`Finnhub ${r.status}`);
   return r.json();
 }
 async function fmp(ep) {
   const sep=ep.includes('?')?'&':'?';
-  const r=await fetch(`${FMP_BASE}${ep}${sep}apikey=${FMP_KEY}`,{headers:{'User-Agent':'MarketLens/2.2'}});
+  const r=await fetch(`${FMP_BASE}${ep}${sep}apikey=${FMP_KEY}`,{headers:{'User-Agent':'MarketLens/2.3'}});
   if(!r.ok) throw new Error(`FMP ${r.status}`);
   const data=await r.json();
   if(data?.['Error Message']) throw new Error(`FMP: ${data['Error Message']}`);
   return data;
 }
+
+// ── Helper: read a field trying multiple possible names ───
+const pick = (obj, ...keys) => {
+  for (const k of keys) {
+    if (obj?.[k] != null && obj[k] !== '' && !isNaN(obj[k])) return Number(obj[k]);
+  }
+  return null;
+};
 
 const today = () => new Date().toISOString().slice(0,10);
 const dAgo  = n  => new Date(Date.now()-n*86_400_000).toISOString().slice(0,10);
@@ -74,7 +80,6 @@ app.get('/api/market-overview', async (req,res) => {
   }catch(e){ res.status(500).json({error:e.message}); }
 });
 
-// Batch Finnhub — all real-time data in one call
 app.get('/api/stock/:symbol', async (req,res) => {
   const {symbol}=req.params; const isETF=req.query.etf==='1';
   try{
@@ -96,10 +101,20 @@ app.get('/api/stock/:symbol', async (req,res) => {
 });
 
 // ══════════════════════════════════════════════════════════
-//  FMP ROUTES — stable endpoints
+//  FMP ROUTES
 // ══════════════════════════════════════════════════════════
 
-// Financial statements + key metrics (income, balance, cashflow, key metrics)
+// DEBUG — shows raw key metrics so we can see actual field names
+app.get('/api/debug/key-metrics/:symbol', async (req,res) => {
+  try{
+    const data = await fmp(`/key-metrics?symbol=${req.params.symbol}&period=annual&limit=2`);
+    // Return first record with all its keys so we can see field names
+    const first = Array.isArray(data) ? data[0] : data;
+    res.json({ fieldNames: first ? Object.keys(first) : [], sample: first });
+  }catch(e){ res.status(500).json({error:e.message}); }
+});
+
+// Financial statements + key metrics
 app.get('/api/fmp/financials/:symbol', async (req,res) => {
   const {symbol}=req.params; const ck=`fmp-fin:${symbol}`; const hit=gc(ck); if(hit)return res.json(hit);
   try{
@@ -107,26 +122,45 @@ app.get('/api/fmp/financials/:symbol', async (req,res) => {
       fmp(`/income-statement?symbol=${symbol}&period=annual&limit=10`),
       fmp(`/balance-sheet-statement?symbol=${symbol}&period=annual&limit=10`),
       fmp(`/cash-flow-statement?symbol=${symbol}&period=annual&limit=10`),
-      fmp(`/key-metrics?symbol=${symbol}&period=annual&limit=10`),
+      fmp(`/key-metrics?symbol=${symbol}&period=annual&limit=10`).catch(()=>[]),
     ]);
 
     if(!Array.isArray(income)||!income.length) return res.json(null);
 
-    // FMP returns newest first — reverse for charts (oldest→newest)
     const inc=[...income].reverse();
     const bal=[...balance].reverse();
     const cf =[...cashflow].reverse();
     const km =[...(Array.isArray(keyMetrics)?keyMetrics:[])].reverse();
 
-    // Calculate net debt: totalDebt - cash (positive = indebted, negative = net cash)
-    const netDebt=bal.map((b,i)=>{
+    const netDebt=bal.map(b=>{
       const debt=(b.totalDebt||0)/1e9;
       const cash=(b.cashAndCashEquivalents||0)/1e9;
       return +((debt-cash).toFixed(2));
     });
 
+    // P/E — try every possible field name FMP might use
+    const getPE = k => {
+      const v = pick(k,
+        'peRatio','pe','priceEarningsRatio','priceToEarningsRatio',
+        'priceEarnings','pERatio','price_earnings_ratio'
+      );
+      return v!=null && v>0 && v<500 ? +v.toFixed(2) : null;
+    };
+
+    // ROIC — try every possible field name, handle decimal vs % format
+    const getROIC = k => {
+      const v = pick(k,
+        'roic','returnOnInvestedCapital','returnOnInvestedCapitalTTM',
+        'roci','roicTTM','return_on_invested_capital'
+      );
+      if(v==null) return null;
+      // FMP sometimes returns as decimal (0.56) sometimes as percent (56)
+      // If abs value < 5, treat as decimal and multiply by 100
+      const pct = Math.abs(v) < 5 ? v*100 : v;
+      return pct > -200 && pct < 1000 ? +pct.toFixed(2) : null;
+    };
+
     const parsed={
-      // ── Existing chart data ───────────────────────────────
       years:           inc.map(i=>i.calendarYear||i.date?.slice(0,4)||''),
       revenue:         inc.map(i=>+((i.revenue||0)/1e9).toFixed(2)),
       grossProfit:     inc.map(i=>+((i.grossProfit||0)/1e9).toFixed(2)),
@@ -144,26 +178,18 @@ app.get('/api/fmp/financials/:symbol', async (req,res) => {
       totalDebt:       bal.map(b=>+((b.totalDebt||0)/1e9).toFixed(2)),
       totalEquity:     bal.map(b=>+((b.totalStockholdersEquity||0)/1e9).toFixed(2)),
       cash:            bal.map(b=>+((b.cashAndCashEquivalents||0)/1e9).toFixed(2)),
-
-      // ── NEW: 5 additional investor charts ─────────────────
-      // 1. Shares Outstanding (billions) — declining = buybacks
+      netDebt,
       sharesOutstanding: inc.map(i=>+((i.weightedAverageShsOutDil||i.weightedAverageShsOut||0)/1e9).toFixed(3)),
 
-      // 2. Net Debt / Cash (positive = net debt, negative = net cash)
-      netDebt,
+      // Key metrics — with field name fallbacks
+      kmYears:  km.map(k=>k.calendarYear||k.date?.slice(0,4)||''),
+      peRatio:  km.map(getPE),
+      roic:     km.map(getROIC),
 
-      // 3. P/E Ratio history (from key metrics)
-      peRatio: km.map(k=>k.peRatio!=null?+Number(k.peRatio).toFixed(2):null),
-      kmYears: km.map(k=>k.calendarYear||k.date?.slice(0,4)||''),
+      // Extra valuation metrics as bonus
+      pfcf:     km.map(k=>{const v=pick(k,'priceToFreeCashFlowsRatio','pfcfRatio','priceFCF','priceToFreeCashFlow');return v!=null&&v>0&&v<500?+v.toFixed(2):null;}),
+      evEbitda: km.map(k=>{const v=pick(k,'enterpriseValueOverEBITDA','evToEbitda','evEbitda');return v!=null&&v>0&&v<200?+v.toFixed(2):null;}),
 
-      // 4. ROIC history (from key metrics)
-      roic: km.map(k=>k.roic!=null?+((k.roic)*100).toFixed(2):null),
-
-      // Bonus: Price/FCF and EV/EBITDA while we have key metrics
-      pfcf:     km.map(k=>k.priceToFreeCashFlowsRatio!=null?+Number(k.priceToFreeCashFlowsRatio).toFixed(2):null),
-      evEbitda: km.map(k=>k.enterpriseValueOverEBITDA!=null?+Number(k.enterpriseValueOverEBITDA).toFixed(2):null),
-
-      // ── Financials table (last 4 years) ─────────────────
       tableYears: income.slice(0,4).reverse().map(i=>i.calendarYear||i.date?.slice(0,4)),
       tableIncome:[
         {l:'Revenue',          vals:income.slice(0,4).reverse().map(i=>`$${((i.revenue||0)/1e9).toFixed(2)}B`)},
@@ -212,56 +238,34 @@ app.get('/api/fmp/prices/:symbol', async (req,res) => {
   }catch(e){ res.status(500).json({error:e.message}); }
 });
 
-// ── 5. Insider Transactions (NEW) ────────────────────────
+// Insider transactions
 app.get('/api/fmp/insiders/:symbol', async (req,res) => {
   const {symbol}=req.params; const ck=`fmp-ins:${symbol}`; const hit=gc(ck); if(hit)return res.json(hit);
   try{
     const data=await fmp(`/insider-trading?symbol=${symbol}&limit=30`);
     const rows=Array.isArray(data)?data:[];
-
-    // Parse and clean
     const cleaned=rows
       .filter(r=>r.transactionType&&r.securitiesTransacted)
       .map(r=>{
-        const isBuy=r.acquistionOrDisposition==='A'||r.transactionType?.toLowerCase().includes('buy')||r.transactionType==='P-Purchase';
+        const isBuy=r.acquistionOrDisposition==='A'||r.transactionType==='P-Purchase';
         const value=(r.securitiesTransacted||0)*(r.price||0);
-        return{
-          date:r.transactionDate||r.filingDate||'',
-          name:r.reportingName||'Unknown',
-          title:r.typeOfOwner||'',
-          type:isBuy?'Buy':'Sell',
-          shares:Math.abs(r.securitiesTransacted||0),
-          price:r.price||0,
-          value:Math.abs(value),
-          isBuy,
-        };
+        return{date:r.transactionDate||r.filingDate||'',name:r.reportingName||'Unknown',title:r.typeOfOwner||'',type:isBuy?'Buy':'Sell',shares:Math.abs(r.securitiesTransacted||0),price:r.price||0,value:Math.abs(value),isBuy};
       })
-      .sort((a,b)=>b.date.localeCompare(a.date))
-      .slice(0,20);
-
-    // Aggregate by month for the bar chart
+      .sort((a,b)=>b.date.localeCompare(a.date)).slice(0,20);
     const monthly={};
     cleaned.forEach(r=>{
       const mo=r.date.slice(0,7);
-      if(!monthly[mo]) monthly[mo]={month:mo,buyValue:0,sellValue:0};
-      if(r.isBuy) monthly[mo].buyValue+=r.value;
-      else monthly[mo].sellValue+=r.value;
+      if(!monthly[mo])monthly[mo]={month:mo,buyValue:0,sellValue:0};
+      if(r.isBuy)monthly[mo].buyValue+=r.value; else monthly[mo].sellValue+=r.value;
     });
     const monthlyArr=Object.values(monthly).sort((a,b)=>a.month.localeCompare(b.month)).slice(-12);
-
-    const result={transactions:cleaned, monthly:monthlyArr};
+    const result={transactions:cleaned,monthly:monthlyArr};
     sc(ck,result,TTL.fmpInsiders);
     res.json(result);
   }catch(e){ res.status(500).json({error:e.message}); }
 });
 
-// ── Health check ──────────────────────────────────────────
-app.get('/health',(req,res)=>res.json({status:'ok',cached:cache.size,uptime:process.uptime(),fmp:FMP_KEY.slice(0,8)+'...'}));
-
-// ── SPA fallback ──────────────────────────────────────────
+app.get('/health',(req,res)=>res.json({status:'ok',cached:cache.size,uptime:process.uptime()}));
 app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'public','index.html')));
 
-app.listen(PORT,()=>{
-  console.log(`\n✅ MarketLens v2.2 → http://localhost:${PORT}`);
-  console.log(`   FMP: ${FMP_KEY.slice(0,8)}... (stable)\n`);
-});
+app.listen(PORT,()=>console.log(`\n✅ MarketLens v2.3 → http://localhost:${PORT}\n`));
