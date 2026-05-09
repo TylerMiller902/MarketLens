@@ -595,7 +595,7 @@ function renderPage(){
 
   $('scontent').innerHTML=`
     <div class="shdr">
-      <div class="slogo">${esc(ticker.slice(0,4))}<img src="${esc(p?.logo||'')}" onerror="this.style.display='none'"/></div>
+      <div class="slogo"><img src="${esc(p?.logo||'')}" onerror="this.style.display='none'"/></div>
       <div class="stitle">
         <div class="sname">${esc(p?.name||ticker)}</div>
         <div class="smeta"><span class="stk">${esc(ticker)}</span>${p?.exchange?`<span class="sexch">${esc(p.exchange)}</span>`:''}${p?.finnhubIndustry?`<span class="ssect">· ${esc(p.finnhubIndustry)}</span>`:''}${isETF?'<span class="etfbadge">ETF</span>':''}</div>
