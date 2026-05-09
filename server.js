@@ -98,29 +98,44 @@ function buildMetrics(quote, profile, income, km) {
   const i = income  || {};
   const k = km      || {};
 
-  // P/S: Market Cap / Annual Revenue
-  const ps = q.marketCap && i.revenue > 0
-    ? +(q.marketCap / i.revenue).toFixed(2) : null;
+  // Field name fallbacks — FMP stable sometimes differs from v3
+  const marketCap = q.marketCap ?? q.mktCap ?? p.mktCap ?? null;
+  const price     = q.price ?? null;
+  const revenue   = i.revenue ?? null;
+  const lastDiv   = p.lastDiv ?? p.lastDividend ?? p.annualDividend ?? null;
+  const beta      = p.beta ?? q.beta ?? null;
 
-  // Dividend yield: lastDiv (annual per share) / price
-  const divYield = q.price && p.lastDiv
-    ? +((p.lastDiv / q.price) * 100).toFixed(4) : null;
+  // P/S: Market Cap / Annual Revenue
+  const ps = marketCap && revenue && revenue > 0
+    ? +(marketCap / revenue).toFixed(2) : null;
+
+  // Dividend yield: lastDiv (annual) / price * 100
+  const divYield = price && lastDiv && price > 0
+    ? +((lastDiv / price) * 100).toFixed(4) : null;
+
+  // Margins from income statement (ratios are decimals → multiply by 100)
+  const grossMargin = i.grossProfitRatio  ?? i.grossProfitMargin  ?? null;
+  const netMargin   = i.netIncomeRatio    ?? i.netProfitMargin    ?? null;
+
+  // Ratios from key metrics (decimals → multiply by 100)
+  const roe = k.returnOnEquity ?? k.roe ?? null;
+  const roa = k.returnOnAssets ?? k.roa ?? null;
 
   return {
     metric: {
-      '52WeekHigh':                q.yearHigh,
-      '52WeekLow':                 q.yearLow,
-      peBasicExclExtraTTM:         q.pe,
-      epsTTM:                      q.eps,
+      '52WeekHigh':                q.yearHigh ?? q.year52High ?? null,
+      '52WeekLow':                 q.yearLow  ?? q.year52Low  ?? null,
+      peBasicExclExtraTTM:         q.pe       ?? q.priceEarningsRatio ?? null,
+      epsTTM:                      q.eps      ?? null,
       psTTM:                       ps,
       dividendYieldIndicatedAnnual: divYield,
-      dividendPerShareAnnual:      p.lastDiv || null,
-      beta:                        p.beta,
-      grossMarginTTM:              i.grossProfitRatio  != null ? +(i.grossProfitRatio  * 100).toFixed(4) : null,
-      netProfitMarginTTM:          i.netIncomeRatio    != null ? +(i.netIncomeRatio    * 100).toFixed(4) : null,
-      currentRatioAnnual:          k.currentRatio     ?? null,
-      roeTTM:                      k.returnOnEquity   != null ? +(k.returnOnEquity   * 100).toFixed(4) : null,
-      roaTTM:                      k.returnOnAssets   != null ? +(k.returnOnAssets   * 100).toFixed(4) : null,
+      dividendPerShareAnnual:      lastDiv,
+      beta,
+      grossMarginTTM:              grossMargin != null ? +(grossMargin * 100).toFixed(4) : null,
+      netProfitMarginTTM:          netMargin   != null ? +(netMargin   * 100).toFixed(4) : null,
+      currentRatioAnnual:          k.currentRatio ?? null,
+      roeTTM:                      roe != null ? +(roe * 100).toFixed(4) : null,
+      roaTTM:                      roa != null ? +(roa * 100).toFixed(4) : null,
     }
   };
 }
@@ -449,7 +464,26 @@ app.get('/api/fmp/insiders/:symbol', async (req,res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// ── Health ────────────────────────────────────────────────
+// Debug — inspect raw FMP field names for any endpoint
+app.get('/api/debug/:symbol', async (req,res) => {
+  const { symbol } = req.params;
+  try {
+    const [q, p, i, k] = await Promise.all([
+      fmpSafe('/quote',             { symbol }),
+      fmpSafe('/profile',           { symbol }),
+      fmpSafe('/income-statement',  { symbol, period: 'annual', limit: 1 }),
+      fmpSafe('/key-metrics',       { symbol, period: 'annual', limit: 1 }),
+    ]);
+    res.json({
+      quote:   { fields: Object.keys(arr(q)[0]||{}), sample: arr(q)[0] },
+      profile: { fields: Object.keys(arr(p)[0]||{}), sample: arr(p)[0] },
+      income:  { fields: Object.keys(arr(i)[0]||{}), sample: arr(i)[0] },
+      keyMetrics: { fields: Object.keys(arr(k)[0]||{}), sample: arr(k)[0] },
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
+
 app.get('/health', (req,res) => res.json({ status: 'ok', version: '3.0', provider: 'FMP only', cached: cache.size, uptime: process.uptime() }));
 
 // ── SPA fallback ──────────────────────────────────────────
