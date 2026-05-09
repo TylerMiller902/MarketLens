@@ -590,6 +590,8 @@ app.get('/api/etf-holdings-returns/:symbol', async (req,res) => {
 });
 
 
+// ── ETF Info (expense ratio, AUM, etc.) ──────────────────
+app.get('/api/etf-info/:symbol', async (req,res) => {
   const {symbol}=req.params; const ck=`etf-info:${symbol}`; const hit=gc(ck); if(hit)return res.json(hit);
   try{
     const data=await fmpSafe('/etf-info',{symbol});
