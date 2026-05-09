@@ -6,7 +6,6 @@
 const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
-const fetch   = require('node-fetch');  // needed for Node < 18
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -102,7 +101,7 @@ app.get('/api/peers/:symbol', async (req,res) => {
     const peers = await fh(`/stock/peers?symbol=${symbol}`);
     const filtered = (Array.isArray(peers)?peers:[])
       .filter(p=>p!==symbol&&!p.includes('.')&&p.length<8)
-      .slice(0,6);
+      .slice(0,9);
     if(!filtered.length) return res.json([]);
 
     const [quotes, profiles] = await Promise.all([
@@ -117,7 +116,7 @@ app.get('/api/peers/:symbol', async (req,res) => {
     }))
     .filter(p=>p.quote?.c)
     .sort((a,b)=>(b.profile?.marketCapitalization||0)-(a.profile?.marketCapitalization||0))
-    .slice(0,5);
+    .slice(0,7);
 
     sc(ck,result,TTL.peers);
     res.json(result);
@@ -256,4 +255,8 @@ app.get('/api/debug/key-metrics/:symbol', async (req,res) => {
 
 app.get('/health',(req,res)=>res.json({status:'ok',cached:cache.size,uptime:process.uptime()}));
 app.get('*',(req,res)=>res.sendFile(path.join(__dirname,'public','index.html')));
-app.listen(PORT,()=>console.log(`\n✅ MarketLens v2.4 → http://localhost:${PORT}\n`));
+// Export for Vercel serverless, listen for Railway/local
+module.exports = app;
+if (require.main === module) {
+  app.listen(PORT, () => console.log(`\n✅ MarketLens v2.4 → http://localhost:${PORT}\n`));
+}
