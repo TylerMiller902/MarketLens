@@ -516,7 +516,7 @@ async function loadPeers(ticker){
       const dollarChg=q?.d||0;
       return`<div class="peer-card" onclick="go('${esc(p.ticker)}')">
         <div class="peer-top">
-          <div class="peer-logo">${esc(p.ticker.slice(0,3))}<img src="${esc(prof?.logo||'')}" onerror="this.style.display='none'"/></div>
+          <div class="peer-logo"><img src="${esc(prof?.logo||'')}" onerror="this.style.display='none'"/></div>
           <div>
             <div class="peer-ticker">${esc(p.ticker)}</div>
             <div class="peer-dollar ${up?'up':'dn'}">${up?'+':''}${dollarChg.toFixed(2)}</div>
