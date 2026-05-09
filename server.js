@@ -312,21 +312,37 @@ app.get('/api/stock/:symbol', async (req,res) => {
 
 // ── Peers / Competitors ───────────────────────────────────
 app.get('/api/peers/:symbol', async (req,res) => {
-  const { symbol } = req.params; const ck = `peers:${symbol}`; const hit = gc(ck); if(hit) return res.json(hit);
+  const { symbol } = req.params;
+  const ck = `peers:${symbol}`; const hit = gc(ck); if(hit) return res.json(hit);
   try {
-    const peersRaw = await fmp('/stock-peers', { symbol });
-    const peers = arr(peersRaw).flatMap(p => p.peersList ?? (typeof p === 'string' ? [p] : []))
+    const peersRaw = await fmpSafe('/stock-peers', { symbol });
+
+    // Handle multiple possible FMP response formats
+    let peerList = [];
+    if (Array.isArray(peersRaw)) {
+      if (typeof peersRaw[0] === 'string') {
+        peerList = peersRaw;                          // ["MSFT","GOOGL",...]
+      } else if (peersRaw[0]?.peersList) {
+        peerList = peersRaw[0].peersList;             // [{peersList:[...]}]
+      } else if (peersRaw[0]?.peers) {
+        peerList = peersRaw[0].peers;                 // [{peers:[...]}]
+      }
+    } else if (peersRaw?.peersList) {
+      peerList = peersRaw.peersList;                  // {peersList:[...]}
+    }
+
+    const filtered = peerList
       .filter(p => p && p !== symbol && !p.includes('.') && p.length < 8)
       .slice(0, 9);
 
-    if (!peers.length) return res.json([]);
+    if (!filtered.length) return res.json([]);
 
     const [quotes, profiles] = await Promise.all([
-      Promise.allSettled(peers.map(p => fmp('/quote',   { symbol: p }))),
-      Promise.allSettled(peers.map(p => fmp('/profile', { symbol: p }))),
+      Promise.allSettled(filtered.map(p => fmp('/quote',   { symbol: p }))),
+      Promise.allSettled(filtered.map(p => fmp('/profile', { symbol: p }))),
     ]);
 
-    const result = peers.map((ticker, i) => ({
+    const result = filtered.map((ticker, i) => ({
       ticker,
       quote:   transformQuote(arr(quotes[i].status   === 'fulfilled' ? quotes[i].value   : null)[0]),
       profile: transformProfile(arr(profiles[i].status === 'fulfilled' ? profiles[i].value : null)[0]),
@@ -469,17 +485,19 @@ app.get('/api/fmp/insiders/:symbol', async (req,res) => {
 app.get('/api/debug/:symbol', async (req,res) => {
   const { symbol } = req.params;
   try {
-    const [q, p, i, k] = await Promise.all([
+    const [q, p, i, k, peers] = await Promise.all([
       fmpSafe('/quote',             { symbol }),
       fmpSafe('/profile',           { symbol }),
       fmpSafe('/income-statement',  { symbol, period: 'annual', limit: 1 }),
       fmpSafe('/key-metrics',       { symbol, period: 'annual', limit: 1 }),
+      fmpSafe('/stock-peers',       { symbol }),
     ]);
     res.json({
-      quote:   { fields: Object.keys(arr(q)[0]||{}), sample: arr(q)[0] },
-      profile: { fields: Object.keys(arr(p)[0]||{}), sample: arr(p)[0] },
-      income:  { fields: Object.keys(arr(i)[0]||{}), sample: arr(i)[0] },
+      quote:      { fields: Object.keys(arr(q)[0]||{}), sample: arr(q)[0] },
+      profile:    { fields: Object.keys(arr(p)[0]||{}), sample: arr(p)[0] },
+      income:     { fields: Object.keys(arr(i)[0]||{}), sample: arr(i)[0] },
       keyMetrics: { fields: Object.keys(arr(k)[0]||{}), sample: arr(k)[0] },
+      peers:      { raw: peers },
     });
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
