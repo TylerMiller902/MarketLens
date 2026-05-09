@@ -163,13 +163,16 @@ button,input{font-family:var(--fb)}
 .gobtn:hover{opacity:.85}
 .sugg-wrap{position:absolute;top:calc(100%+6px);left:0;right:60px;background:var(--bg3);border:1.5px solid var(--b2);border-radius:12px;overflow:hidden;z-index:200;display:none;box-shadow:0 16px 40px rgba(0,0,0,.7)}
 .sugg-wrap.open{display:block}
-.sugg-item{display:flex;align-items:center;gap:10px;padding:.6rem .9rem;cursor:pointer;border-bottom:1px solid var(--b1);transition:background .12s}
+.sugg-item{display:flex;align-items:center;gap:9px;padding:.55rem .9rem;cursor:pointer;border-bottom:1px solid var(--b1);transition:background .12s}
 .sugg-item:last-child{border-bottom:none}
 .sugg-item:hover{background:var(--bg4)}
-.sugg-sym{font-family:var(--fm);font-size:12px;color:var(--P2);width:50px;flex-shrink:0;font-weight:500}
-.sugg-name{font-size:12px;color:var(--tx);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.sugg-price{font-family:var(--fm);font-size:12px;flex-shrink:0}
-.sugg-chg{font-size:10px;font-family:var(--fm);flex-shrink:0}
+.sugg-logo{width:26px;height:26px;border-radius:6px;object-fit:contain;flex-shrink:0;background:var(--bg4);padding:3px}
+.sugg-info{flex:1;min-width:0}
+.sugg-sym{font-family:var(--fm);font-size:12px;color:var(--P2);font-weight:600}
+.sugg-name{font-size:11px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.sugg-right{text-align:right;flex-shrink:0}
+.sugg-price{font-family:var(--fm);font-size:12px;font-weight:500}
+.sugg-chg{font-size:10px;font-family:var(--fm)}
 .sugg-chg.up{color:var(--G)}.sugg-chg.dn{color:var(--R)}
 
 /* STOCK PAGE */
@@ -333,8 +336,8 @@ button,input{font-family:var(--fb)}
 .etf-chart-wrap{height:280px;position:relative;margin-bottom:1rem}
 .etf-stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:.9rem}
 @media(max-width:680px){.etf-stats-grid{grid-template-columns:repeat(2,1fr)}}
-/* Similar ETFs grid — fills width, cards uniform, no overflow */
-.peers-grid-etf{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:.9rem;width:100%}
+/* Similar ETFs grid — auto-fit stretches cards to fill full width */
+.peers-grid-etf{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:8px;margin-bottom:.9rem;width:100%}
 .peers-grid-etf .peer-card{min-height:120px}
 
 /* ABOUT / NEWS / HOLDINGS */
@@ -672,7 +675,21 @@ async function runSearch(q,sugg){
     const items=(d?.result||[]).filter(r=>r.symbol&&r.description&&!r.symbol.includes('.')).slice(0,5);
     if(!items.length){sugg.classList.remove('open');return;}
     const quotes=await Promise.allSettled(items.map(it=>apiFetch(`/api/quote/${it.symbol}`)));
-    sugg.innerHTML=items.map((it,i)=>{const q=quotes[i].status==='fulfilled'?quotes[i].value:{};const up=(q.d||0)>=0;return`<div class="sugg-item" data-sym="${esc(it.symbol)}"><span class="sugg-sym">${esc(it.symbol)}</span><span class="sugg-name">${esc(it.description)}</span>${q.c?`<span class="sugg-price">${f$(q.c)}</span><span class="sugg-chg ${up?'up':'dn'}">${up?'▲':'▼'}${Math.abs(q.dp||0).toFixed(2)}%</span>`:''}</div>`;}).join('');
+    sugg.innerHTML=items.map((it,i)=>{
+      const q=quotes[i].status==='fulfilled'?quotes[i].value:{};
+      const up=(q.dp||0)>=0;
+      return`<div class="sugg-item" data-sym="${esc(it.symbol)}">
+        <img class="sugg-logo" src="https://images.financialmodelingprep.com/symbol/${esc(it.symbol)}.png" onerror="this.style.display='none'"/>
+        <div class="sugg-info">
+          <span class="sugg-sym">${esc(it.symbol)}</span>
+          <span class="sugg-name">${esc(it.description)}</span>
+        </div>
+        ${q.c?`<div class="sugg-right">
+          <div class="sugg-price">${f$(q.c)}</div>
+          <div class="sugg-chg ${up?'up':'dn'}">${up?'▲':'▼'}${Math.abs(q.dp||0).toFixed(2)}%</div>
+        </div>`:''}
+      </div>`;
+    }).join('');
     sugg.querySelectorAll('.sugg-item').forEach(el=>el.addEventListener('click',()=>{go(el.dataset.sym);sugg.classList.remove('open');}));
     sugg.classList.add('open');
   }catch(e){if(sugg)sugg.classList.remove('open');}
@@ -901,7 +918,7 @@ function renderPage(){
     <div class="stitle-sm">${isETF?'ETF Statistics':'Key Statistics'} <span class="badge live">Live · FMP</span></div>
     <div class="${isETF?'etf-stats-grid':'sgrid'}">
       ${stats.map(s=>`<div class="scard"><div class="scl">${esc(s.l)}</div><div class="scv">${esc(String(s.v))}</div></div>`).join('')}
-      ${!isETF?build52W(q?.c,w52l,w52h):''}
+      ${build52W(q?.c,w52l,w52h)}
     </div>
 
     <div class="stitle-sm">${isETF?'Similar ETFs':'Competitors'} <span class="badge live">Live · FMP</span></div>
