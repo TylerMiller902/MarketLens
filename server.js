@@ -6,6 +6,7 @@
 const express = require('express');
 const cors    = require('cors');
 const path    = require('path');
+const fetch   = require('node-fetch');  // needed for Node < 18
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
