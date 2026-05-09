@@ -609,7 +609,7 @@ function renderPage(){
       <div class="sprice">
         <div class="bigp">${q?.c?f$(q.c):'—'}</div>
         <div class="pchg ${isUp?'up':'dn'}">${isUp?'▲':'▼'} ${sgn(q?.d||0)}${f$(Math.abs(q?.d||0)).slice(1)} (${sgn(q?.dp||0)}${Math.abs(q?.dp||0).toFixed(2)}%)</div>
-        <div style="font-size:10px;font-family:var(--fm);margin-top:2px;color:var(--G)">● Live · Finnhub</div>
+        <div style="font-size:10px;font-family:var(--fm);margin-top:2px;color:var(--G)">● Live · FMP</div>
       </div>
     </div>
 
@@ -628,18 +628,18 @@ function renderPage(){
       <div class="cwrap"><canvas id="pc"></canvas></div>
     </div>
 
-    <div class="stitle-sm">Key Statistics <span class="badge live">Live · Finnhub</span></div>
+    <div class="stitle-sm">Key Statistics <span class="badge live">Live · FMP</span></div>
     <div class="sgrid">
       ${stats.map(s=>`<div class="scard"><div class="scl">${esc(s.l)}</div><div class="scv">${esc(s.v)}</div></div>`).join('')}
       ${build52W(q?.c,w52l,w52h)}
     </div>
 
-    <div class="stitle-sm">Competitors <span class="badge live">Live · Finnhub</span></div>
+    <div class="stitle-sm">Competitors <span class="badge live">Live · FMP</span></div>
     <div class="peers-grid" id="peers-row">
       <span style="font-size:12px;color:var(--mu);font-family:var(--fm)">Loading…</span>
     </div>
 
-    ${tot>0?`<div class="stitle-sm">Analyst Ratings <span class="badge live">Live · Finnhub</span></div>
+    ${tot>0?`<div class="stitle-sm">Analyst Ratings <span class="badge live">Live · FMP</span></div>
     <div class="card"><div class="analyst-grid">
       <div class="cons-block"><div class="cons-lbl">Consensus</div><div class="cons-pill ${consCls}">${esc(cons)}</div><div class="cons-sub">${tot} analysts</div></div>
       ${pt?.targetMean?`<div class="tgt-block"><div class="tgt-lbl">Price Target</div><div class="tgt-val">${f$(pt.targetMean)}<span class="tgt-up ${upside>=0?'pos':'neg'}">${upside>=0?'+':''}${upside?.toFixed(2)}%</span></div><div class="tgt-rng">Low ${f$(pt.targetLow)} · High ${f$(pt.targetHigh)}</div></div>`:''}
@@ -648,7 +648,7 @@ function renderPage(){
     ${(recs||[]).length>1?`<div class="ahist"><div class="ahlbl">Rating History</div><div class="ahlist">${(recs||[]).slice(0,5).map(r=>{const t=(r.strongBuy||0)+(r.buy||0)+(r.hold||0)+(r.sell||0)+(r.strongSell||0)||1,sc=24/t;return`<div class="ah-it"><div class="ah-per">${esc(r.period||'')}</div><div class="ah-bars"><div class="ah-bar" style="height:${Math.max(2,(r.strongBuy||0)*sc).toFixed(0)}px;width:8px;background:#16a34a"></div><div class="ah-bar" style="height:${Math.max(2,(r.buy||0)*sc).toFixed(0)}px;width:8px;background:${G}"></div>${r.hold?`<div class="ah-bar" style="height:${Math.max(2,r.hold*sc).toFixed(0)}px;width:8px;background:${B}"></div>`:''}</div><div class="ah-tot">${t}</div></div>`;}).join('')}</div></div>`:''}
     </div>`:''}
 
-    ${earns.length?`<div class="stitle-sm">Earnings <span class="badge live">Live · Finnhub</span></div>
+    ${earns.length?`<div class="stitle-sm">Earnings <span class="badge live">Live · FMP</span></div>
     <div class="card">
       ${upcoming?`<div class="earn-next">
         <div class="en-date"><div class="en-mo">${new Date(upcoming.date+'T12:00:00').toLocaleDateString('en-US',{month:'short'})}</div><div class="en-day">${new Date(upcoming.date+'T12:00:00').getDate()}</div></div>
@@ -675,10 +675,10 @@ function renderPage(){
       </div>
     </div>`:''}
 
-    ${isETF&&holdings.length?`<div class="stitle-sm">Top Holdings <span class="badge live">Live · Finnhub</span></div>
+    ${isETF&&holdings.length?`<div class="stitle-sm">Top Holdings <span class="badge live">Live · FMP</span></div>
     ${holdings.slice(0,12).map((h,i)=>{const w=parseFloat(h.percent||h.weight||0),mx=parseFloat(holdings[0]?.percent||holdings[0]?.weight||10);return`<div class="hit"><div class="hrnk">${i+1}</div><div class="hinf"><div class="hnm">${esc(h.name||h.symbol||'')}</div><div class="htk">${esc(h.symbol||'')}</div></div><div class="hbar-wrap"><div class="hbar-fill" style="width:${Math.min(100,w/mx*100).toFixed(2)}%"></div></div><div class="hw">${Number(w).toFixed(2)}%</div></div>`;}).join('')}`:''}
 
-    ${newsItems.length?`<div class="stitle-sm">Recent News <span class="badge live">Live · Finnhub</span></div>
+    ${newsItems.length?`<div class="stitle-sm">Recent News <span class="badge live">Live · FMP</span></div>
     ${newsItems.map(n=>{const dt=new Date((n.datetime||0)*1000),ts=isNaN(dt)?'':dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});return`<a class="ncard" href="${esc(n.url||'#')}" target="_blank"><div class="nhl">${esc(n.headline||'')}</div><div class="nmeta"><span class="nsrc">${esc(n.source||'')}</span><span class="ntime">${ts}</span></div></a>`;}).join('')}`:''}
 
     <div class="stitle-sm" style="margin-top:.2rem">Financials <span class="badge ${hasFMP?'live':'est'}">${hasFMP?'Live · FMP':'No data'}</span></div>
