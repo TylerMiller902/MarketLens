@@ -520,23 +520,76 @@ app.get('/api/debug/:symbol', async (req,res) => {
 });
 
 
-// ── S&P 500 Top Movers ────────────────────────────────────
-app.get('/api/movers', async (req,res) => {
-  const ck='movers'; const hit=gc(ck); if(hit)return res.json(hit);
+// ── VOO Top Movers (S&P 500 holdings day return) ─────────
+app.get('/api/voo-movers', async (req,res) => {
+  const ck='voo-movers'; const hit=gc(ck); if(hit)return res.json(hit);
   try{
-    const [gainers,losers]=await Promise.all([fmpSafe('/biggest-gainers'),fmpSafe('/biggest-losers')]);
-    const fmt=(list,type)=>arr(list).slice(0,5).map(s=>({
-      ticker:s.symbol, name:s.name||s.companyName||s.symbol,
-      price:s.price, change:s.change??0,
-      changePct:s.changesPercentage??s.changePercentage??0, type,
-    }));
-    const result=[...fmt(gainers,'gainer'),...fmt(losers,'loser')];
+    // Get VOO top holdings then quote each one
+    const holdRaw=await fmpSafe('/etf-holdings',{symbol:'VOO'});
+    const holdings=arr(holdRaw?.holdings??holdRaw).slice(0,30);
+    if(!holdings.length)return res.json([]);
+
+    const tickers=holdings.map(h=>h.asset||h.symbol).filter(Boolean).slice(0,30);
+    const quotes=await Promise.allSettled(tickers.map(t=>fmp('/quote',{symbol:t})));
+
+    const withRet=tickers.map((ticker,i)=>{
+      const q=arr(quotes[i].status==='fulfilled'?quotes[i].value:null)[0];
+      const h=holdings[i];
+      return{
+        ticker,
+        name:h.name||ticker,
+        weight:parseFloat(h.weightPercentage||h.weight||h.percent||0),
+        price:q?.price??null,
+        change:q?.change??0,
+        changePct:q?.changePercentage??0,
+        logo:`https://images.financialmodelingprep.com/symbol/${ticker}.png`,
+        type:'neutral',
+      };
+    }).filter(s=>s.price!=null);
+
+    const gainers=[...withRet].filter(s=>s.changePct>0).sort((a,b)=>b.changePct-a.changePct).slice(0,5).map(s=>({...s,type:'gainer'}));
+    const losers=[...withRet].filter(s=>s.changePct<0).sort((a,b)=>a.changePct-b.changePct).slice(0,5).map(s=>({...s,type:'loser'}));
+    const result=[...gainers,...losers];
     sc(ck,result,5*60_000); res.json(result);
   }catch(e){res.status(500).json({error:e.message});}
 });
 
-// ── ETF Info (expense ratio, AUM, etc.) ──────────────────
-app.get('/api/etf-info/:symbol', async (req,res) => {
+// ── ETF Sector Exposure ───────────────────────────────────
+app.get('/api/etf-sectors/:symbol', async (req,res) => {
+  const {symbol}=req.params; const ck=`etf-sec:${symbol}`; const hit=gc(ck); if(hit)return res.json(hit);
+  try{
+    const data=await fmpSafe('/etf-sector-exposure',{symbol});
+    const d=Array.isArray(data)?data:(data?[data]:[]);
+    sc(ck,d,TTL.profile); res.json(d);
+  }catch(e){res.status(500).json({error:e.message});}
+});
+
+// ── ETF Holdings with day returns ─────────────────────────
+app.get('/api/etf-holdings-returns/:symbol', async (req,res) => {
+  const {symbol}=req.params; const ck=`etf-hret:${symbol}`; const hit=gc(ck); if(hit)return res.json(hit);
+  try{
+    const holdRaw=await fmpSafe('/etf-holdings',{symbol});
+    const holdings=arr(holdRaw?.holdings??holdRaw).slice(0,15);
+    if(!holdings.length)return res.json([]);
+    const tickers=holdings.map(h=>h.asset||h.symbol).filter(Boolean);
+    const quotes=await Promise.allSettled(tickers.map(t=>fmp('/quote',{symbol:t})));
+    const result=holdings.map((h,i)=>{
+      const q=arr(quotes[i].status==='fulfilled'?quotes[i].value:null)[0];
+      return{
+        symbol:h.asset||h.symbol,
+        name:h.name,
+        weight:parseFloat(h.weightPercentage||h.weight||h.percent||0),
+        price:q?.price??null,
+        change:q?.change??0,
+        changePct:q?.changePercentage??0,
+        logo:`https://images.financialmodelingprep.com/symbol/${h.asset||h.symbol}.png`,
+      };
+    });
+    sc(ck,result,TTL.fmpPrice); res.json(result);
+  }catch(e){res.status(500).json({error:e.message});}
+});
+
+
   const {symbol}=req.params; const ck=`etf-info:${symbol}`; const hit=gc(ck); if(hit)return res.json(hit);
   try{
     const data=await fmpSafe('/etf-info',{symbol});
