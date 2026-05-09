@@ -333,8 +333,9 @@ button,input{font-family:var(--fb)}
 .etf-chart-wrap{height:280px;position:relative;margin-bottom:1rem}
 .etf-stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:.9rem}
 @media(max-width:680px){.etf-stats-grid{grid-template-columns:repeat(2,1fr)}}
-/* Similar ETFs grid — auto-fit to fill full width */
-.peers-grid-etf{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:.9rem;width:100%}
+/* Similar ETFs grid — fills width, cards uniform, no overflow */
+.peers-grid-etf{display:grid;grid-template-columns:repeat(auto-fill,minmax(130px,1fr));gap:8px;margin-bottom:.9rem;width:100%}
+.peers-grid-etf .peer-card{min-height:120px}
 
 /* ABOUT / NEWS / HOLDINGS */
 .about-text{font-size:13px;line-height:1.65;color:var(--mu)}
@@ -445,7 +446,7 @@ button,input{font-family:var(--fb)}
   <!-- Top Movers Bubble -->
   <div class="movers-wrap" id="movers-wrap">
     <button class="movers-bubble" id="movers-btn">
-      <span class="dot"></span> VOO Holdings — Top Movers ▾
+      <span class="dot"></span> S&amp;P 500 Top Movers ▾
     </button>
     <div class="movers-panel" id="movers-panel" style="display:none">
       <div class="movers-header">
@@ -482,9 +483,10 @@ button,input{font-family:var(--fb)}
 <div id="spage">
   <div class="shead">
     <button class="backbtn" id="backbtn">← Home</button>
-    <div class="shead-swrap">
+    <div class="shead-swrap" style="position:relative;flex:1;max-width:280px">
       <span class="shead-sico">⌕</span>
-      <input id="shead-sinp" class="shead-sinp" placeholder="Switch ticker…" autocomplete="off"/>
+      <input id="shead-sinp" class="shead-sinp" placeholder="Search or switch ticker…" autocomplete="off"/>
+      <div class="sugg-wrap" id="shead-sugg" style="right:0"></div>
     </div>
     <button class="shead-gobtn" id="shead-gobtn">Go</button>
   </div>
@@ -660,14 +662,14 @@ loadMarketOverview();setInterval(loadMarketOverview,30000);
 //  SEARCH
 // ══════════════════════════════════════════════════════════
 function setupSearch(inp,sugg){
-  inp.addEventListener('input',()=>{clearTimeout(searchTimer);if(sugg)sugg.classList.remove('open');const q=inp.value.trim();if(!q||!sugg)return;searchTimer=setTimeout(()=>runSearch(q,sugg),320);});
+  inp.addEventListener('input',()=>{clearTimeout(searchTimer);if(sugg)sugg.classList.remove('open');const q=inp.value.trim();if(!q||!sugg)return;searchTimer=setTimeout(()=>runSearch(q,sugg),200);});
   inp.addEventListener('keydown',e=>{if(e.key==='Enter'){const v=inp.value.trim().toUpperCase();if(v)go(v);}if(e.key==='Escape'&&sugg)sugg.classList.remove('open');});
   document.addEventListener('click',e=>{if(sugg&&!inp.contains(e.target)&&!sugg.contains(e.target))sugg.classList.remove('open');});
 }
 async function runSearch(q,sugg){
   try{
     const d=await apiFetch(`/api/search?q=${encodeURIComponent(q)}`);
-    const items=(d?.result||[]).filter(r=>r.symbol&&r.description&&!r.symbol.includes('.')).slice(0,7);
+    const items=(d?.result||[]).filter(r=>r.symbol&&r.description&&!r.symbol.includes('.')).slice(0,5);
     if(!items.length){sugg.classList.remove('open');return;}
     const quotes=await Promise.allSettled(items.map(it=>apiFetch(`/api/quote/${it.symbol}`)));
     sugg.innerHTML=items.map((it,i)=>{const q=quotes[i].status==='fulfilled'?quotes[i].value:{};const up=(q.d||0)>=0;return`<div class="sugg-item" data-sym="${esc(it.symbol)}"><span class="sugg-sym">${esc(it.symbol)}</span><span class="sugg-name">${esc(it.description)}</span>${q.c?`<span class="sugg-price">${f$(q.c)}</span><span class="sugg-chg ${up?'up':'dn'}">${up?'▲':'▼'}${Math.abs(q.dp||0).toFixed(2)}%</span>`:''}</div>`;}).join('');
@@ -676,7 +678,7 @@ async function runSearch(q,sugg){
   }catch(e){if(sugg)sugg.classList.remove('open');}
 }
 setupSearch($('sinp'),$('home-sugg'));
-setupSearch($('shead-sinp'),null);
+setupSearch($('shead-sinp'),$('shead-sugg'));  // ← now has autocomplete
 $('gobtn').addEventListener('click',()=>{const v=$('sinp').value.trim().toUpperCase();if(v)go(v);});
 $('backbtn').addEventListener('click',goHome);
 $('shead-gobtn').addEventListener('click',()=>{const v=$('shead-sinp').value.trim().toUpperCase();if(v)go(v);});
@@ -715,19 +717,19 @@ function generatePriceHistory(price,w52h,w52l,beta){
 async function loadStock(ticker){
   $('scontent').innerHTML=`<div class="loading-wrap"><div class="loading-ring"></div><div class="loading-txt">Loading ${esc(ticker)}…</div></div>`;
   try{
-    const isETF=ETFS.includes(ticker)||ticker.includes('ETF');
-    const calls=[
-      apiFetch(`/api/stock/${ticker}?etf=${isETF?1:0}`),
+    // Always fetch all data; determine isETF from profile.isEtf (most reliable)
+    const [stock,fmpPrices,fmpFin,insiders,etfInfo,etfSectors,etfHoldingsReturns]=await Promise.all([
+      apiFetch(`/api/stock/${ticker}?etf=1`),  // always include etfHoldings attempt
       apiFetch(`/api/fmp/prices/${ticker}`).catch(()=>({})),
       apiFetch(`/api/fmp/financials/${ticker}`).catch(()=>null),
       apiFetch(`/api/fmp/insiders/${ticker}`).catch(()=>null),
-    ];
-    if(isETF){
-      calls.push(apiFetch(`/api/etf-info/${ticker}`).catch(()=>null));
-      calls.push(apiFetch(`/api/etf-sectors/${ticker}`).catch(()=>[]));
-      calls.push(apiFetch(`/api/etf-holdings-returns/${ticker}`).catch(()=>[]));
-    }
-    const [stock,fmpPrices,fmpFin,insiders,etfInfo,etfSectors,etfHoldingsReturns]=await Promise.all(calls);
+      apiFetch(`/api/etf-info/${ticker}`).catch(()=>null),
+      apiFetch(`/api/etf-sectors/${ticker}`).catch(()=>[]),
+      apiFetch(`/api/etf-holdings-returns/${ticker}`).catch(()=>[]),
+    ]);
+
+    // Use FMP's own isEtf flag — catches every ETF regardless of ticker format
+    const isETF = stock?.profile?.isEtf === true || ETFS.includes(ticker);
 
     CurD={...stock,ticker,isETF};
     CurFMP=fmpFin;
