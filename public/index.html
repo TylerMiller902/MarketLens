@@ -718,14 +718,11 @@ async function loadStock(ticker){
   $('scontent').innerHTML=`<div class="loading-wrap"><div class="loading-ring"></div><div class="loading-txt">Loading ${esc(ticker)}…</div></div>`;
   try{
     // Always fetch all data; determine isETF from profile.isEtf (most reliable)
-    const [stock,fmpPrices,fmpFin,insiders,etfInfo,etfSectors,etfHoldingsReturns]=await Promise.all([
-      apiFetch(`/api/stock/${ticker}?etf=1`),  // always include etfHoldings attempt
+    const [stock,fmpPrices,fmpFin,insiders]=await Promise.all([
+      apiFetch(`/api/stock/${ticker}?etf=1`),
       apiFetch(`/api/fmp/prices/${ticker}`).catch(()=>({})),
       apiFetch(`/api/fmp/financials/${ticker}`).catch(()=>null),
       apiFetch(`/api/fmp/insiders/${ticker}`).catch(()=>null),
-      apiFetch(`/api/etf-info/${ticker}`).catch(()=>null),
-      apiFetch(`/api/etf-sectors/${ticker}`).catch(()=>[]),
-      apiFetch(`/api/etf-holdings-returns/${ticker}`).catch(()=>[]),
     ]);
 
     // Use FMP's own isEtf flag — catches every ETF regardless of ticker format
@@ -734,9 +731,7 @@ async function loadStock(ticker){
     CurD={...stock,ticker,isETF};
     CurFMP=fmpFin;
     CurInsiders=insiders;
-    CurETFInfo=etfInfo||null;
-    CurD.etfSectors=etfSectors||[];
-    CurD.etfHoldingsReturns=etfHoldingsReturns||[];
+    CurETFInfo=null;
 
     const m=stock?.metrics?.metric||{};
     const price=stock?.quote?.c;
@@ -839,21 +834,20 @@ function renderPage(){
   const hasDividend=CurFMP?.dividendPerShare?.some(x=>x>0);
   const hasInsiders=CurInsiders?.transactions?.length>0;
 
-  // ── KEY STATS: different for ETF vs stock ─────────────────
-  const etfInfo = CurETFInfo || {};
+  // ── KEY STATS: ETF uses available fields from quote/profile/metrics ──
   const stats = isETF ? [
-    {l:'AUM',                  v: etfInfo.aum ? fB(etfInfo.aum) : fB((p?.marketCapitalization||0)*1e6)},
-    {l:'Expense Ratio',        v: etfInfo.expenseRatio!=null ? fP(etfInfo.expenseRatio*100,3) : '—'},
-    {l:'# Holdings',           v: etfInfo.holdingsCount ?? holdings.length ?? '—'},
-    {l:'Avg Volume',           v: etfInfo.avgVolume ? fB(etfInfo.avgVolume) : '—'},
-    {l:'Beta',                 v: fN(m.beta)},
-    {l:'Dividend Yield',       v: m.dividendYieldIndicatedAnnual!=null?fP(m.dividendYieldIndicatedAnnual):'—'},
-    {l:'Inception Date',       v: etfInfo.inceptionDate || p?.ipo || '—'},
-    {l:'Exchange',             v: p?.exchange || '—'},
-    {l:'52W High',             v: f$(w52h)},
-    {l:'52W Low',              v: f$(w52l)},
-    {l:'P/E Ratio',            v: fN(m.peBasicExclExtraTTM)},
-    {l:'Currency',             v: etfInfo.currency || 'USD'},
+    {l:'Market Cap',     v: fB((p?.marketCapitalization||0)*1e6)},
+    {l:'52W High',       v: f$(w52h)},
+    {l:'52W Low',        v: f$(w52l)},
+    {l:'Beta',           v: fN(m.beta)},
+    {l:'P/E Ratio',      v: fN(m.peBasicExclExtraTTM)},
+    {l:'EPS (TTM)',      v: f$(m.epsTTM)},
+    {l:'Dividend Yield', v: m.dividendYieldIndicatedAnnual!=null?fP(m.dividendYieldIndicatedAnnual):'—'},
+    {l:'Div Per Share',  v: m.dividendPerShareAnnual!=null?f$(m.dividendPerShareAnnual):'—'},
+    {l:'Gross Margin',   v: fP(m.grossMarginTTM)},
+    {l:'Net Margin',     v: fP(m.netProfitMarginTTM)},
+    {l:'ROE',            v: fP(m.roeTTM)},
+    {l:'Exchange',       v: p?.exchange||'—'},
   ] : [
     {l:'Market Cap',           v: fB((p?.marketCapitalization||0)*1e6)},
     {l:'P/E Ratio',            v: fN(m.peBasicExclExtraTTM)},
@@ -909,43 +903,6 @@ function renderPage(){
       ${stats.map(s=>`<div class="scard"><div class="scl">${esc(s.l)}</div><div class="scv">${esc(String(s.v))}</div></div>`).join('')}
       ${!isETF?build52W(q?.c,w52l,w52h):''}
     </div>
-
-    ${isETF&&holdings.length?`
-    <div class="stitle-sm">Holdings Breakdown <span class="badge live">Live · FMP</span></div>
-    <div class="card">
-      <div class="etf-chart-wrap"><canvas id="etfChart"></canvas></div>
-    </div>
-    <div class="stitle-sm">Top Holdings with Day Return <span class="badge live">Live · FMP</span></div>
-    <div class="card" style="padding:.5rem;overflow-x:auto">
-      <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:400px">
-        <thead><tr>
-          <th style="text-align:left;padding:6px 10px;font-family:var(--fm);font-size:10px;color:var(--di);border-bottom:1px solid var(--b1)">#</th>
-          <th style="text-align:left;padding:6px 10px;font-family:var(--fm);font-size:10px;color:var(--di);border-bottom:1px solid var(--b1)">Holding</th>
-          <th style="text-align:right;padding:6px 10px;font-family:var(--fm);font-size:10px;color:var(--di);border-bottom:1px solid var(--b1)">Weight</th>
-          <th style="text-align:right;padding:6px 10px;font-family:var(--fm);font-size:10px;color:var(--di);border-bottom:1px solid var(--b1)">Price</th>
-          <th style="text-align:right;padding:6px 10px;font-family:var(--fm);font-size:10px;color:var(--di);border-bottom:1px solid var(--b1)">Today</th>
-        </tr></thead>
-        <tbody>${(CurD.etfHoldingsReturns?.length?CurD.etfHoldingsReturns:holdings.slice(0,12)).map((h,i)=>{
-          const up=(h.changePct||0)>=0;
-          return`<tr style="border-bottom:1px solid var(--b1)">
-            <td style="padding:6px 10px;font-family:var(--fm);font-size:10px;color:var(--di)">${i+1}</td>
-            <td style="padding:6px 10px">
-              <div style="display:flex;align-items:center;gap:7px">
-                <img src="${esc(h.logo||`https://images.financialmodelingprep.com/symbol/${h.symbol||h.asset}.png`)}" style="width:20px;height:20px;border-radius:4px;object-fit:contain" onerror="this.style.display='none'"/>
-                <div><div style="font-size:12px;font-weight:500">${esc(h.symbol||h.asset||'')}</div><div style="font-size:10px;color:var(--mu)">${esc(h.name||'')}</div></div>
-              </div>
-            </td>
-            <td style="text-align:right;padding:6px 10px;font-family:var(--fm);font-size:11px">${Number(h.weight||h.percent||h.weightPercentage||0).toFixed(2)}%</td>
-            <td style="text-align:right;padding:6px 10px;font-family:var(--fm);font-size:11px">${h.price?f$(h.price):'—'}</td>
-            <td style="text-align:right;padding:6px 10px;font-family:var(--fm);font-size:11px;color:${h.changePct!=null?(up?'var(--G)':'var(--R)'):'var(--mu)'}">${h.changePct!=null?`${up?'+':''}${Number(h.changePct).toFixed(2)}%`:'—'}</td>
-          </tr>`;
-        }).join('')}</tbody>
-      </table>
-    </div>
-    ${CurD.etfSectors?.length?`
-    <div class="stitle-sm">Sector Allocation <span class="badge live">Live · FMP</span></div>
-    <div class="card"><div style="height:220px;position:relative"><canvas id="sectorChart"></canvas></div></div>`:''}
-    `:''}
 
     <div class="stitle-sm">${isETF?'Similar ETFs':'Competitors'} <span class="badge live">Live · FMP</span></div>
     <div class="${isETF?'peers-grid-etf':'peers-grid'}" id="peers-row"><span style="font-size:12px;color:var(--mu);font-family:var(--fm)">Loading…</span></div>
@@ -1055,8 +1012,6 @@ function renderPage(){
   if(earns.length)drawEarnCharts(earns);
   if(hasFMP)drawFinCharts();
   if(hasInsiders)drawInsiderChart();
-  if(isETF&&holdings.length)drawETFChart(holdings);
-  if(isETF&&CurD.etfSectors?.length)drawSectorChart(CurD.etfSectors);
 }
 
 function formatDateLabel(d,r){if(!d)return"";const dt=new Date(d+"T12:00:00");if(r==="1M"||r==="3M"||r==="6M")return dt.toLocaleDateString("en-US",{month:"short",day:"numeric"});if(r==="1Y")return dt.toLocaleDateString("en-US",{month:"short",year:"2-digit"});return dt.getFullYear().toString();}
