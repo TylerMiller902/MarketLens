@@ -61,9 +61,9 @@ const pct    = v  => v != null ? +(v * 100).toFixed(4) : null;  // decimal → p
 function transformQuote(q) {
   if (!q) return null;
   return {
-    c:  q.price ?? q.previousClose,
-    d:  q.change ?? 0,
-    dp: q.changesPercentage ?? 0,
+    c:  q.price,
+    d:  q.change          ?? 0,
+    dp: q.changePercentage ?? 0,   // FMP uses changePercentage (not changesPercentage)
     h:  q.dayHigh,
     l:  q.dayLow,
     o:  q.open,
@@ -75,11 +75,11 @@ function transformQuote(q) {
 function transformProfile(p) {
   if (!p) return null;
   return {
-    name:                  p.companyName || p.name,
+    name:                  p.companyName,
     logo:                  p.image,
-    exchange:              p.exchangeShortName || p.exchange,
+    exchange:              p.exchange,
     finnhubIndustry:       p.industry || p.sector,
-    marketCapitalization:  p.mktCap ? p.mktCap / 1e6 : null,  // → millions
+    marketCapitalization:  p.marketCap ? p.marketCap / 1e6 : null,
     description:           p.description,
     employeeTotal:         p.fullTimeEmployees,
     ipo:                   p.ipoDate,
@@ -87,6 +87,7 @@ function transformProfile(p) {
     weburl:                p.website,
     ticker:                p.symbol,
     beta:                  p.beta,
+    lastDividend:          p.lastDividend,
     isEtf:                 p.isEtf,
   };
 }
@@ -98,44 +99,44 @@ function buildMetrics(quote, profile, income, km) {
   const i = income  || {};
   const k = km      || {};
 
-  // Field name fallbacks — FMP stable sometimes differs from v3
-  const marketCap = q.marketCap ?? q.mktCap ?? p.mktCap ?? null;
-  const price     = q.price ?? null;
-  const revenue   = i.revenue ?? null;
-  const lastDiv   = p.lastDiv ?? p.lastDividend ?? p.annualDividend ?? null;
-  const beta      = p.beta ?? q.beta ?? null;
+  // P/E from earningsYield (quote has no pe field in stable API)
+  const pe = k.earningsYield && k.earningsYield > 0
+    ? +((1 / k.earningsYield).toFixed(2)) : null;
 
-  // P/S: Market Cap / Annual Revenue
-  const ps = marketCap && revenue && revenue > 0
-    ? +(marketCap / revenue).toFixed(2) : null;
+  // EPS from income statement (not in quote)
+  const eps = i.epsDiluted ?? i.eps ?? null;
 
-  // Dividend yield: lastDiv (annual) / price * 100
-  const divYield = price && lastDiv && price > 0
-    ? +((lastDiv / price) * 100).toFixed(4) : null;
+  // Margins — no ratio fields in stable income statement, calculate manually
+  const grossMargin = i.revenue > 0 && i.grossProfit != null
+    ? +((i.grossProfit / i.revenue) * 100).toFixed(2) : null;
+  const netMargin = i.revenue > 0 && i.netIncome != null
+    ? +((i.netIncome / i.revenue) * 100).toFixed(2) : null;
 
-  // Margins from income statement (ratios are decimals → multiply by 100)
-  const grossMargin = i.grossProfitRatio  ?? i.grossProfitMargin  ?? null;
-  const netMargin   = i.netIncomeRatio    ?? i.netProfitMargin    ?? null;
+  // P/S = Market Cap / Revenue
+  const marketCap = q.marketCap ?? p.marketCap ?? null;
+  const ps = marketCap && i.revenue > 0
+    ? +(marketCap / i.revenue).toFixed(2) : null;
 
-  // Ratios from key metrics (decimals → multiply by 100)
-  const roe = k.returnOnEquity ?? k.roe ?? null;
-  const roa = k.returnOnAssets ?? k.roa ?? null;
+  // Dividend — profile uses lastDividend (not lastDiv)
+  const lastDiv  = p.lastDividend ?? null;
+  const divYield = q.price && lastDiv && q.price > 0
+    ? +((lastDiv / q.price) * 100).toFixed(4) : null;
 
   return {
     metric: {
-      '52WeekHigh':                q.yearHigh ?? q.year52High ?? null,
-      '52WeekLow':                 q.yearLow  ?? q.year52Low  ?? null,
-      peBasicExclExtraTTM:         q.pe       ?? q.priceEarningsRatio ?? null,
-      epsTTM:                      q.eps      ?? null,
+      '52WeekHigh':                q.yearHigh,
+      '52WeekLow':                 q.yearLow,
+      peBasicExclExtraTTM:         pe,
+      epsTTM:                      eps,
       psTTM:                       ps,
       dividendYieldIndicatedAnnual: divYield,
       dividendPerShareAnnual:      lastDiv,
-      beta,
-      grossMarginTTM:              grossMargin != null ? +(grossMargin * 100).toFixed(4) : null,
-      netProfitMarginTTM:          netMargin   != null ? +(netMargin   * 100).toFixed(4) : null,
+      beta:                        p.beta ?? null,
+      grossMarginTTM:              grossMargin,
+      netProfitMarginTTM:          netMargin,
       currentRatioAnnual:          k.currentRatio ?? null,
-      roeTTM:                      roe != null ? +(roe * 100).toFixed(4) : null,
-      roaTTM:                      roa != null ? +(roa * 100).toFixed(4) : null,
+      roeTTM:  k.returnOnEquity != null ? +(k.returnOnEquity * 100).toFixed(2) : null,
+      roaTTM:  k.returnOnAssets != null ? +(k.returnOnAssets * 100).toFixed(2) : null,
     }
   };
 }
