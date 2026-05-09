@@ -524,26 +524,33 @@ app.get('/api/debug/:symbol', async (req,res) => {
 app.get('/api/voo-movers', async (req,res) => {
   const ck='voo-movers'; const hit=gc(ck); if(hit)return res.json(hit);
   try{
-    // Get VOO top holdings then quote each one
     const holdRaw=await fmpSafe('/etf-holdings',{symbol:'VOO'});
-    const holdings=arr(holdRaw?.holdings??holdRaw).slice(0,30);
-    if(!holdings.length)return res.json([]);
+    // FMP stable returns {symbol:'VOO', holdings:[{symbol,name,weightPercentage}]}
+    // or just the array directly
+    const rawArr = Array.isArray(holdRaw) ? holdRaw : (holdRaw?.holdings ?? []);
+    if(!rawArr.length) return res.json([]);
 
-    const tickers=holdings.map(h=>h.asset||h.symbol).filter(Boolean).slice(0,30);
-    const quotes=await Promise.allSettled(tickers.map(t=>fmp('/quote',{symbol:t})));
+    const top25 = rawArr.slice(0,25);
+    const tickers = top25.map(h=>h.symbol||h.asset).filter(Boolean);
+    if(!tickers.length) return res.json([]);
 
-    const withRet=tickers.map((ticker,i)=>{
-      const q=arr(quotes[i].status==='fulfilled'?quotes[i].value:null)[0];
-      const h=holdings[i];
-      return{
+    // Batch all quotes in one FMP call (comma-separated)
+    const batchRaw = await fmpSafe('/quote', {symbol: tickers.join(',')});
+    const quoteMap = {};
+    arr(batchRaw).forEach(q=>{ if(q?.symbol) quoteMap[q.symbol]=q; });
+
+    const withRet = top25.map(h=>{
+      const ticker = h.symbol||h.asset;
+      const q = quoteMap[ticker];
+      return {
         ticker,
-        name:h.name||ticker,
+        name:  h.name || ticker,
         weight:parseFloat(h.weightPercentage||h.weight||h.percent||0),
-        price:q?.price??null,
-        change:q?.change??0,
-        changePct:q?.changePercentage??0,
-        logo:`https://images.financialmodelingprep.com/symbol/${ticker}.png`,
-        type:'neutral',
+        price: q?.price ?? null,
+        change:q?.change ?? 0,
+        changePct: q?.changePercentage ?? 0,
+        logo: `https://images.financialmodelingprep.com/symbol/${ticker}.png`,
+        type: 'neutral',
       };
     }).filter(s=>s.price!=null);
 
