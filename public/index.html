@@ -156,24 +156,25 @@ button,input{font-family:var(--fb)}
 .scv{font-size:.95rem;font-weight:600;font-family:var(--fd)}
 @media(max-width:680px){.sgrid{grid-template-columns:repeat(2,1fr)}}
 
-/* COMPETITORS — full width grid */
-.peers-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:.9rem}
+/* COMPETITORS — uniform grid */
+.peers-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:.9rem;align-items:stretch}
 @media(max-width:900px){.peers-grid{grid-template-columns:repeat(4,1fr)}}
 @media(max-width:560px){.peers-grid{grid-template-columns:repeat(2,1fr)}}
-.peer-card{background:var(--bg2);border:1px solid var(--b1);border-radius:11px;padding:.8rem .9rem;cursor:pointer;transition:border-color .15s;display:flex;flex-direction:column;gap:5px}
+.peer-card{background:var(--bg2);border:1px solid var(--b1);border-radius:11px;padding:.75rem;cursor:pointer;transition:border-color .15s;display:flex;flex-direction:column;justify-content:space-between;min-height:130px}
 .peer-card:hover{border-color:var(--P)}
-.peer-top{display:flex;align-items:center;gap:7px}
-.peer-logo{width:30px;height:30px;border-radius:7px;background:var(--bg3);border:1px solid var(--b2);overflow:hidden;position:relative;flex-shrink:0;display:flex;align-items:center;justify-content:center;font-family:var(--fm);font-size:9px;color:var(--P2)}
+.peer-top{display:flex;align-items:center;gap:7px;margin-bottom:6px}
+.peer-logo{width:28px;height:28px;border-radius:6px;background:var(--bg3);border:1px solid var(--b2);overflow:hidden;position:relative;flex-shrink:0}
 .peer-logo img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:3px}
-.peer-ticker{font-family:var(--fm);font-size:13px;color:var(--P2);font-weight:600}
-.peer-name{font-size:11px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.peer-price-row{display:flex;align-items:baseline;justify-content:space-between;margin-top:3px}
-.peer-px{font-family:var(--fd);font-size:1rem;font-weight:700}
+.peer-ticker{font-family:var(--fm);font-size:12px;color:var(--P2);font-weight:600;white-space:nowrap}
+.peer-name{font-size:10px;color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;display:block;width:100%;margin-bottom:auto;padding-bottom:8px}
+.peer-bottom{display:flex;flex-direction:column;gap:3px}
+.peer-price-row{display:flex;align-items:center;justify-content:space-between}
+.peer-px{font-family:var(--fd);font-size:.95rem;font-weight:700}
 .peer-chg{font-size:11px;font-family:var(--fm);font-weight:500}
 .peer-chg.up{color:var(--G)}.peer-chg.dn{color:var(--R)}
 .peer-dollar{font-size:10px;font-family:var(--fm)}
 .peer-dollar.up{color:var(--G)}.peer-dollar.dn{color:var(--R)}
-.peer-cap{font-size:10px;color:var(--di);font-family:var(--fm);margin-top:1px}
+.peer-cap{font-size:10px;color:var(--di);font-family:var(--fm)}
 
 /* ANALYST */
 .analyst-grid{display:flex;gap:.75rem;flex-wrap:wrap;margin-bottom:.75rem}
@@ -510,24 +511,28 @@ async function loadPeers(ticker){
     if(!el)return;
     if(!peers?.length){el.innerHTML='<p style="font-size:12px;color:var(--mu)">No competitor data available.</p>';return;}
     el.innerHTML=peers.map(p=>{
-      const q=p.quote,prof=p.profile;
+      const q=p.quote, prof=p.profile;
       const up=(q?.d||0)>=0;
       const cap=prof?.marketCapitalization?(prof.marketCapitalization*1e6):null;
       const dollarChg=q?.d||0;
       return`<div class="peer-card" onclick="go('${esc(p.ticker)}')">
-        <div class="peer-top">
-          <div class="peer-logo"><img src="${esc(prof?.logo||'')}" onerror="this.style.display='none'"/></div>
-          <div>
-            <div class="peer-ticker">${esc(p.ticker)}</div>
-            <div class="peer-dollar ${up?'up':'dn'}">${up?'+':''}${dollarChg.toFixed(2)}</div>
+        <div>
+          <div class="peer-top">
+            <div class="peer-logo"><img src="${esc(prof?.logo||'')}" onerror="this.style.display='none'"/></div>
+            <span class="peer-ticker">${esc(p.ticker)}</span>
+          </div>
+          <span class="peer-name">${esc(prof?.name||p.ticker)}</span>
+        </div>
+        <div class="peer-bottom">
+          <div class="peer-price-row">
+            <span class="peer-px">${f$(q?.c)}</span>
+            <span class="peer-chg ${up?'up':'dn'}">${up?'▲':'▼'}${Math.abs(q?.dp||0).toFixed(2)}%</span>
+          </div>
+          <div class="peer-price-row">
+            <span class="peer-dollar ${up?'up':'dn'}">${up?'+':''}${dollarChg.toFixed(2)}</span>
+            <span class="peer-cap">${fB(cap)}</span>
           </div>
         </div>
-        <div class="peer-name">${esc(prof?.name||p.ticker)}</div>
-        <div class="peer-price-row">
-          <span class="peer-px">${f$(q?.c)}</span>
-          <span class="peer-chg ${up?'up':'dn'}">${up?'▲':'▼'}${Math.abs(q?.dp||0).toFixed(2)}%</span>
-        </div>
-        <div class="peer-cap">Mkt Cap ${fB(cap)}</div>
       </div>`;
     }).join('');
   }catch(e){
