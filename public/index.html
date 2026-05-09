@@ -985,4 +985,160 @@ function renderPage(){
       </div>
       <div class="insider-table-wrap"><table class="ins-tbl">
         <thead><tr><th>Name</th><th>Role</th><th>Type</th><th>Shares</th><th>Price</th><th>Value</th><th>Date</th></tr></thead>
-        <tbody>${CurInsiders.transactions.slice(0,15).map(t=>`<tr><td class="ins-name">${esc(t.name)}</td><td style="text-transform:capitalize">${esc(t.title)}</td><td><span class="${t.isBuy?'ins-buy':'ins-sell'}">${t.isBuy?'Buy':'Sell'}</spa
+        <tbody>${CurInsiders.transactions.slice(0,15).map(t=>`<tr><td class="ins-name">${esc(t.name)}</td><td style="text-transform:capitalize">${esc(t.title)}</td><td><span class="${t.isBuy?'ins-buy':'ins-sell'}">${t.isBuy?'Buy':'Sell'}</span></td><td style="text-align:right">${Number(t.shares).toLocaleString()}</td><td style="text-align:right">${t.price?f$(t.price):'—'}</td><td style="text-align:right;color:${t.isBuy?'var(--G)':'var(--R)'}">${fmtV(t.value)}</td><td>${esc(t.date)}</td></tr>`).join('')}
+        </tbody>
+      </table></div>
+    </div>`:''}
+  `;
+
+  // Wire events
+  $("scontent").querySelectorAll(".rbtn").forEach(btn=>{btn.addEventListener("click",e=>{e.stopPropagation();$("scontent").querySelectorAll(".rbtn").forEach(b=>b.classList.remove("on"));btn.classList.add("on");drawPrice(btn.dataset.r);});});
+  $("scontent").querySelectorAll(".ftab").forEach(btn=>{btn.addEventListener("click",()=>{$("scontent").querySelectorAll(".ftab").forEach(b=>b.classList.remove("on"));btn.classList.add("on");["inc","bal","cf"].forEach(t=>{const el=$("fin-"+t);if(el)el.style.display=t===btn.dataset.tab?"":"none";});});});
+  $("scontent").querySelectorAll(".gpbtn").forEach(btn=>{btn.addEventListener("click",()=>{$("scontent").querySelectorAll(".gpbtn").forEach(b=>b.classList.remove("on"));btn.classList.add("on");CurGP=+btn.dataset.gp;drawFinCharts();});});
+  const pc=$("price-card");if(pc)pc.addEventListener("click",()=>openPriceFS(CurPR));
+  $("scontent").addEventListener("click",e=>{const card=e.target.closest(".ccard");if(!card)return;const canvId=card.dataset.canv;const title=card.querySelector(".cctitle")?.textContent?.trim()||"";const sub=card.querySelector(".ccsub")?.textContent?.trim()||"";if(canvId&&Charts[canvId])openChartFS(canvId,title,sub);});
+  drawPrice("1Y");
+  if(earns.length)drawEarnCharts(earns);
+  if(hasFMP)drawFinCharts();
+  if(hasInsiders)drawInsiderChart();
+  if(isETF&&holdings.length)drawETFChart(holdings);
+}
+
+function formatDateLabel(d,r){if(!d)return"";const dt=new Date(d+"T12:00:00");if(r==="1M"||r==="3M"||r==="6M")return dt.toLocaleDateString("en-US",{month:"short",day:"numeric"});if(r==="1Y")return dt.toLocaleDateString("en-US",{month:"short",year:"2-digit"});return dt.getFullYear().toString();}
+
+function drawPrice(r){
+  CurPR=r;const prices=CurPH?.[r]||[];const rawDates=CurDates?.[r]||[];
+  if(PriceChart){PriceChart.destroy();PriceChart=null;}
+  const canvas=$("pc");if(!canvas)return;
+  if(!prices.length){canvas.parentElement.innerHTML="<p style='color:var(--mu);font-size:12px;padding:1rem;text-align:center'>No data.</p>";return;}
+  const maxLabels={"1M":8,"3M":8,"6M":8,"1Y":12,"5Y":8};
+  const step=Math.max(1,Math.floor(rawDates.length/(maxLabels[r]||8)));
+  const labels=rawDates.map((d,i)=>i%step===0?formatDateLabel(d,r):"");
+  const isUp=prices[prices.length-1]>=prices[0],color=isUp?G:R;
+  PriceChart=new Chart(canvas,{type:"line",data:{labels,datasets:[{data:prices,borderColor:color,borderWidth:2,fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,260);g.addColorStop(0,rgba(color,.15));g.addColorStop(1,rgba(color,0));return g;},pointRadius:0,tension:.35}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:350},plugins:{legend:{display:false},tooltip:{mode:"index",intersect:false,callbacks:{title:ctx=>{const idx=ctx[0]?.dataIndex;return rawDates[idx]||"";},label:ctx=>`$${Number(ctx.raw).toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{color:"#7e7e96",font:{size:9},maxRotation:0,autoSkip:false}},y:{grid:{color:"rgba(255,255,255,0.04)"},ticks:{color:"#7e7e96",font:{size:10},callback:v=>`$${Number(v).toFixed(2)}`}}}}});
+  const diff=prices[prices.length-1]-prices[0],pct=diff/prices[0]*100,up=diff>=0;
+  const el=$("pcperf");if(el){el.className=`pcperf ${up?"up":"dn"}`;el.textContent=`${up?"▲":"▼"} ${up?"+":""}$${Math.abs(diff).toFixed(2)} (${up?"+":""}${pct.toFixed(2)}%)`;}
+}
+
+function drawEarnCharts(earns){
+  const rev=[...earns].reverse();const labels=rev.map(e=>e.period||e.quarter||"");
+  const actual=rev.map(e=>e.actual),est=rev.map(e=>e.estimate),surp=rev.map(e=>e.surprisePercent||0);
+  if(EarnLineChart){EarnLineChart.destroy();EarnLineChart=null;}
+  if(EarnBarChart){EarnBarChart.destroy();EarnBarChart=null;}
+  const le=$("earnLine");if(le)EarnLineChart=new Chart(le,{type:"line",data:{labels,datasets:[{label:"Actual EPS",data:actual,borderColor:P,borderWidth:2.5,pointRadius:6,pointBackgroundColor:actual.map((a,i)=>a>=est[i]?G:R),pointBorderColor:actual.map((a,i)=>a>=est[i]?G:R),pointHoverRadius:8,tension:.3,fill:false},{label:"Estimate EPS",data:est,borderColor:B,borderWidth:1.5,borderDash:[5,4],pointRadius:3,pointBackgroundColor:B,pointHoverRadius:5,tension:.3,fill:false}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},plugins:{legend:{labels:{color:"#7e7e96",boxWidth:11,font:{size:10}}},tooltip:{callbacks:{label:ctx=>`${ctx.dataset.label}: $${Number(ctx.raw).toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{color:"#7e7e96",font:{size:10}}},y:{grid:{color:"rgba(255,255,255,0.04)"},ticks:{color:"#7e7e96",font:{size:10},callback:v=>`$${Number(v).toFixed(2)}`}}}}});
+  const be=$("earnBar");if(be)EarnBarChart=new Chart(be,{type:"bar",data:{labels,datasets:[{label:"Surprise %",data:surp,borderRadius:4,borderSkipped:false,backgroundColor:surp.map(v=>rgba(v>=0?G:R,.75)),hoverBackgroundColor:surp.map(v=>v>=0?G:R)}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${Number(ctx.raw)>=0?"+":""}${Number(ctx.raw).toFixed(2)}%`}}},scales:{x:{grid:{display:false},ticks:{color:"#7e7e96",font:{size:10}}},y:{grid:{color:"rgba(255,255,255,0.04)"},ticks:{color:"#7e7e96",font:{size:10},callback:v=>`${Number(v).toFixed(2)}%`}}}}});
+}
+
+function drawETFChart(holdings){
+  const el=$("etfChart");if(!el)return;
+  if(ETFChart){ETFChart.destroy();ETFChart=null;}
+  const top=holdings.slice(0,10),labels=top.map(h=>h.symbol||h.name||""),data=top.map(h=>+(parseFloat(h.percent||h.weight||0)).toFixed(2)),colors=DCOLS.concat(DCOLS);
+  ETFChart=new Chart(el,{type:"bar",data:{labels,datasets:[{label:"Weight %",data,backgroundColor:colors.slice(0,data.length).map(c=>rgba(c,.8)),borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},indexAxis:"y",plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${Number(c.raw).toFixed(2)}%`}}},scales:{x:{grid:{color:"rgba(255,255,255,0.04)"},ticks:{color:"#7e7e96",font:{size:9},callback:v=>`${v}%`}},y:{grid:{display:false},ticks:{color:"#7e7e96",font:{size:10}}}}}});
+}
+
+function sl(arr){const n=CurGP===0?arr.length:Math.min(CurGP,arr.length);return arr.slice(-n);}
+function slY(){const y=CurFMP?.years||[];const n=CurGP===0?y.length:Math.min(CurGP,y.length);return y.slice(-n);}
+function slKM(arr){const ky=CurFMP?.kmYears||[];const n=CurGP===0?ky.length:Math.min(CurGP,ky.length);return{y:ky.slice(-n),d:arr.slice(-n)};}
+function setStat(id,val,chg,cls){const el=$(id);if(el)el.innerHTML=`<div class="cc-val">${val}</div><div class="cc-chg ${cls}">${chg}</div>`;}
+
+function drawFinCharts(){
+  Object.values(Charts).forEach(c=>{try{c.destroy();}catch{}});Charts={};
+  const f=CurFMP;if(!f)return;
+  const Y=slY(),rev=sl(f.revenue),ni=sl(f.netIncome),fcf=sl(f.freeCashFlow);
+  const eps=sl(f.eps),div=sl(f.dividendPerShare),debt=sl(f.totalDebt),eq=sl(f.totalEquity);
+  const gm=sl(f.grossMargin),om=sl(f.operatingMargin),nm=sl(f.netMargin),fm=sl(f.fcfMargin);
+  const shares=sl(f.sharesOutstanding),netDebt=sl(f.netDebt);
+  const peData=slKM(f.peRatio),roicData=slKM(f.roic);
+  const revG=pctG(rev),epsG=pctG(eps),divG=pctG(div);
+  const lr=last(rev),lrg=last(revG),lf=last(fcf),le=last(eps),leg=last(epsG);
+  if(lr!=null)setStat("s-rv",`$${lr.toFixed(2)}B`,lrg!=null?`${sgn(lrg)}${lrg.toFixed(2)}% YoY`:"—",lrg>0?"pos":"neg");
+  if(lrg!=null)setStat("s-rvg",`${sgn(lrg)}${lrg.toFixed(2)}%`,"YoY","neu");
+  if(lf!=null)setStat("s-fcf",`$${lf.toFixed(2)}B`,lf>0?"Positive":"Negative",lf>0?"pos":"neg");
+  if(last(fm)!=null)setStat("s-fcfm",`${last(fm).toFixed(2)}%`,"FCF / Revenue","neu");
+  if(le!=null)setStat("s-eps",`$${le.toFixed(2)}`,leg!=null?`${sgn(leg)}${leg.toFixed(2)}% YoY`:"—",leg>0?"pos":"neg");
+  if(leg!=null)setStat("s-epsg",`${sgn(leg)}${leg.toFixed(2)}%`,"EPS growth","neu");
+  const ld=last(debt),leq=last(eq),de=ld&&leq&&leq>.001?ld/leq:null;
+  setStat("s-deq",de!=null?`${de.toFixed(2)}x`:"—","D/E ratio",de!=null&&de<1?"pos":de!=null&&de<2?"neu":"neg");
+  setStat("s-ni",lf!=null?`$${lf.toFixed(2)}B`:"—",lf>0?"FCF positive":"FCF negative",lf>0?"pos":"neg");
+  if(div.some(x=>x>0)){const ld2=last(div),ldg=last(divG);if(ld2!=null)setStat("s-div",`$${ld2.toFixed(2)}`,ldg!=null?`${sgn(ldg)}${ldg.toFixed(2)}% YoY`:"—",ldg>0?"pos":"neu");if(ldg!=null)setStat("s-divg",`${sgn(ldg)}${ldg.toFixed(2)}%`,"growth","neu");}
+  const lpe=last(peData.d),lroic=last(roicData.d),lsh=last(shares),lnd=last(netDebt);
+  if(lpe!=null)setStat("s-pe",`${lpe.toFixed(1)}x`,"P/E ratio","neu");
+  if(lroic!=null)setStat("s-roic",`${lroic.toFixed(2)}%`,lroic>10?"Strong":"Low",lroic>15?"pos":lroic>8?"neu":"neg");
+  if(lsh!=null)setStat("s-shares",`${lsh.toFixed(2)}B`,"shares outstanding","neu");
+  if(lnd!=null)setStat("s-netdebt",lnd<0?`$${Math.abs(lnd).toFixed(2)}B net cash`:`$${lnd.toFixed(2)}B net debt`,"",lnd<0?"pos":"neg");
+  ["gm","om","nm","fm"].forEach((k,i)=>{const v=[gm,om,nm,fm][i];const el=$("v-"+k);if(el&&last(v)!=null)el.textContent=`${last(v).toFixed(2)}%`;});
+  const bO=c=>({borderRadius:3,borderSkipped:false,backgroundColor:rgba(c,.75),hoverBackgroundColor:c});
+  const lnFill=(lb,data,c)=>({label:lb,data,borderColor:c,borderWidth:2,pointRadius:2,pointBackgroundColor:c,pointHoverRadius:4,tension:.35,fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,ctx.chart.height);g.addColorStop(0,rgba(c,.13));g.addColorStop(1,rgba(c,0));return g;}});
+  const lnOnly=(lb,data,c)=>({label:lb,data,borderColor:c,borderWidth:2,pointRadius:2,pointBackgroundColor:c,pointHoverRadius:4,tension:.35,fill:false});
+  const xA={grid:{display:false},ticks:{color:"#7e7e96",font:{size:9}}};
+  const yA=fmt=>({grid:{color:"rgba(255,255,255,0.04)"},ticks:{color:"#7e7e96",font:{size:9},callback:fmt}});
+  const base={responsive:true,maintainAspectRatio:false,animation:{duration:450}};
+  const mk=(id,type,data,opts)=>{const el=$(id);if(!el)return;const c=new Chart(el,{type,data,options:{...base,...opts}});Charts[id]=c;};
+  mk("ch-rev","bar",{labels:Y,datasets:[{label:"Revenue",...bO(P),data:rev}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${Number(c.raw).toFixed(2)}B`}}},scales:{x:xA,y:yA(v=>`$${Number(v).toFixed(0)}B`)}});
+  mk("ch-rvg","bar",{labels:Y,datasets:[{label:"Growth",data:revG,borderRadius:3,borderSkipped:false,backgroundColor:revG.map(v=>rgba(v!=null&&v>=0?G:R,.75))}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw!=null?Number(c.raw).toFixed(2):"—"}%`}}},scales:{x:xA,y:yA(v=>`${Number(v).toFixed(2)}%`)}});
+  mk("ch-fcf","bar",{labels:Y,datasets:[{label:"FCF",data:fcf,borderRadius:3,borderSkipped:false,backgroundColor:fcf.map(v=>rgba(v>=0?B:R,.75))}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${Number(c.raw).toFixed(2)}B`}}},scales:{x:xA,y:yA(v=>`$${Number(v).toFixed(0)}B`)}});
+  mk("ch-fcfm","line",{labels:Y,datasets:[lnFill("FCF Margin",fm,B)]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${Number(c.raw).toFixed(2)}%`}}},scales:{x:xA,y:yA(v=>`${Number(v).toFixed(2)}%`)}});
+  mk("ch-mg","line",{labels:Y,datasets:[lnOnly("Gross",gm,G),lnOnly("Operating",om,B),lnOnly("Net",nm,P),lnOnly("FCF",fm,"#60a5fa")]},{plugins:{legend:{display:true,labels:{color:"#7e7e96",boxWidth:10,font:{size:9}}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${Number(c.raw).toFixed(2)}%`}}},scales:{x:xA,y:yA(v=>`${Number(v).toFixed(2)}%`)}});
+  mk("ch-eps","bar",{labels:Y,datasets:[{label:"EPS",...bO(P),data:eps}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${Number(c.raw).toFixed(2)}`}}},scales:{x:xA,y:yA(v=>`$${Number(v).toFixed(2)}`)}});
+  mk("ch-epsg","bar",{labels:Y,datasets:[{label:"Growth",data:epsG,borderRadius:3,borderSkipped:false,backgroundColor:epsG.map(v=>rgba(v!=null&&v>=0?G:R,.75))}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw!=null?Number(c.raw).toFixed(2):"—"}%`}}},scales:{x:xA,y:yA(v=>`${Number(v).toFixed(2)}%`)}});
+  if(div.some(x=>x>0)){mk("ch-div","bar",{labels:Y,datasets:[{label:"Div",...bO(B),data:div}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${Number(c.raw).toFixed(2)}`}}},scales:{x:xA,y:yA(v=>`$${Number(v).toFixed(2)}`)}});mk("ch-divg","bar",{labels:Y,datasets:[{label:"Growth",data:divG,borderRadius:3,borderSkipped:false,backgroundColor:divG.map(v=>rgba(v!=null&&v>=0?G:R,.75))}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw!=null?Number(c.raw).toFixed(2):"—"}%`}}},scales:{x:xA,y:yA(v=>`${Number(v).toFixed(2)}%`)}});}
+  mk("ch-deq","bar",{labels:Y,datasets:[{label:"Debt",...bO(R),data:debt},{label:"Equity",...bO(G),data:eq}]},{plugins:{legend:{display:true,labels:{color:"#7e7e96",boxWidth:9,font:{size:9}}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: $${Number(c.raw).toFixed(2)}B`}}},scales:{x:xA,y:yA(v=>`$${Number(v).toFixed(0)}B`)}});
+  mk("ch-ni","bar",{labels:Y,datasets:[{label:"Net Income",...bO(P),data:ni},{label:"Free CF",...bO(B),data:fcf}]},{plugins:{legend:{display:true,labels:{color:"#7e7e96",boxWidth:9,font:{size:9}}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: $${Number(c.raw).toFixed(2)}B`}}},scales:{x:xA,y:yA(v=>`$${Number(v).toFixed(0)}B`)}});
+  mk("ch-pe","line",{labels:peData.y,datasets:[lnFill("P/E",peData.d.map(v=>v!=null&&v>0&&v<200?v:null),P)]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`P/E: ${Number(c.raw).toFixed(1)}x`}}},scales:{x:xA,y:yA(v=>`${Number(v).toFixed(1)}x`)}});
+  mk("ch-roic","line",{labels:roicData.y,datasets:[lnFill("ROIC",roicData.d.map(v=>v!=null&&v>-100&&v<500?v:null),G)]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`ROIC: ${Number(c.raw).toFixed(2)}%`}}},scales:{x:xA,y:yA(v=>`${Number(v).toFixed(2)}%`)}});
+  const shareTrend=last(pctG(shares));
+  mk("ch-shares","line",{labels:Y,datasets:[lnFill("Shares",shares,shareTrend!=null&&shareTrend<0?G:B)]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${Number(c.raw).toFixed(3)}B`}}},scales:{x:xA,y:yA(v=>`${Number(v).toFixed(2)}B`)}});
+  mk("ch-netdebt","bar",{labels:Y,datasets:[{label:"Net Debt",data:netDebt,borderRadius:3,borderSkipped:false,backgroundColor:netDebt.map(v=>rgba(v<=0?G:R,.75)),hoverBackgroundColor:netDebt.map(v=>v<=0?G:R)}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${Number(c.raw)<=0?"Net Cash":"Net Debt"}: $${Math.abs(Number(c.raw)).toFixed(2)}B`}}},scales:{x:xA,y:{...yA(v=>`$${Math.abs(v).toFixed(0)}B`),ticks:{color:"#7e7e96",font:{size:9},callback:v=>Number(v)<=0?`$${Math.abs(v).toFixed(0)}B cash`:`$${Number(v).toFixed(0)}B debt`}}}});
+}
+
+function drawInsiderChart(){
+  const el=$("ch-insiders");if(!el||!CurInsiders?.monthly?.length)return;
+  const mo=CurInsiders.monthly;
+  if(Charts["ch-insiders"]){try{Charts["ch-insiders"].destroy();}catch{}}
+  Charts["ch-insiders"]=new Chart(el,{type:"bar",data:{labels:mo.map(m=>m.month),datasets:[{label:"Buys ($M)",data:mo.map(m=>m.buyValue/1e6),backgroundColor:rgba(G,.75),borderRadius:3,borderSkipped:false},{label:"Sells ($M)",data:mo.map(m=>-(m.sellValue/1e6)),backgroundColor:rgba(R,.75),borderRadius:3,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},plugins:{legend:{labels:{color:"#7e7e96",boxWidth:9,font:{size:9}}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: $${Math.abs(Number(c.raw)).toFixed(1)}M`}}},scales:{x:{grid:{display:false},ticks:{color:"#7e7e96",font:{size:9}}},y:{grid:{color:"rgba(255,255,255,0.04)"},ticks:{color:"#7e7e96",font:{size:9},callback:v=>`$${Math.abs(v).toFixed(0)}M`}}}}});
+}
+
+const FSModal=$("fs-modal");
+$("fs-close").addEventListener("click",closeFS);
+FSModal.addEventListener("click",e=>{if(e.target===FSModal)closeFS();});
+document.addEventListener("keydown",e=>{if(e.key==="Escape")closeFS();});
+FSModal.querySelectorAll(".fsp-btn").forEach(btn=>{btn.addEventListener("click",()=>{FSModal.querySelectorAll(".fsp-btn").forEach(b=>b.classList.remove("on"));btn.classList.add("on");renderFSPriceChart(btn.dataset.r);});});
+
+function openPriceFS(range){
+  $("fs-title").textContent=`${CurD?.profile?.name||CurD?.ticker||""} — Price History`;
+  $("fs-sub").textContent=CurD?.priceDataSource==="live"?"Live daily · FMP":"Estimated from 52W range";
+  $("fs-range-wrap").style.display="flex";$("fs-perf").textContent="";
+  FSModal.classList.add("open");document.body.style.overflow="hidden";
+  FSModal.querySelectorAll(".fsp-btn").forEach(b=>b.classList.toggle("on",b.dataset.r===range));
+  renderFSPriceChart(range);
+}
+function openChartFS(canvId,title,sub){
+  const src=Charts[canvId];if(!src)return;
+  $("fs-title").textContent=title;$("fs-sub").textContent=sub||"FMP annual data";
+  $("fs-range-wrap").style.display="none";$("fs-perf").textContent="";$("fs-info").innerHTML="";
+  FSModal.classList.add("open");document.body.style.overflow="hidden";
+  if(FSChart){FSChart.destroy();FSChart=null;}
+  try{FSChart=new Chart($("fs-canvas"),{type:src.config.type,data:src.config.data,options:{...src.config.options,responsive:true,maintainAspectRatio:false,animation:{duration:300}}});}catch(e){}
+}
+function closeFS(){FSModal.classList.remove("open");document.body.style.overflow="";$("fs-range-wrap").style.display="flex";if(FSChart){FSChart.destroy();FSChart=null;}}
+function renderFSPriceChart(range){
+  if(FSChart){FSChart.destroy();FSChart=null;}
+  const canvas=$("fs-canvas");if(!canvas)return;
+  const prices=CurPH?.[range]||[];const rawDates=CurDates?.[range]||[];if(!prices.length)return;
+  const step=Math.max(1,Math.floor(rawDates.length/12));
+  const labels=rawDates.map((d,i)=>i%step===0?formatDateLabel(d,range):"");
+  const isUp=prices[prices.length-1]>=prices[0],color=isUp?G:R;
+  FSChart=new Chart(canvas,{type:"line",data:{labels,datasets:[{data:prices,borderColor:color,borderWidth:2,fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,500);g.addColorStop(0,rgba(color,.16));g.addColorStop(1,rgba(color,0));return g;},pointRadius:0,tension:.35}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},plugins:{legend:{display:false},tooltip:{mode:"index",intersect:false,callbacks:{title:ctx=>{const idx=ctx[0]?.dataIndex;return rawDates[idx]||"";},label:ctx=>`$${Number(ctx.raw).toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{color:"#7e7e96",font:{size:10},maxRotation:0}},y:{grid:{color:"rgba(255,255,255,0.04)"},ticks:{color:"#7e7e96",font:{size:12},callback:v=>`$${Number(v).toFixed(2)}`}}}}});
+  const diff=prices[prices.length-1]-prices[0],pct=diff/prices[0]*100,up=diff>=0;
+  const el=$("fs-perf");if(el){el.className=`fs-perf ${up?"up":"dn"}`;el.textContent=`${up?"▲":"▼"} ${up?"+":""}$${Math.abs(diff).toFixed(2)} (${up?"+":""}${pct.toFixed(2)}%)`;}
+  const m=CurD?.metrics?.metric||{};
+  $("fs-info").innerHTML=`
+    <div class="fs-info-item"><div class="fs-info-lbl">Current Price</div><div class="fs-info-val">${f$(CurD?.quote?.c)}</div></div>
+    <div class="fs-info-item"><div class="fs-info-lbl">52W High</div><div class="fs-info-val" style="color:var(--G)">${f$(m["52WeekHigh"])}</div></div>
+    <div class="fs-info-item"><div class="fs-info-lbl">52W Low</div><div class="fs-info-val" style="color:var(--R)">${f$(m["52WeekLow"])}</div></div>
+    <div class="fs-info-item"><div class="fs-info-lbl">Source</div><div class="fs-info-val" style="color:${CurD?.priceDataSource==="live"?"var(--G)":"var(--B)"}">${CurD?.priceDataSource==="live"?"● FMP Live":"◎ Est. from 52W"}</div></div>
+  `;
+}
+</script>
+</body>
+</html>
