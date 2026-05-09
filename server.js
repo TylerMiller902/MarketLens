@@ -92,24 +92,35 @@ function transformProfile(p) {
 }
 
 // ── Build Finnhub-compatible metrics from FMP data ────────
-function buildMetrics(quote, profile, ratios) {
-  const r = ratios || {};
-  const q = quote || {};
+function buildMetrics(quote, profile, income, km) {
+  const q = quote   || {};
+  const p = profile || {};
+  const i = income  || {};
+  const k = km      || {};
+
+  // P/S: Market Cap / Annual Revenue
+  const ps = q.marketCap && i.revenue > 0
+    ? +(q.marketCap / i.revenue).toFixed(2) : null;
+
+  // Dividend yield: lastDiv (annual per share) / price
+  const divYield = q.price && p.lastDiv
+    ? +((p.lastDiv / q.price) * 100).toFixed(4) : null;
+
   return {
     metric: {
-      '52WeekHigh':               q.yearHigh,
-      '52WeekLow':                q.yearLow,
-      peBasicExclExtraTTM:        q.pe,
-      epsTTM:                     q.eps,
-      psTTM:                      r.priceToSalesRatioTTM,
-      dividendYieldIndicatedAnnual: r.dividendYieldTTM != null ? pct(r.dividendYieldTTM) : null,
-      dividendPerShareAnnual:     r.dividendPerShareTTM,
-      beta:                       profile?.beta,
-      currentRatioAnnual:         r.currentRatioTTM,
-      grossMarginTTM:             r.grossProfitMarginTTM != null ? pct(r.grossProfitMarginTTM) : null,
-      netProfitMarginTTM:         r.netProfitMarginTTM   != null ? pct(r.netProfitMarginTTM)   : null,
-      roeTTM:                     r.returnOnEquityTTM    != null ? pct(r.returnOnEquityTTM)    : null,
-      roaTTM:                     r.returnOnAssetsTTM    != null ? pct(r.returnOnAssetsTTM)    : null,
+      '52WeekHigh':                q.yearHigh,
+      '52WeekLow':                 q.yearLow,
+      peBasicExclExtraTTM:         q.pe,
+      epsTTM:                      q.eps,
+      psTTM:                       ps,
+      dividendYieldIndicatedAnnual: divYield,
+      dividendPerShareAnnual:      p.lastDiv || null,
+      beta:                        p.beta,
+      grossMarginTTM:              i.grossProfitRatio  != null ? +(i.grossProfitRatio  * 100).toFixed(4) : null,
+      netProfitMarginTTM:          i.netIncomeRatio    != null ? +(i.netIncomeRatio    * 100).toFixed(4) : null,
+      currentRatioAnnual:          k.currentRatio     ?? null,
+      roeTTM:                      k.returnOnEquity   != null ? +(k.returnOnEquity   * 100).toFixed(4) : null,
+      roaTTM:                      k.returnOnAssets   != null ? +(k.returnOnAssets   * 100).toFixed(4) : null,
     }
   };
 }
@@ -246,15 +257,16 @@ app.get('/api/stock/:symbol', async (req,res) => {
   const { symbol } = req.params;
   const isETF = req.query.etf === '1';
   try {
-    // Fetch all data in parallel
+    // Fetch all data in parallel — includes income + key metrics for stats card
     const [
-      quoteRaw, profileRaw, ratiosRaw,
+      quoteRaw, profileRaw, incomeRaw, kmRaw,
       newsRaw, recsRaw, priceTargetRaw,
       earningsRaw, earningsCalRaw, etfRaw,
     ] = await Promise.all([
       fmpSafe('/quote',                          { symbol }),
       fmpSafe('/profile',                        { symbol }),
-      fmpSafe('/ratios',                         { symbol, period: 'ttm', limit: 1 }),
+      fmpSafe('/income-statement',               { symbol, period: 'annual', limit: 1 }),
+      fmpSafe('/key-metrics',                    { symbol, period: 'annual', limit: 1 }),
       fmpSafe('/stock-news',                     { tickers: symbol, limit: 10 }),
       fmpSafe('/analyst-stock-recommendations',  { symbol, limit: 5 }),
       fmpSafe('/price-target-consensus',         { symbol }),
@@ -265,11 +277,12 @@ app.get('/api/stock/:symbol', async (req,res) => {
 
     const quoteData   = arr(quoteRaw)[0]   || null;
     const profileData = arr(profileRaw)[0] || null;
-    const ratiosData  = arr(ratiosRaw)[0]  || null;
+    const incomeData  = arr(incomeRaw)[0]  || null;
+    const kmData      = arr(kmRaw)[0]      || null;
 
     const quote       = transformQuote(quoteData);
     const profile     = transformProfile(profileData);
-    const metrics     = buildMetrics(quoteData, profileData, ratiosData);
+    const metrics     = buildMetrics(quoteData, profileData, incomeData, kmData);
     const news        = transformNews(newsRaw).slice(0, 6);
     const recs        = transformRecs(recsRaw);
     const priceTarget = transformPriceTarget(priceTargetRaw);
