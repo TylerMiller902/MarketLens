@@ -315,42 +315,61 @@ app.get('/api/peers/:symbol', async (req,res) => {
   const { symbol } = req.params;
   const ck = `peers:${symbol}`; const hit = gc(ck); if(hit) return res.json(hit);
   try {
-    const peersRaw = await fmpSafe('/stock-peers', { symbol });
+    // Get peers + main company profile in parallel (for sector matching)
+    const [peersRaw, mainProfileRaw] = await Promise.all([
+      fmpSafe('/stock-peers',  { symbol }),
+      fmpSafe('/profile',      { symbol }),
+    ]);
 
-    // FMP stable returns: [{symbol, companyName, price, mktCap}, ...]
+    const mainProfile  = arr(mainProfileRaw)[0] || {};
+    const mainSector   = mainProfile.sector   || '';
+    const mainIndustry = mainProfile.industry || '';
+
+    // FMP returns: [{symbol, companyName, price, mktCap}, ...]
     const peerObjects = Array.isArray(peersRaw) ? peersRaw : [];
 
-    // Filter out the stock itself and very small/penny stocks
+    // Filter out tiny / irrelevant companies (> $1B mktCap)
     const filtered = peerObjects
-      .filter(p => p.symbol && p.symbol !== symbol && (p.mktCap||0) > 500_000_000)
-      .sort((a,b) => (b.mktCap||0) - (a.mktCap||0))
+      .filter(p => p.symbol && p.symbol !== symbol && (p.mktCap||0) > 1_000_000_000)
       .slice(0, 9);
 
     if (!filtered.length) return res.json([]);
 
-    // Only need quotes for today's change — mktCap + name already in peers response
-    const quotes = await Promise.allSettled(
-      filtered.map(p => fmp('/quote', { symbol: p.symbol }))
-    );
+    // Fetch quotes (for today's change) + profiles (for sector matching)
+    const [quotes, profiles] = await Promise.all([
+      Promise.allSettled(filtered.map(p => fmp('/quote',   { symbol: p.symbol }))),
+      Promise.allSettled(filtered.map(p => fmpSafe('/profile', { symbol: p.symbol }))),
+    ]);
 
-    const result = filtered.map((peer, i) => {
-      const q = arr(quotes[i].status === 'fulfilled' ? quotes[i].value : null)[0];
+    let result = filtered.map((peer, i) => {
+      const q    = arr(quotes[i].status   === 'fulfilled' ? quotes[i].value   : null)[0];
+      const prof = arr(profiles[i].status === 'fulfilled' ? profiles[i].value : null)[0] || {};
       return {
-        ticker:  peer.symbol,
-        quote:   transformQuote(q || { price: peer.price, change: 0, changePercentage: 0 }),
-        profile: {
+        ticker:   peer.symbol,
+        sector:   prof.sector   || '',
+        industry: prof.industry || '',
+        quote:    transformQuote(q || { price: peer.price, change: 0, changePercentage: 0 }),
+        profile:  {
           name:                 peer.companyName,
-          // FMP uses a consistent logo URL pattern for all symbols
           logo:                 `https://images.financialmodelingprep.com/symbol/${peer.symbol}.png`,
           marketCapitalization: peer.mktCap ? peer.mktCap / 1e6 : null,
         },
       };
     })
-    .filter(p => p.quote?.c)
-    .slice(0, 7);
+    .filter(p => p.quote?.c);
 
-    sc(ck, result, TTL.peers);
-    res.json(result);
+    // Sort: same industry first → same sector → by market cap
+    result.sort((a, b) => {
+      const score = x =>
+        (x.industry === mainIndustry ? 4 : 0) +
+        (x.sector   === mainSector   ? 2 : 0);
+      const diff = score(b) - score(a);
+      if (diff !== 0) return diff;
+      return (b.profile?.marketCapitalization||0) - (a.profile?.marketCapitalization||0);
+    });
+
+    sc(ck, result.slice(0, 7), TTL.peers);
+    res.json(result.slice(0, 7));
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
