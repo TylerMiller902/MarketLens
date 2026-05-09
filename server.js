@@ -317,38 +317,36 @@ app.get('/api/peers/:symbol', async (req,res) => {
   try {
     const peersRaw = await fmpSafe('/stock-peers', { symbol });
 
-    // Handle multiple possible FMP response formats
-    let peerList = [];
-    if (Array.isArray(peersRaw)) {
-      if (typeof peersRaw[0] === 'string') {
-        peerList = peersRaw;                          // ["MSFT","GOOGL",...]
-      } else if (peersRaw[0]?.peersList) {
-        peerList = peersRaw[0].peersList;             // [{peersList:[...]}]
-      } else if (peersRaw[0]?.peers) {
-        peerList = peersRaw[0].peers;                 // [{peers:[...]}]
-      }
-    } else if (peersRaw?.peersList) {
-      peerList = peersRaw.peersList;                  // {peersList:[...]}
-    }
+    // FMP stable returns: [{symbol, companyName, price, mktCap}, ...]
+    const peerObjects = Array.isArray(peersRaw) ? peersRaw : [];
 
-    const filtered = peerList
-      .filter(p => p && p !== symbol && !p.includes('.') && p.length < 8)
+    // Filter out the stock itself and very small/penny stocks
+    const filtered = peerObjects
+      .filter(p => p.symbol && p.symbol !== symbol && (p.mktCap||0) > 500_000_000)
+      .sort((a,b) => (b.mktCap||0) - (a.mktCap||0))
       .slice(0, 9);
 
     if (!filtered.length) return res.json([]);
 
-    const [quotes, profiles] = await Promise.all([
-      Promise.allSettled(filtered.map(p => fmp('/quote',   { symbol: p }))),
-      Promise.allSettled(filtered.map(p => fmp('/profile', { symbol: p }))),
-    ]);
+    // Only need quotes for today's change — mktCap + name already in peers response
+    const quotes = await Promise.allSettled(
+      filtered.map(p => fmp('/quote', { symbol: p.symbol }))
+    );
 
-    const result = filtered.map((ticker, i) => ({
-      ticker,
-      quote:   transformQuote(arr(quotes[i].status   === 'fulfilled' ? quotes[i].value   : null)[0]),
-      profile: transformProfile(arr(profiles[i].status === 'fulfilled' ? profiles[i].value : null)[0]),
-    }))
+    const result = filtered.map((peer, i) => {
+      const q = arr(quotes[i].status === 'fulfilled' ? quotes[i].value : null)[0];
+      return {
+        ticker:  peer.symbol,
+        quote:   transformQuote(q || { price: peer.price, change: 0, changePercentage: 0 }),
+        profile: {
+          name:                 peer.companyName,
+          // FMP uses a consistent logo URL pattern for all symbols
+          logo:                 `https://images.financialmodelingprep.com/symbol/${peer.symbol}.png`,
+          marketCapitalization: peer.mktCap ? peer.mktCap / 1e6 : null,
+        },
+      };
+    })
     .filter(p => p.quote?.c)
-    .sort((a,b) => (b.profile?.marketCapitalization||0) - (a.profile?.marketCapitalization||0))
     .slice(0, 7);
 
     sc(ck, result, TTL.peers);
