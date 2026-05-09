@@ -520,6 +520,30 @@ app.get('/api/debug/:symbol', async (req,res) => {
 });
 
 
+// ── S&P 500 Top Movers ────────────────────────────────────
+app.get('/api/movers', async (req,res) => {
+  const ck='movers'; const hit=gc(ck); if(hit)return res.json(hit);
+  try{
+    const [gainers,losers]=await Promise.all([fmpSafe('/biggest-gainers'),fmpSafe('/biggest-losers')]);
+    const fmt=(list,type)=>arr(list).slice(0,5).map(s=>({
+      ticker:s.symbol, name:s.name||s.companyName||s.symbol,
+      price:s.price, change:s.change??0,
+      changePct:s.changesPercentage??s.changePercentage??0, type,
+    }));
+    const result=[...fmt(gainers,'gainer'),...fmt(losers,'loser')];
+    sc(ck,result,5*60_000); res.json(result);
+  }catch(e){res.status(500).json({error:e.message});}
+});
+
+// ── ETF Info (expense ratio, AUM, etc.) ──────────────────
+app.get('/api/etf-info/:symbol', async (req,res) => {
+  const {symbol}=req.params; const ck=`etf-info:${symbol}`; const hit=gc(ck); if(hit)return res.json(hit);
+  try{
+    const data=await fmpSafe('/etf-info',{symbol});
+    const d=arr(data)[0]||{}; sc(ck,d,TTL.profile); res.json(d);
+  }catch(e){res.status(500).json({error:e.message});}
+});
+
 app.get('/health', (req,res) => res.json({ status: 'ok', version: '3.0', provider: 'FMP only', cached: cache.size, uptime: process.uptime() }));
 
 // ── SPA fallback ──────────────────────────────────────────
