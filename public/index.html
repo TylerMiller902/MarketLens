@@ -121,42 +121,36 @@ button,input{font-family:var(--fb)}
 .mover-pct{font-family:var(--fm);font-size:12px;font-weight:600;margin-left:8px;flex-shrink:0}
 .mover-pct.up{color:var(--G)}.mover-pct.dn{color:var(--R)}
 
-/* CHIPS — customizable */
-.chips-section{width:100%;max-width:640px;margin-bottom:1.8rem}
+/* CHIPS — customizable with logos and returns */
+.chips-section{width:100%;max-width:720px;margin-bottom:1.8rem}
 .chips{display:flex;gap:7px;flex-wrap:wrap;justify-content:center;margin-bottom:8px}
 .chip-wrap{position:relative}
 .chip{
   background:var(--bg3);border:1px solid var(--b2);border-radius:20px;
-  padding:6px 14px;font-size:12px;font-family:var(--fm);
+  padding:5px 11px 5px 7px;font-size:12px;font-family:var(--fm);
   cursor:pointer;color:var(--mu);transition:border-color .15s,color .15s,background .15s;
-  user-select:none;position:relative;overflow:hidden;display:block;
-  white-space:nowrap;
+  user-select:none;position:relative;overflow:hidden;
+  display:flex;align-items:center;gap:6px;white-space:nowrap;
 }
 .chip:hover{border-color:var(--P);color:var(--P2);background:var(--Pbg)}
-/* Delete progress bar at bottom of chip */
-.chip::after{
-  content:'';position:absolute;bottom:0;left:0;height:2px;width:0;
-  background:var(--R);border-radius:1px;transition:none;
-}
+.chip-logo-img{width:16px;height:16px;border-radius:3px;object-fit:contain;flex-shrink:0}
+.chip-sym{font-weight:500;color:inherit}
+.chip-name{color:var(--di);font-size:11px}
+.chip-ret{font-size:10px;font-family:var(--fm);flex-shrink:0}
+.chip-ret.up{color:var(--G)}.chip-ret.dn{color:var(--R)}
+/* Delete progress bar */
+.chip::after{content:'';position:absolute;bottom:0;left:0;height:2px;width:0;background:var(--R);border-radius:1px;transition:none;}
+/* Phase 1: purple hover (2s) */
+.chip.hover-purple{border-color:var(--P)!important;color:var(--P2)!important;background:var(--Pbg)!important}
+/* Phase 2: red + countdown bar */
 .chip.deleting{border-color:var(--R)!important;color:var(--R)!important;background:var(--Rbg)!important}
 .chip.deleting::after{width:100%;transition:width 3s linear}
 /* Add chip button */
-.chip-add{
-  background:transparent;border:1px dashed var(--b3);border-radius:20px;
-  padding:6px 12px;font-size:12px;font-family:var(--fm);
-  cursor:pointer;color:var(--di);transition:all .15s;display:flex;align-items:center;gap:4px;
-}
+.chip-add{background:transparent;border:1px dashed var(--b3);border-radius:20px;padding:5px 12px;font-size:12px;font-family:var(--fm);cursor:pointer;color:var(--di);transition:all .15s;display:flex;align-items:center;gap:4px;}
 .chip-add:hover{border-color:var(--P);color:var(--P2)}
-/* Add ticker input */
-.chip-input-wrap{
-  display:none;align-items:center;gap:6px;background:var(--bg3);
-  border:1.5px solid var(--P);border-radius:20px;padding:4px 4px 4px 12px;
-}
+.chip-input-wrap{display:none;align-items:center;gap:6px;background:var(--bg3);border:1.5px solid var(--P);border-radius:20px;padding:4px 4px 4px 12px;}
 .chip-input-wrap.open{display:flex}
-.chip-inp{
-  background:transparent;border:none;color:var(--tx);font-family:var(--fm);
-  font-size:12px;width:80px;outline:none;text-transform:uppercase;
-}
+.chip-inp{background:transparent;border:none;color:var(--tx);font-family:var(--fm);font-size:12px;width:80px;outline:none;text-transform:uppercase;}
 .chip-inp::placeholder{color:var(--di);text-transform:none}
 .chip-inp-go{background:var(--P);border:none;color:#fff;border-radius:14px;padding:3px 10px;font-size:11px;cursor:pointer;font-weight:600}
 
@@ -339,6 +333,8 @@ button,input{font-family:var(--fb)}
 .etf-chart-wrap{height:280px;position:relative;margin-bottom:1rem}
 .etf-stats-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:.9rem}
 @media(max-width:680px){.etf-stats-grid{grid-template-columns:repeat(2,1fr)}}
+/* Similar ETFs grid — auto-fit to fill full width */
+.peers-grid-etf{display:grid;grid-template-columns:repeat(auto-fit,minmax(140px,1fr));gap:8px;margin-bottom:.9rem;width:100%}
 
 /* ABOUT / NEWS / HOLDINGS */
 .about-text{font-size:13px;line-height:1.65;color:var(--mu)}
@@ -449,11 +445,11 @@ button,input{font-family:var(--fb)}
   <!-- Top Movers Bubble -->
   <div class="movers-wrap" id="movers-wrap">
     <button class="movers-bubble" id="movers-btn">
-      <span class="dot"></span> S&amp;P 500 Top Movers ▾
+      <span class="dot"></span> VOO Holdings — Top Movers ▾
     </button>
     <div class="movers-panel" id="movers-panel" style="display:none">
       <div class="movers-header">
-        <span>📈 Top Gainers</span><span>📉 Top Losers</span>
+        <span>🟢 Top Gainers</span><span>🔴 Top Losers</span>
       </div>
       <div id="movers-list"></div>
     </div>
@@ -541,26 +537,45 @@ function renderChips(){
   if(!c)return;
   c.innerHTML=chips.map(ch=>`
     <div class="chip-wrap" data-t="${esc(ch.t)}">
-      <span class="chip" data-t="${esc(ch.t)}">${esc(ch.t)} · ${esc(ch.l)}</span>
+      <span class="chip" data-t="${esc(ch.t)}">
+        <img class="chip-logo-img" src="https://images.financialmodelingprep.com/symbol/${esc(ch.t)}.png" onerror="this.style.display='none'"/>
+        <span class="chip-sym">${esc(ch.t)}</span>
+        <span class="chip-name">· ${esc(ch.l)}</span>
+        <span class="chip-ret" id="cret-${esc(ch.t)}"></span>
+      </span>
     </div>`).join('');
 
   c.querySelectorAll('.chip').forEach(el=>{
     const ticker=el.dataset.t;
-    // Click to navigate
     el.addEventListener('click',()=>go(ticker));
-    // 3-second hover-to-delete
+    // Phase 1: 2s purple, then Phase 2: 3s red countdown
     el.addEventListener('mouseenter',()=>{
-      el.classList.add('deleting');
+      el.classList.add('hover-purple');
       holdTimers[ticker]=setTimeout(()=>{
-        const arr=loadChips().filter(x=>x.t!==ticker);
-        saveChips(arr);
-        renderChips();
-      },3000);
+        el.classList.remove('hover-purple');
+        el.classList.add('deleting');
+        holdTimers[ticker+'_r']=setTimeout(()=>{
+          const arr=loadChips().filter(x=>x.t!==ticker);
+          saveChips(arr);renderChips();
+        },3000);
+      },2000);
     });
     el.addEventListener('mouseleave',()=>{
-      el.classList.remove('deleting');
+      el.classList.remove('hover-purple','deleting');
       clearTimeout(holdTimers[ticker]);
+      clearTimeout(holdTimers[ticker+'_r']);
     });
+  });
+
+  // Load day returns async for each chip
+  chips.forEach(ch=>{
+    apiFetch(`/api/quote/${ch.t}`).then(q=>{
+      const el=document.getElementById(`cret-${ch.t}`);
+      if(!el||q?.dp==null)return;
+      const up=q.dp>=0;
+      el.textContent=`${up?'▲':'▼'}${Math.abs(q.dp).toFixed(2)}%`;
+      el.className=`chip-ret ${up?'up':'dn'}`;
+    }).catch(()=>{});
   });
 }
 
@@ -603,11 +618,13 @@ $('movers-btn').addEventListener('click',async()=>{
     moversLoaded=true;
     $('movers-list').innerHTML='<div style="padding:1rem;text-align:center;color:var(--mu);font-size:12px;font-family:var(--fm)">Loading…</div>';
     try{
-      const data=await apiFetch('/api/movers');
-      $('movers-list').innerHTML=data.map((m,i)=>{
+      const data=await apiFetch('/api/voo-movers');
+      const gainers=data.filter(m=>m.type==='gainer');
+      const losers=data.filter(m=>m.type==='loser');
+      $('movers-list').innerHTML=[...gainers,...losers].map((m,i)=>{
         const up=m.type==='gainer';
-        return`<div class="mover-item" onclick="go('${esc(m.ticker)}')" style="animation-delay:${i*60}ms">
-          <span class="mover-rank">${i<5?i+1:i-4}</span>
+        return`<div class="mover-item" onclick="go('${esc(m.ticker)}')" style="animation-delay:${i*55}ms">
+          <img src="${esc(m.logo)}" style="width:18px;height:18px;border-radius:4px;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'"/>
           <span class="mover-ticker ${up?'up':'dn'}">${esc(m.ticker)}</span>
           <span class="mover-name">${esc(m.name)}</span>
           <span class="mover-pct ${up?'up':'dn'}">${up?'+':''}${Number(m.changePct).toFixed(2)}%</span>
@@ -705,13 +722,19 @@ async function loadStock(ticker){
       apiFetch(`/api/fmp/financials/${ticker}`).catch(()=>null),
       apiFetch(`/api/fmp/insiders/${ticker}`).catch(()=>null),
     ];
-    if(isETF) calls.push(apiFetch(`/api/etf-info/${ticker}`).catch(()=>null));
-    const [stock,fmpPrices,fmpFin,insiders,etfInfo]=await Promise.all(calls);
+    if(isETF){
+      calls.push(apiFetch(`/api/etf-info/${ticker}`).catch(()=>null));
+      calls.push(apiFetch(`/api/etf-sectors/${ticker}`).catch(()=>[]));
+      calls.push(apiFetch(`/api/etf-holdings-returns/${ticker}`).catch(()=>[]));
+    }
+    const [stock,fmpPrices,fmpFin,insiders,etfInfo,etfSectors,etfHoldingsReturns]=await Promise.all(calls);
 
     CurD={...stock,ticker,isETF};
     CurFMP=fmpFin;
     CurInsiders=insiders;
     CurETFInfo=etfInfo||null;
+    CurD.etfSectors=etfSectors||[];
+    CurD.etfHoldingsReturns=etfHoldingsReturns||[];
 
     const m=stock?.metrics?.metric||{};
     const price=stock?.quote?.c;
@@ -890,11 +913,40 @@ function renderPage(){
     <div class="card">
       <div class="etf-chart-wrap"><canvas id="etfChart"></canvas></div>
     </div>
-    <div class="stitle-sm">Top Holdings <span class="badge live">Live · FMP</span></div>
-    ${holdings.slice(0,12).map((h,i)=>{const w=parseFloat(h.percent||h.weight||0),mx=parseFloat(holdings[0]?.percent||holdings[0]?.weight||10);return`<div class="hit"><div class="hrnk">${i+1}</div><div class="hinf"><div class="hnm">${esc(h.name||h.symbol||'')}</div><div class="htk">${esc(h.symbol||'')}</div></div><div class="hbar-wrap"><div class="hbar-fill" style="width:${Math.min(100,w/mx*100).toFixed(2)}%"></div></div><div class="hw">${Number(w).toFixed(2)}%</div></div>`;}).join('')}`:''}
+    <div class="stitle-sm">Top Holdings with Day Return <span class="badge live">Live · FMP</span></div>
+    <div class="card" style="padding:.5rem;overflow-x:auto">
+      <table style="width:100%;border-collapse:collapse;font-size:12px;min-width:400px">
+        <thead><tr>
+          <th style="text-align:left;padding:6px 10px;font-family:var(--fm);font-size:10px;color:var(--di);border-bottom:1px solid var(--b1)">#</th>
+          <th style="text-align:left;padding:6px 10px;font-family:var(--fm);font-size:10px;color:var(--di);border-bottom:1px solid var(--b1)">Holding</th>
+          <th style="text-align:right;padding:6px 10px;font-family:var(--fm);font-size:10px;color:var(--di);border-bottom:1px solid var(--b1)">Weight</th>
+          <th style="text-align:right;padding:6px 10px;font-family:var(--fm);font-size:10px;color:var(--di);border-bottom:1px solid var(--b1)">Price</th>
+          <th style="text-align:right;padding:6px 10px;font-family:var(--fm);font-size:10px;color:var(--di);border-bottom:1px solid var(--b1)">Today</th>
+        </tr></thead>
+        <tbody>${(CurD.etfHoldingsReturns?.length?CurD.etfHoldingsReturns:holdings.slice(0,12)).map((h,i)=>{
+          const up=(h.changePct||0)>=0;
+          return`<tr style="border-bottom:1px solid var(--b1)">
+            <td style="padding:6px 10px;font-family:var(--fm);font-size:10px;color:var(--di)">${i+1}</td>
+            <td style="padding:6px 10px">
+              <div style="display:flex;align-items:center;gap:7px">
+                <img src="${esc(h.logo||`https://images.financialmodelingprep.com/symbol/${h.symbol||h.asset}.png`)}" style="width:20px;height:20px;border-radius:4px;object-fit:contain" onerror="this.style.display='none'"/>
+                <div><div style="font-size:12px;font-weight:500">${esc(h.symbol||h.asset||'')}</div><div style="font-size:10px;color:var(--mu)">${esc(h.name||'')}</div></div>
+              </div>
+            </td>
+            <td style="text-align:right;padding:6px 10px;font-family:var(--fm);font-size:11px">${Number(h.weight||h.percent||h.weightPercentage||0).toFixed(2)}%</td>
+            <td style="text-align:right;padding:6px 10px;font-family:var(--fm);font-size:11px">${h.price?f$(h.price):'—'}</td>
+            <td style="text-align:right;padding:6px 10px;font-family:var(--fm);font-size:11px;color:${h.changePct!=null?(up?'var(--G)':'var(--R)'):'var(--mu)'}">${h.changePct!=null?`${up?'+':''}${Number(h.changePct).toFixed(2)}%`:'—'}</td>
+          </tr>`;
+        }).join('')}</tbody>
+      </table>
+    </div>
+    ${CurD.etfSectors?.length?`
+    <div class="stitle-sm">Sector Allocation <span class="badge live">Live · FMP</span></div>
+    <div class="card"><div style="height:220px;position:relative"><canvas id="sectorChart"></canvas></div></div>`:''}
+    `:''}
 
-    <div class="stitle-sm">Competitors <span class="badge live">Live · FMP</span></div>
-    <div class="peers-grid" id="peers-row"><span style="font-size:12px;color:var(--mu);font-family:var(--fm)">Loading…</span></div>
+    <div class="stitle-sm">${isETF?'Similar ETFs':'Competitors'} <span class="badge live">Live · FMP</span></div>
+    <div class="${isETF?'peers-grid-etf':'peers-grid'}" id="peers-row"><span style="font-size:12px;color:var(--mu);font-family:var(--fm)">Loading…</span></div>
 
     ${tot>0?`<div class="stitle-sm">Analyst Ratings <span class="badge live">Live · FMP</span></div>
     <div class="card"><div class="analyst-grid">
@@ -1002,6 +1054,7 @@ function renderPage(){
   if(hasFMP)drawFinCharts();
   if(hasInsiders)drawInsiderChart();
   if(isETF&&holdings.length)drawETFChart(holdings);
+  if(isETF&&CurD.etfSectors?.length)drawSectorChart(CurD.etfSectors);
 }
 
 function formatDateLabel(d,r){if(!d)return"";const dt=new Date(d+"T12:00:00");if(r==="1M"||r==="3M"||r==="6M")return dt.toLocaleDateString("en-US",{month:"short",day:"numeric"});if(r==="1Y")return dt.toLocaleDateString("en-US",{month:"short",year:"2-digit"});return dt.getFullYear().toString();}
@@ -1032,8 +1085,18 @@ function drawEarnCharts(earns){
 function drawETFChart(holdings){
   const el=$("etfChart");if(!el)return;
   if(ETFChart){ETFChart.destroy();ETFChart=null;}
-  const top=holdings.slice(0,10),labels=top.map(h=>h.symbol||h.name||""),data=top.map(h=>+(parseFloat(h.percent||h.weight||0)).toFixed(2)),colors=DCOLS.concat(DCOLS);
+  const top=holdings.slice(0,10),labels=top.map(h=>h.symbol||h.name||""),data=top.map(h=>+(parseFloat(h.percent||h.weight||h.weightPercentage||0)).toFixed(2)),colors=DCOLS.concat(DCOLS);
   ETFChart=new Chart(el,{type:"bar",data:{labels,datasets:[{label:"Weight %",data,backgroundColor:colors.slice(0,data.length).map(c=>rgba(c,.8)),borderRadius:4,borderSkipped:false}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},indexAxis:"y",plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${Number(c.raw).toFixed(2)}%`}}},scales:{x:{grid:{color:"rgba(255,255,255,0.04)"},ticks:{color:"#7e7e96",font:{size:9},callback:v=>`${v}%`}},y:{grid:{display:false},ticks:{color:"#7e7e96",font:{size:10}}}}}});
+}
+
+function drawSectorChart(sectors){
+  const el=$("sectorChart");if(!el)return;
+  // FMP sector exposure returns [{sector, exposure}]
+  const top=sectors.filter(s=>s.sector&&s.exposure>0).sort((a,b)=>b.exposure-a.exposure).slice(0,10);
+  if(!top.length)return;
+  const labels=top.map(s=>s.sector);
+  const data=top.map(s=>+(s.exposure*100).toFixed(2));
+  new Chart(el,{type:"doughnut",data:{labels,datasets:[{data,backgroundColor:DCOLS.slice(0,data.length).map(c=>rgba(c,.85)),borderColor:"transparent",borderWidth:0,hoverOffset:6}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:400},plugins:{legend:{position:"right",labels:{color:"#7e7e96",font:{size:10},boxWidth:10,padding:10,generateLabels:chart=>chart.data.labels.map((l,i)=>({text:`${l} ${data[i]}%`,fillStyle:DCOLS[i%DCOLS.length],strokeStyle:"transparent",index:i}))}},tooltip:{callbacks:{label:c=>`${c.label}: ${Number(c.raw).toFixed(2)}%`}}}}});
 }
 
 function sl(arr){const n=CurGP===0?arr.length:Math.min(CurGP,arr.length);return arr.slice(-n);}
