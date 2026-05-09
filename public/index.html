@@ -790,7 +790,7 @@ function drawPrice(r){
   if(!prices.length){canvas.parentElement.innerHTML='<p style="color:var(--mu);font-size:12px;padding:1rem;text-align:center">No data.</p>';return;}
 
   // Show only a subset of date labels to avoid crowding
-  const maxLabels={1M:8,3M:8,6M:8,'1Y':12,'5Y':8};
+  const maxLabels={'1M':8,'3M':8,'6M':8,'1Y':12,'5Y':8};
   const max=maxLabels[r]||8;
   const step=Math.max(1,Math.floor(rawDates.length/max));
   const labels=rawDates.map((d,i)=>i%step===0?formatDateLabel(d,r):'');
