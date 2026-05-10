@@ -104,22 +104,76 @@ button,input{font-family:var(--fb)}
   box-shadow:0 20px 60px rgba(0,0,0,.6);
 }
 .movers-header{display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--b1);font-size:11px;font-family:var(--fm);color:var(--di)}
+
 .mover-item{
-  display:flex;align-items:center;padding:8px 14px;
-  border-bottom:1px solid var(--b1);cursor:pointer;
+  display:flex;
+  align-items:center;
+  padding:8px 14px;
+  border-bottom:1px solid var(--b1);
+  cursor:pointer;
   transition:background .12s;
-  opacity:0;transform:translateX(10px);
+  opacity:0;
+  transform:translateX(10px);
   animation:slideIn .3s forwards;
 }
-.mover-item:last-child{border-bottom:none}
-.mover-item:hover{background:var(--bg3)}
-@keyframes slideIn{to{opacity:1;transform:translateX(0)}}
-.mover-rank{font-family:var(--fm);font-size:10px;color:var(--di);width:16px;flex-shrink:0}
-.mover-ticker{font-family:var(--fm);font-size:12px;font-weight:600;width:52px;flex-shrink:0}
-.mover-ticker.up{color:var(--G)}.mover-ticker.dn{color:var(--R)}
-.mover-name{font-size:11px;color:var(--mu);flex:1;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.mover-pct{font-family:var(--fm);font-size:12px;font-weight:600;margin-left:8px;flex-shrink:0}
-.mover-pct.up{color:var(--G)}.mover-pct.dn{color:var(--R)}
+
+.mover-item:last-child{
+  border-bottom:none;
+}
+
+.mover-item:hover{
+  background:var(--bg3);
+}
+
+@keyframes slideIn{
+  to{
+    opacity:1;
+    transform:translateX(0);
+  }
+}
+
+.mover-rank{
+  font-family:var(--fm);
+  font-size:10px;
+  color:var(--di);
+  width:18px;
+  flex-shrink:0;
+}
+
+.mover-ticker{
+  font-family:var(--fm);
+  font-size:12px;
+  font-weight:600;
+  width:60px;
+  flex-shrink:0;
+}
+
+.mover-ticker.up{color:var(--G)}
+.mover-ticker.dn{color:var(--R)}
+
+.mover-name{
+  font-size:11px;
+  color:var(--mu);
+  flex:1;
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+  padding-right:10px;
+}
+
+.mover-pct{
+  font-family:var(--fm);
+  font-size:12px;
+  font-weight:600;
+  margin-left:auto;
+  width:58px;
+  text-align:right;
+  flex-shrink:0;
+}
+
+.mover-pct.up{color:var(--G)}
+.mover-pct.dn{color:var(--R)}
 
 /* CHIPS — customizable with logos and returns */
 .chips-section{width:100%;max-width:720px;margin-bottom:1.8rem}
