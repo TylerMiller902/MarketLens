@@ -156,7 +156,7 @@ button,input{font-family:var(--fb)}
 
 /* SEARCH */
 .search-row{display:flex;gap:8px;width:100%;max-width:500px;position:relative}
-.sinp{flex:1;background:var(--bg3);border:1.5px solid var(--b2);border-radius:12px;padding:.9rem 1.1rem;font-size:.95rem;color:var(--tx);outline:none;transition:border-color .2s}
+.sinp{width:100%;background:var(--bg3);border:1.5px solid var(--b2);border-radius:12px;padding:.9rem 1.1rem;font-size:.95rem;color:var(--tx);outline:none;transition:border-color .2s}
 .sinp:focus{border-color:var(--P)}
 .sinp::placeholder{color:var(--di)}
 .gobtn{background:var(--P);border:none;color:#fff;padding:.9rem 1.4rem;border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:var(--fd)}
@@ -450,7 +450,7 @@ button,input{font-family:var(--fb)}
   <!-- Top Movers Bubble -->
   <div class="movers-wrap" id="movers-wrap">
     <button class="movers-bubble" id="movers-btn">
-      <span class="dot"></span> Top Stock Biggest Movers ▾
+      <span class="dot"></span> Stock Biggest Movers ▾
     </button>
     <div class="movers-panel" id="movers-panel" style="display:none">
       <div class="movers-header">
@@ -664,7 +664,9 @@ $('movers-btn').addEventListener('click',async()=>{
       $('movers-list').innerHTML=[...gainers,...losers].map((m,i)=>{
         const up=m.type==='gainer';
         return`<div class="mover-item" onclick="go('${esc(m.ticker)}')" style="animation-delay:${i*55}ms">
-          <img src="${esc(m.logo)}" style="width:18px;height:18px;border-radius:4px;object-fit:contain;flex-shrink:0" onerror="this.style.display='none'"/>
+          <div style="width:22px;flex-shrink:0;display:flex;align-items:center">
+            <img src="${esc(m.logo)}" style="width:20px;height:20px;border-radius:4px;object-fit:contain" onerror="this.style.display='none'"/>
+          </div>
           <span class="mover-ticker ${up?'up':'dn'}">${esc(m.ticker)}</span>
           <span class="mover-name">${esc(m.name)}</span>
           <span class="mover-pct ${up?'up':'dn'}">${up?'+':''}${Number(m.changePct).toFixed(2)}%</span>
