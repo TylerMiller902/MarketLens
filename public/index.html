@@ -161,8 +161,9 @@ button,input{font-family:var(--fb)}
 .sinp::placeholder{color:var(--di)}
 .gobtn{background:var(--P);border:none;color:#fff;padding:.9rem 1.4rem;border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:var(--fd)}
 .gobtn:hover{opacity:.85}
-.sugg-wrap{position:absolute;top:calc(100%+6px);left:0;right:60px;background:var(--bg3);border:1.5px solid var(--b2);border-radius:12px;overflow:hidden;z-index:200;display:none;box-shadow:0 16px 40px rgba(0,0,0,.7)}
+.sugg-wrap{position:absolute;top:calc(100%+14px);left:0;right:60px;background:var(--bg3);border:1.5px solid var(--b2);border-radius:12px;overflow:hidden;z-index:200;display:none;box-shadow:0 16px 40px rgba(0,0,0,.7)}
 .sugg-wrap.open{display:block}
+.sugg-wrap.chip-sugg{right:0;left:0;top:calc(100%+8px);min-width:240px}
 .sugg-item{display:flex;align-items:center;gap:9px;padding:.55rem .9rem;cursor:pointer;border-bottom:1px solid var(--b1);transition:background .12s}
 .sugg-item:last-child{border-bottom:none}
 .sugg-item:hover{background:var(--bg4)}
@@ -466,12 +467,13 @@ button,input{font-family:var(--fb)}
     <!-- Customizable Chips -->
     <div class="chips-section">
       <div class="chips" id="chips-container"></div>
-      <div style="display:flex;justify-content:center;gap:8px;align-items:center;flex-wrap:wrap">
+      <div style="display:flex;justify-content:center;gap:8px;align-items:center;flex-wrap:wrap;position:relative">
         <button class="chip-add" id="chip-add-btn">＋ Add stock / ETF</button>
         <div class="chip-input-wrap" id="chip-input-wrap">
           <input class="chip-inp" id="chip-inp" placeholder="e.g. AAPL" maxlength="10"/>
           <button class="chip-inp-go" id="chip-inp-go">Add</button>
         </div>
+        <div class="sugg-wrap chip-sugg" id="chip-sugg"></div>
       </div>
     </div>
 
@@ -607,8 +609,37 @@ async function tryAddChip(){
   }catch{chips.push({t:val,l:val});saveChips(chips);renderChips();}
   $('chip-inp').value='';$('chip-input-wrap').classList.remove('open');
 }
+// Chip input autocomplete
 $('chip-inp-go').addEventListener('click',tryAddChip);
-$('chip-inp').addEventListener('keydown',e=>{if(e.key==='Enter')tryAddChip();if(e.key==='Escape'){$('chip-input-wrap').classList.remove('open');}});
+$('chip-inp').addEventListener('keydown',e=>{if(e.key==='Enter')tryAddChip();if(e.key==='Escape'){$('chip-input-wrap').classList.remove('open');$('chip-sugg').classList.remove('open');}});
+$('chip-inp').addEventListener('input',()=>{
+  const q=$('chip-inp').value.trim();
+  const sugg=$('chip-sugg');
+  if(!q||q.length<1){sugg.classList.remove('open');return;}
+  const local=localSearch(q);
+  if(!local.length){sugg.classList.remove('open');return;}
+  sugg.innerHTML=local.map(it=>`
+    <div class="sugg-item" data-sym="${esc(it.symbol)}" data-name="${esc(it.description)}">
+      <img class="sugg-logo" src="https://images.financialmodelingprep.com/symbol/${esc(it.symbol)}.png" onerror="this.style.display='none'"/>
+      <div class="sugg-info">
+        <span class="sugg-sym">${esc(it.symbol)}</span>
+        <span class="sugg-name">${esc(it.description)}</span>
+      </div>
+    </div>`).join('');
+  sugg.querySelectorAll('.sugg-item').forEach(el=>el.addEventListener('click',()=>{
+    const t=el.dataset.sym, n=el.dataset.name;
+    sugg.classList.remove('open');
+    $('chip-inp').value='';
+    $('chip-input-wrap').classList.remove('open');
+    const chips=loadChips();
+    if(!chips.find(c=>c.t===t)){chips.push({t,l:n});saveChips(chips);renderChips();}
+  }));
+  sugg.classList.add('open');
+});
+document.addEventListener('click',e=>{
+  const sugg=$('chip-sugg');
+  if(sugg&&!$('chip-inp').contains(e.target)&&!sugg.contains(e.target))sugg.classList.remove('open');
+});
 renderChips();
 
 // ══════════════════════════════════════════════════════════
