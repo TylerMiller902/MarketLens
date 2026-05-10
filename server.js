@@ -534,7 +534,7 @@ app.get('/api/debug/:symbol', async (req,res) => {
 });
 
 
-// ── S&P 500 Top Movers (biggest gainers/losers — Starter plan) ───
+// ── Top Stock Biggest Movers ──────────────────────────────
 app.get('/api/voo-movers', async (req,res) => {
   const ck='voo-movers'; const hit=gc(ck); if(hit)return res.json(hit);
   try{
@@ -543,7 +543,7 @@ app.get('/api/voo-movers', async (req,res) => {
       fmpSafe('/biggest-losers'),
     ]);
     const fmt=(list,type)=>arr(list)
-      .filter(s=>s.symbol&&!s.symbol.includes('.')&&s.price>1)
+      .filter(s=>s.symbol&&!s.symbol.includes('.')&&s.price>5&&s.price<100000)
       .slice(0,5)
       .map(s=>({
         ticker:s.symbol,
