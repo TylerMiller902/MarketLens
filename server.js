@@ -542,18 +542,21 @@ app.get('/api/voo-movers', async (req,res) => {
       fmpSafe('/biggest-gainers'),
       fmpSafe('/biggest-losers'),
     ]);
-    const fmt=(list,type)=>arr(list)
-      .filter(s=>s.symbol&&!s.symbol.includes('.')&&s.price>5&&s.price<100000)
-      .slice(0,5)
-      .map(s=>({
-        ticker:s.symbol,
-        name:s.name||s.companyName||s.symbol,
-        price:s.price,
-        change:s.change??0,
-        changePct:s.changesPercentage??s.changePercentage??0,
-        logo:`https://images.financialmodelingprep.com/symbol/${s.symbol}.png`,
-        type,
-      }));
+    const isCompany=s=>{
+      if(!s.symbol||s.symbol.includes('.')||s.price<5)return false;
+      const n=(s.name||s.companyName||'').toLowerCase();
+      const bad=['etf','fund','trust',' 2x',' 3x','ultra','bear','bull','leveraged','inverse',
+                 'proshares','direxion','ishares','vanguard','spdr','invesco','fidelity',
+                 'barclays','wisdomtree','first trust',' lp,',' lp ',' llc'];
+      return !bad.some(w=>n.includes(w));
+    };
+    const fmt=(list,type)=>arr(list).filter(isCompany).slice(0,5).map(s=>({
+      ticker:s.symbol,
+      name:s.name||s.companyName||s.symbol,
+      price:s.price,change:s.change??0,
+      changePct:s.changesPercentage??s.changePercentage??0,
+      logo:`https://images.financialmodelingprep.com/symbol/${s.symbol}.png`,type,
+    }));
     const result=[...fmt(gainers,'gainer'),...fmt(losers,'loser')];
     sc(ck,result,5*60_000); res.json(result);
   }catch(e){res.status(500).json({error:e.message});}
