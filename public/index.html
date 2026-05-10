@@ -257,7 +257,7 @@ button,input{font-family:var(--fb)}
 .peers-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:8px;margin-bottom:.9rem;align-items:stretch}
 @media(max-width:900px){.peers-grid{grid-template-columns:repeat(4,1fr)}}
 @media(max-width:560px){.peers-grid{grid-template-columns:repeat(2,1fr)}}
-.peer-card{background:var(--bg2);border:1px solid var(--b1);border-radius:11px;padding:.75rem;cursor:pointer;transition:border-color .15s;display:flex;flex-direction:column;justify-content:space-between;min-height:130px}
+.peer-card{background:var(--bg2);border:1px solid var(--b1);border-radius:11px;padding:.75rem;cursor:pointer;transition:border-color .15s;display:flex;flex-direction:column;justify-content:space-between;height:130px;overflow:hidden}
 .peer-card:hover{border-color:var(--P)}
 .peer-top{display:flex;align-items:center;gap:7px;margin-bottom:6px}
 .peer-logo{width:28px;height:28px;border-radius:6px;background:var(--bg3);border:1px solid var(--b2);overflow:hidden;position:relative;flex-shrink:0}
@@ -449,7 +449,7 @@ button,input{font-family:var(--fb)}
   <!-- Top Movers Bubble -->
   <div class="movers-wrap" id="movers-wrap">
     <button class="movers-bubble" id="movers-btn">
-      <span class="dot"></span> S&amp;P 500 Top Movers ▾
+      <span class="dot"></span> Top Stock Biggest Movers ▾
     </button>
     <div class="movers-panel" id="movers-panel" style="display:none">
       <div class="movers-header">
@@ -664,47 +664,108 @@ loadMarketOverview();setInterval(loadMarketOverview,30000);
 // ══════════════════════════════════════════════════════════
 //  SEARCH
 // ══════════════════════════════════════════════════════════
+// Local ticker database — instant search, no API needed
+const LOCAL_STOCKS=[
+  ['AAPL','Apple'],['MSFT','Microsoft'],['NVDA','NVIDIA'],['GOOGL','Alphabet'],['AMZN','Amazon'],
+  ['META','Meta Platforms'],['TSLA','Tesla'],['AVGO','Broadcom'],['BRK.B','Berkshire Hathaway B'],
+  ['BRK.A','Berkshire Hathaway A'],['LLY','Eli Lilly'],['V','Visa'],['JPM','JPMorgan Chase'],
+  ['UNH','UnitedHealth Group'],['XOM','Exxon Mobil'],['MA','Mastercard'],['COST','Costco'],
+  ['HD','Home Depot'],['JNJ','Johnson & Johnson'],['ABBV','AbbVie'],['ORCL','Oracle'],
+  ['NFLX','Netflix'],['AMD','Advanced Micro Devices'],['BAC','Bank of America'],['PEP','PepsiCo'],
+  ['KO','Coca-Cola'],['PG','Procter & Gamble'],['WMT','Walmart'],['MRK','Merck'],
+  ['CRM','Salesforce'],['NOW','ServiceNow'],['ACN','Accenture'],['ADBE','Adobe'],
+  ['IBM','IBM'],['QCOM','Qualcomm'],['GE','GE Aerospace'],['CAT','Caterpillar'],
+  ['LOW',"Lowe's"],['DE','Deere & Company'],['UPS','UPS'],['RTX','RTX Corporation'],
+  ['BKNG','Booking Holdings'],['SPGI','S&P Global'],['T','AT&T'],['VZ','Verizon'],
+  ['TMUS','T-Mobile'],['DIS','Disney'],['CMCSA','Comcast'],['UBER','Uber'],
+  ['ABNB','Airbnb'],['SBUX','Starbucks'],['MCD',"McDonald's"],['NKE','Nike'],
+  ['TGT','Target'],['CVX','Chevron'],['COP','ConocoPhillips'],['GS','Goldman Sachs'],
+  ['MS','Morgan Stanley'],['WFC','Wells Fargo'],['C','Citigroup'],
+  ['PFE','Pfizer'],['BMY','Bristol-Myers Squibb'],['AMGN','Amgen'],['GILD','Gilead Sciences'],
+  ['REGN','Regeneron'],['HON','Honeywell'],['MMM','3M'],['BA','Boeing'],
+  ['LMT','Lockheed Martin'],['NOC','Northrop Grumman'],['NEE','NextEra Energy'],
+  ['DUK','Duke Energy'],['AMT','American Tower'],['PLD','Prologis'],['EQIX','Equinix'],
+  ['INTC','Intel'],['MU','Micron Technology'],['AMAT','Applied Materials'],
+  ['LRCX','Lam Research'],['SNOW','Snowflake'],['PLTR','Palantir'],['COIN','Coinbase'],
+  ['PYPL','PayPal'],['HOOD','Robinhood'],['RIVN','Rivian'],['F','Ford Motor'],
+  ['GM','General Motors'],['RBLX','Roblox'],['ZM','Zoom Video'],['DDOG','Datadog'],
+  ['NET','Cloudflare'],['CRWD','CrowdStrike'],['PANW','Palo Alto Networks'],
+  ['MELI','MercadoLibre'],['NVO','Novo Nordisk'],['ASML','ASML Holding'],['TSM','TSMC'],
+  ['BABA','Alibaba'],['TM','Toyota'],['RACE','Ferrari'],['NKE','Nike'],
+  // ETFs
+  ['SPY','SPDR S&P 500 ETF'],['QQQ','Invesco QQQ Nasdaq ETF'],['IVV','iShares S&P 500 ETF'],
+  ['VOO','Vanguard S&P 500 ETF'],['VTI','Vanguard Total Market ETF'],['VGT','Vanguard IT ETF'],
+  ['GLD','SPDR Gold ETF'],['BND','Vanguard Total Bond ETF'],['TLT','iShares 20yr Treasury ETF'],
+  ['IWM','iShares Russell 2000 ETF'],['DIA','SPDR Dow Jones ETF'],['EFA','iShares MSCI EAFE ETF'],
+  ['EEM','iShares MSCI EM ETF'],['VWO','Vanguard EM ETF'],['VNQ','Vanguard REIT ETF'],
+  ['XLF','Financial Select Sector SPDR'],['XLK','Technology Select Sector SPDR'],
+  ['XLE','Energy Select Sector SPDR'],['XLV','Health Care Select Sector SPDR'],
+  ['XLI','Industrial Select Sector SPDR'],['XLC','Communication Services SPDR'],
+  ['XLY','Consumer Discretionary SPDR'],['XLP','Consumer Staples SPDR'],
+  ['ARKK','ARK Innovation ETF'],['SCHD','Schwab US Dividend ETF'],
+  ['VYM','Vanguard High Dividend ETF'],['JEPI','JPMorgan Equity Premium Income ETF'],
+  ['JEPQ','JPMorgan Nasdaq Equity Premium ETF'],['VUG','Vanguard Growth ETF'],
+  ['IBIT','iShares Bitcoin Trust ETF'],['FBTC','Fidelity Bitcoin ETF'],
+  ['AGG','iShares Core Bond ETF'],['SLV','iShares Silver ETF'],
+  ['VTV','Vanguard Value ETF'],['VIG','Vanguard Dividend Appreciation ETF'],
+];
+
+function localSearch(q){
+  const ql=q.toLowerCase();
+  return LOCAL_STOCKS.filter(([s,n])=>
+    s.toLowerCase().startsWith(ql)||n.toLowerCase().startsWith(ql)||n.toLowerCase().includes(ql)
+  ).slice(0,5).map(([s,n])=>({symbol:s,description:n}));
+}
+
+function showSuggestions(items,sugg){
+  sugg.innerHTML=items.map(it=>`
+    <div class="sugg-item" data-sym="${esc(it.symbol)}">
+      <img class="sugg-logo" src="https://images.financialmodelingprep.com/symbol/${esc(it.symbol)}.png" onerror="this.style.display='none'"/>
+      <div class="sugg-info">
+        <span class="sugg-sym">${esc(it.symbol)}</span>
+        <span class="sugg-name">${esc(it.description||it.symbol)}</span>
+      </div>
+      <div class="sugg-right" id="sqr-${esc(it.symbol)}"></div>
+    </div>`).join('');
+  sugg.querySelectorAll('.sugg-item').forEach(el=>el.addEventListener('click',()=>{go(el.dataset.sym);sugg.classList.remove('open');}));
+  sugg.classList.add('open');
+  // Load quotes async
+  items.forEach(it=>{
+    apiFetch(`/api/quote/${it.symbol}`).then(qt=>{
+      const el=document.getElementById(`sqr-${it.symbol}`);
+      if(!el||!qt?.c)return;
+      const up=(qt.dp||0)>=0;
+      el.innerHTML=`<div class="sugg-price">${f$(qt.c)}</div><div class="sugg-chg ${up?'up':'dn'}">${up?'▲':'▼'}${Math.abs(qt.dp||0).toFixed(2)}%</div>`;
+    }).catch(()=>{});
+  });
+}
+
 function setupSearch(inp,sugg){
-  inp.addEventListener('input',()=>{clearTimeout(searchTimer);if(sugg)sugg.classList.remove('open');const q=inp.value.trim();if(!q||!sugg)return;searchTimer=setTimeout(()=>runSearch(q,sugg),200);});
+  inp.addEventListener('input',()=>{
+    clearTimeout(searchTimer);
+    if(sugg)sugg.classList.remove('open');
+    const q=inp.value.trim();
+    if(!q||q.length<1||!sugg)return;
+    // Show local results instantly
+    const local=localSearch(q);
+    if(local.length)showSuggestions(local,sugg);
+    // Then enhance with FMP search after debounce
+    searchTimer=setTimeout(async()=>{
+      try{
+        const d=await apiFetch(`/api/search?q=${encodeURIComponent(q)}`);
+        const fmpItems=(d?.result||[]).filter(r=>r.symbol&&!r.symbol.match(/\.[A-Z]{2,}$/)).slice(0,5);
+        if(!fmpItems.length)return;
+        const localSyms=new Set(local.map(r=>r.symbol));
+        const extra=fmpItems.filter(r=>!localSyms.has(r.symbol));
+        const combined=[...local,...extra].slice(0,5);
+        if(extra.length)showSuggestions(combined,sugg);
+      }catch{}
+    },300);
+  });
   inp.addEventListener('keydown',e=>{if(e.key==='Enter'){const v=inp.value.trim().toUpperCase();if(v)go(v);}if(e.key==='Escape'&&sugg)sugg.classList.remove('open');});
   document.addEventListener('click',e=>{if(sugg&&!inp.contains(e.target)&&!sugg.contains(e.target))sugg.classList.remove('open');});
 }
-async function runSearch(q,sugg){
-  try{
-    const d=await apiFetch(`/api/search?q=${encodeURIComponent(q)}`);
-    const items=(d?.result||[]).filter(r=>r.symbol&&!r.symbol.includes('.')).slice(0,5);
-    if(!items.length){sugg.classList.remove('open');return;}
-
-    // Show suggestions immediately — no waiting for quote fetches
-    sugg.innerHTML=items.map(it=>`
-      <div class="sugg-item" data-sym="${esc(it.symbol)}">
-        <img class="sugg-logo" src="https://images.financialmodelingprep.com/symbol/${esc(it.symbol)}.png" onerror="this.style.display='none'"/>
-        <div class="sugg-info">
-          <span class="sugg-sym">${esc(it.symbol)}</span>
-          <span class="sugg-name">${esc(it.description||it.symbol)}</span>
-        </div>
-        <div class="sugg-right" id="sqr-${esc(it.symbol)}">
-          <span style="font-size:10px;color:var(--di);font-family:var(--fm)">—</span>
-        </div>
-      </div>`).join('');
-
-    sugg.querySelectorAll('.sugg-item').forEach(el=>el.addEventListener('click',()=>{go(el.dataset.sym);sugg.classList.remove('open');}));
-    sugg.classList.add('open');
-
-    // Async: fetch quotes and fill in prices as they arrive
-    items.forEach(it=>{
-      apiFetch(`/api/quote/${it.symbol}`).then(qt=>{
-        const el=document.getElementById(`sqr-${it.symbol}`);
-        if(!el||!qt?.c)return;
-        const up=(qt.dp||0)>=0;
-        el.innerHTML=`<div class="sugg-price">${f$(qt.c)}</div><div class="sugg-chg ${up?'up':'dn'}">${up?'▲':'▼'}${Math.abs(qt.dp||0).toFixed(2)}%</div>`;
-      }).catch(()=>{});
-    });
-  }catch(e){
-    console.error('Search error:',e);
-    if(sugg)sugg.classList.remove('open');
-  }
-}
+async function runSearch(q,sugg){}// kept for compat
 setupSearch($('sinp'),$('home-sugg'));
 setupSearch($('shead-sinp'),$('shead-sugg'));  // ← now has autocomplete
 $('gobtn').addEventListener('click',()=>{const v=$('sinp').value.trim().toUpperCase();if(v)go(v);});
