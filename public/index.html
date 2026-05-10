@@ -106,8 +106,10 @@ button,input{font-family:var(--fb)}
 .movers-header{display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--b1);font-size:11px;font-family:var(--fm);color:var(--di)}
 
 .mover-item{
-  display:flex;
+  display:grid;
+  grid-template-columns:18px 62px 1fr 60px;
   align-items:center;
+  column-gap:10px;
   padding:8px 14px;
   border-bottom:1px solid var(--b1);
   cursor:pointer;
@@ -137,43 +139,47 @@ button,input{font-family:var(--fb)}
   font-size:10px;
   color:var(--di);
   width:18px;
-  flex-shrink:0;
 }
 
 .mover-ticker{
   font-family:var(--fm);
   font-size:12px;
   font-weight:600;
-  width:60px;
-  flex-shrink:0;
+  width:62px;
 }
 
-.mover-ticker.up{color:var(--G)}
-.mover-ticker.dn{color:var(--R)}
+.mover-ticker.up{
+  color:var(--G);
+}
+
+.mover-ticker.dn{
+  color:var(--R);
+}
 
 .mover-name{
   font-size:11px;
   color:var(--mu);
-  flex:1;
-  min-width:0;
   overflow:hidden;
   text-overflow:ellipsis;
   white-space:nowrap;
-  padding-right:10px;
+  min-width:0;
 }
 
 .mover-pct{
   font-family:var(--fm);
   font-size:12px;
   font-weight:600;
-  margin-left:auto;
-  width:58px;
+  width:60px;
   text-align:right;
-  flex-shrink:0;
 }
 
-.mover-pct.up{color:var(--G)}
-.mover-pct.dn{color:var(--R)}
+.mover-pct.up{
+  color:var(--G);
+}
+
+.mover-pct.dn{
+  color:var(--R);
+}
 
 /* CHIPS — customizable with logos and returns */
 .chips-section{width:100%;max-width:720px;margin-bottom:1.8rem}
