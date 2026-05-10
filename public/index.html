@@ -672,27 +672,38 @@ function setupSearch(inp,sugg){
 async function runSearch(q,sugg){
   try{
     const d=await apiFetch(`/api/search?q=${encodeURIComponent(q)}`);
-    const items=(d?.result||[]).filter(r=>r.symbol&&r.description&&!r.symbol.includes('.')).slice(0,5);
+    const items=(d?.result||[]).filter(r=>r.symbol&&!r.symbol.includes('.')).slice(0,5);
     if(!items.length){sugg.classList.remove('open');return;}
-    const quotes=await Promise.allSettled(items.map(it=>apiFetch(`/api/quote/${it.symbol}`)));
-    sugg.innerHTML=items.map((it,i)=>{
-      const q=quotes[i].status==='fulfilled'?quotes[i].value:{};
-      const up=(q.dp||0)>=0;
-      return`<div class="sugg-item" data-sym="${esc(it.symbol)}">
+
+    // Show suggestions immediately — no waiting for quote fetches
+    sugg.innerHTML=items.map(it=>`
+      <div class="sugg-item" data-sym="${esc(it.symbol)}">
         <img class="sugg-logo" src="https://images.financialmodelingprep.com/symbol/${esc(it.symbol)}.png" onerror="this.style.display='none'"/>
         <div class="sugg-info">
           <span class="sugg-sym">${esc(it.symbol)}</span>
-          <span class="sugg-name">${esc(it.description)}</span>
+          <span class="sugg-name">${esc(it.description||it.symbol)}</span>
         </div>
-        ${q.c?`<div class="sugg-right">
-          <div class="sugg-price">${f$(q.c)}</div>
-          <div class="sugg-chg ${up?'up':'dn'}">${up?'▲':'▼'}${Math.abs(q.dp||0).toFixed(2)}%</div>
-        </div>`:''}
-      </div>`;
-    }).join('');
+        <div class="sugg-right" id="sqr-${esc(it.symbol)}">
+          <span style="font-size:10px;color:var(--di);font-family:var(--fm)">—</span>
+        </div>
+      </div>`).join('');
+
     sugg.querySelectorAll('.sugg-item').forEach(el=>el.addEventListener('click',()=>{go(el.dataset.sym);sugg.classList.remove('open');}));
     sugg.classList.add('open');
-  }catch(e){if(sugg)sugg.classList.remove('open');}
+
+    // Async: fetch quotes and fill in prices as they arrive
+    items.forEach(it=>{
+      apiFetch(`/api/quote/${it.symbol}`).then(qt=>{
+        const el=document.getElementById(`sqr-${it.symbol}`);
+        if(!el||!qt?.c)return;
+        const up=(qt.dp||0)>=0;
+        el.innerHTML=`<div class="sugg-price">${f$(qt.c)}</div><div class="sugg-chg ${up?'up':'dn'}">${up?'▲':'▼'}${Math.abs(qt.dp||0).toFixed(2)}%</div>`;
+      }).catch(()=>{});
+    });
+  }catch(e){
+    console.error('Search error:',e);
+    if(sugg)sugg.classList.remove('open');
+  }
 }
 setupSearch($('sinp'),$('home-sugg'));
 setupSearch($('shead-sinp'),$('shead-sugg'));  // ← now has autocomplete
