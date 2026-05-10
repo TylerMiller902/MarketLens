@@ -228,13 +228,27 @@ function transformEtfHoldings(data) {
 // Search
 app.get('/api/search', async (req,res) => {
   const q = req.query.q || '';
+  if(!q) return res.json({result:[]});
   const ck = `search:${q}`; const hit = gc(ck); if(hit) return res.json(hit);
   try {
     const data = await fmp('/search', { query: q, limit: 10 });
-    const result = { result: arr(data).map(r => ({ symbol: r.symbol, description: r.name || r.companyName, type: 'Common Stock', displaySymbol: r.symbol })) };
+    const items = Array.isArray(data) ? data : (data?.result || data?.results || []);
+    const result = {
+      result: items
+        .filter(r => r.symbol)
+        .map(r => ({
+          symbol:      r.symbol,
+          description: r.name || r.companyName || r.description || r.symbol,
+          type:        r.type || 'Stock',
+          displaySymbol: r.symbol,
+        }))
+    };
     sc(ck, result, TTL.search);
     res.json(result);
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) {
+    console.error('Search error:', e.message);
+    res.json({result:[]}); // return empty instead of 500 so frontend handles gracefully
+  }
 });
 
 // Real-time quote
