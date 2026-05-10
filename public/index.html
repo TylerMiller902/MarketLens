@@ -161,18 +161,18 @@ button,input{font-family:var(--fb)}
 .sinp::placeholder{color:var(--di)}
 .gobtn{background:var(--P);border:none;color:#fff;padding:.9rem 1.4rem;border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:var(--fd)}
 .gobtn:hover{opacity:.85}
-.sugg-wrap{position:absolute;top:calc(100%+14px);left:0;right:60px;background:var(--bg3);border:1.5px solid var(--b2);border-radius:12px;overflow:hidden;z-index:200;display:none;box-shadow:0 16px 40px rgba(0,0,0,.7)}
+.sugg-wrap{position:absolute;top:calc(100%+8px);left:0;right:0;background:var(--bg3);border:1.5px solid var(--b2);border-radius:10px;overflow:hidden;z-index:500;display:none;box-shadow:0 12px 32px rgba(0,0,0,.7);min-width:200px}
 .sugg-wrap.open{display:block}
-.sugg-wrap.chip-sugg{right:0;left:0;top:calc(100%+8px);min-width:240px}
-.sugg-item{display:flex;align-items:center;gap:9px;padding:.55rem .9rem;cursor:pointer;border-bottom:1px solid var(--b1);transition:background .12s}
+.sugg-wrap.chip-sugg{min-width:220px}
+.sugg-item{display:flex;align-items:center;gap:8px;padding:.35rem .75rem;cursor:pointer;border-bottom:1px solid var(--b1);transition:background .1s}
 .sugg-item:last-child{border-bottom:none}
 .sugg-item:hover{background:var(--bg4)}
-.sugg-logo{width:26px;height:26px;border-radius:6px;object-fit:contain;flex-shrink:0;background:var(--bg4);padding:3px}
+.sugg-logo{width:20px;height:20px;border-radius:4px;object-fit:contain;flex-shrink:0;background:var(--bg4);padding:2px}
 .sugg-info{flex:1;min-width:0}
-.sugg-sym{font-family:var(--fm);font-size:12px;color:var(--P2);font-weight:600}
-.sugg-name{font-size:11px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
+.sugg-sym{font-family:var(--fm);font-size:11px;color:var(--P2);font-weight:600}
+.sugg-name{font-size:10px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;display:block}
 .sugg-right{text-align:right;flex-shrink:0}
-.sugg-price{font-family:var(--fm);font-size:12px;font-weight:500}
+.sugg-price{font-family:var(--fm);font-size:11px;font-weight:500}
 .sugg-chg{font-size:10px;font-family:var(--fm)}
 .sugg-chg.up{color:var(--G)}.sugg-chg.dn{color:var(--R)}
 
@@ -183,7 +183,7 @@ button,input{font-family:var(--fb)}
 .shead{padding:.75rem 1.2rem;border-bottom:1px solid var(--b1);background:var(--bg2);display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 .backbtn{background:var(--bg3);border:1px solid var(--b2);color:var(--mu);padding:.3rem .75rem;border-radius:8px;cursor:pointer;font-size:12px}
 .backbtn:hover{color:var(--tx);border-color:var(--P)}
-.shead-swrap{position:relative;flex:1;max-width:220px}
+.shead-swrap{position:relative;flex:1;max-width:280px}
 .shead-sinp{width:100%;background:var(--bg3);border:1px solid var(--b2);border-radius:8px;padding:.32rem .75rem .32rem 1.8rem;font-size:12px;color:var(--tx);outline:none}
 .shead-sinp:focus{border-color:var(--P)}
 .shead-sinp::placeholder{color:var(--di)}
@@ -467,19 +467,23 @@ button,input{font-family:var(--fb)}
     <!-- Customizable Chips -->
     <div class="chips-section">
       <div class="chips" id="chips-container"></div>
-      <div style="display:flex;justify-content:center;gap:8px;align-items:center;flex-wrap:wrap;position:relative">
+      <div style="display:flex;justify-content:center;gap:8px;align-items:center;flex-wrap:wrap">
         <button class="chip-add" id="chip-add-btn">＋ Add stock / ETF</button>
-        <div class="chip-input-wrap" id="chip-input-wrap">
-          <input class="chip-inp" id="chip-inp" placeholder="e.g. AAPL" maxlength="10"/>
-          <button class="chip-inp-go" id="chip-inp-go">Add</button>
+        <div style="position:relative">
+          <div class="chip-input-wrap" id="chip-input-wrap">
+            <input class="chip-inp" id="chip-inp" placeholder="e.g. AAPL" maxlength="10"/>
+            <button class="chip-inp-go" id="chip-inp-go">Add</button>
+          </div>
+          <div class="sugg-wrap chip-sugg" id="chip-sugg"></div>
         </div>
-        <div class="sugg-wrap chip-sugg" id="chip-sugg"></div>
       </div>
     </div>
 
     <div class="search-row">
-      <input id="sinp" class="sinp" placeholder="Search any stock or ETF…" autocomplete="off"/>
-      <div class="sugg-wrap" id="home-sugg"></div>
+      <div style="position:relative;flex:1">
+        <input id="sinp" class="sinp" placeholder="Search any stock or ETF…" autocomplete="off"/>
+        <div class="sugg-wrap" id="home-sugg"></div>
+      </div>
       <button class="gobtn" id="gobtn">Analyze →</button>
     </div>
   </div>
@@ -488,10 +492,10 @@ button,input{font-family:var(--fb)}
 <div id="spage">
   <div class="shead">
     <button class="backbtn" id="backbtn">← Home</button>
-    <div class="shead-swrap" style="position:relative;flex:1;max-width:280px">
+    <div class="shead-swrap">
       <span class="shead-sico">⌕</span>
       <input id="shead-sinp" class="shead-sinp" placeholder="Search or switch ticker…" autocomplete="off"/>
-      <div class="sugg-wrap" id="shead-sugg" style="right:0"></div>
+      <div class="sugg-wrap" id="shead-sugg"></div>
     </div>
     <button class="shead-gobtn" id="shead-gobtn">Go</button>
   </div>
