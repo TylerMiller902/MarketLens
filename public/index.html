@@ -328,10 +328,10 @@ button,input{font-family:var(--fb)}
     <div class="fs-controls">
       <div id="fs-perf" class="fs-perf"></div>
       <div id="fs-range-wrap" style="display:flex;gap:4px;flex-wrap:wrap">
-        <button class="fsp-btn" data-r="YTD">YTD</button>
         <button class="fsp-btn" data-r="1M">1M</button>
         <button class="fsp-btn" data-r="3M">3M</button>
         <button class="fsp-btn" data-r="6M">6M</button>
+        <button class="fsp-btn" data-r="YTD">YTD</button>
         <button class="fsp-btn on" data-r="1Y">1Y</button>
         <button class="fsp-btn" data-r="5Y">5Y</button>
         <button class="fsp-btn" data-r="10Y">10Y</button>
@@ -594,7 +594,7 @@ async function loadStock(ticker){
     CurD={...stock,ticker,isETF};CurFMP=fmpFin;CurInsiders=insiders;
     const m=stock?.metrics?.metric||{},price=stock?.quote?.c;
     const hasFMPPrices=fmpPrices&&Object.values(fmpPrices).some(r=>r?.prices?.length>2);
-    if(hasFMPPrices){CurPH={};CurDates={};for(const r of['YTD','1M','3M','6M','1Y','5Y','10Y','All']){CurPH[r]=fmpPrices[r]?.prices||[];CurDates[r]=fmpPrices[r]?.dates||[];}CurD.priceDataSource='live';}
+    if(hasFMPPrices){CurPH={};CurDates={};for(const r of['1M','3M','6M','YTD','1Y','5Y','10Y','All']){CurPH[r]=fmpPrices[r]?.prices||[];CurDates[r]=fmpPrices[r]?.dates||[];}CurD.priceDataSource='live';}
     else{const gen=generatePriceHistory(price,m['52WeekHigh'],m['52WeekLow'],m.beta);CurPH=gen.prices;CurDates=gen.dates;CurD.priceDataSource='estimated';}
     renderPage();loadPeers(ticker);
   }catch(e){$('scontent').innerHTML=`<div class="not-found"><h3>Could not load ${esc(ticker)}</h3><p>${e.message}</p></div>`;}
@@ -631,7 +631,7 @@ function renderPage(){
   const hasDividend=CurFMP?.dividendPerShare?.some(x=>x>0);
   const hasDivYield=CurFMP?.dividendYieldPct?.some(x=>x&&x>0);
   const hasInsiders=CurInsiders?.transactions?.length>0;
-  const ALL_RANGES=['YTD','1M','3M','6M','1Y','5Y','10Y','All'];
+  const ALL_RANGES=['1M','3M','6M','YTD','1Y','5Y','10Y','All'];
   const stats=isETF?[{l:'Market Cap',v:fB((p?.marketCapitalization||0)*1e6)},{l:'52W High',v:f$(w52h)},{l:'52W Low',v:f$(w52l)},{l:'Beta',v:fN(m.beta)},{l:'P/E Ratio',v:fN(m.peBasicExclExtraTTM)},{l:'EPS (TTM)',v:f$(m.epsTTM)},{l:'Dividend Yield',v:m.dividendYieldIndicatedAnnual!=null?fP(m.dividendYieldIndicatedAnnual):'—'},{l:'Div Per Share',v:m.dividendPerShareAnnual!=null?f$(m.dividendPerShareAnnual):'—'},{l:'Gross Margin',v:fP(m.grossMarginTTM)},{l:'Net Margin',v:fP(m.netProfitMarginTTM)},{l:'ROE',v:fP(m.roeTTM)},{l:'Exchange',v:p?.exchange||'—'}]:[{l:'Market Cap',v:fB((p?.marketCapitalization||0)*1e6)},{l:'P/E Ratio',v:fN(m.peBasicExclExtraTTM)},{l:'EPS (TTM)',v:f$(m.epsTTM)},{l:'P/S Ratio',v:fN(m.psTTM)},{l:'Dividend Yield',v:m.dividendYieldIndicatedAnnual!=null?fP(m.dividendYieldIndicatedAnnual):'—'},{l:'Div Per Share (Ann)',v:m.dividendPerShareAnnual!=null?f$(m.dividendPerShareAnnual):'—'},{l:'Beta',v:fN(m.beta)},{l:'Current Ratio',v:fN(m.currentRatioAnnual)},{l:'Gross Margin',v:fP(m.grossMarginTTM)},{l:'Net Margin',v:fP(m.netProfitMarginTTM)},{l:'ROE',v:fP(m.roeTTM)},{l:'ROA',v:fP(m.roaTTM)}];
 
   $('scontent').innerHTML=`
@@ -646,18 +646,10 @@ function renderPage(){
         </div>
         <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
           <div id="pcperf" class="pcperf"></div>
-          <button class="rsi-toggle" id="rsi-toggle">RSI</button>
           <div class="ranges">${ALL_RANGES.map(r=>`<button class="rbtn${r==='1Y'?' on':''}" data-r="${r}">${r}</button>`).join('')}</div>
         </div>
       </div>
       <div class="cwrap"><canvas id="pc"></canvas></div>
-      <div class="rsi-section" id="rsi-section">
-        <div class="rsi-header">
-          <span class="rsi-lbl">RSI (14)</span>
-          <span class="rsi-val" id="rsi-cur">—</span>
-        </div>
-        <div class="rsi-wrap"><canvas id="rsi-canvas"></canvas></div>
-      </div>
     </div>
 
     <div class="stitle-sm">${isETF?'ETF Statistics':'Key Statistics'} <span class="badge live">Live &middot; FMP</span></div>
@@ -687,7 +679,9 @@ function renderPage(){
       <div class="card" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;flex-wrap:wrap;gap:6px"><div><div class="cctitle">All Margins Over Time</div><div class="ccsub">Gross / Operating / Net / FCF</div></div><div style="display:flex;gap:12px;flex-wrap:wrap"><span style="font-size:10px;font-family:var(--fm);color:${G}">— Gross <span id="v-gm">—</span></span><span style="font-size:10px;font-family:var(--fm);color:${B}">— Oper <span id="v-om">—</span></span><span style="font-size:10px;font-family:var(--fm);color:${P}">— Net <span id="v-nm">—</span></span><span style="font-size:10px;font-family:var(--fm);color:#60a5fa">— FCF <span id="v-fm">—</span></span></div></div><div class="canv" style="height:220px"><canvas id="ch-mg"></canvas></div></div>
       <div class="stitle-sm" style="margin-top:.8rem">Earnings Per Share</div>
       <div class="c2">${ccard('EPS History','Diluted EPS','s-eps','ch-eps')}${ccard('EPS Growth YoY','% change','s-epsg','ch-epsg')}</div>
-      ${hasDividend||hasDivYield?`<div class="stitle-sm" style="margin-top:.8rem">Dividend</div><div class="c2">${ccard('Dividend Per Share','Annual payout per share','s-div','ch-div')}${hasDivYield?ccard('Dividend Yield History','Annual yield %','s-dyh','ch-dyh'):''}${ccard('Dividend Growth YoY','% change','s-divg','ch-divg')}</div>`:''}
+      ${hasDividend||hasDivYield?`<div class="stitle-sm" style="margin-top:.8rem">Dividend</div><div class="c2">${ccard('Dividend Per Share','Annual payout per share','s-div','ch-div')}${ccard('Dividend Yield History','Annual yield % over time','s-dyh','ch-dyh')}${ccard('Dividend Growth YoY','% change','s-divg','ch-divg')}</div>`:''}
+      <div class="stitle-sm" style="margin-top:.8rem">Technical</div>
+      <div class="c2">${ccard('RSI (14) — 1 Year','Relative Strength Index &middot; 70 overbought &middot; 30 oversold','s-rsi','ch-rsi')}</div>
       <div class="stitle-sm" style="margin-top:.8rem">Balance Sheet</div>
       <div class="c2">${ccard('Debt vs Equity','Grouped bars','s-deq','ch-deq')}${ccard('Net Income vs FCF','Earnings quality','s-ni','ch-ni')}</div>
       <div class="stitle-sm" style="margin-top:.8rem">Valuation History</div>
@@ -703,10 +697,8 @@ function renderPage(){
   $('scontent').querySelectorAll('.rbtn').forEach(btn=>{btn.addEventListener('click',e=>{e.stopPropagation();$('scontent').querySelectorAll('.rbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');drawPrice(btn.dataset.r);});});
   $('scontent').querySelectorAll('.ftab').forEach(btn=>{btn.addEventListener('click',()=>{$('scontent').querySelectorAll('.ftab').forEach(b=>b.classList.remove('on'));btn.classList.add('on');['inc','bal','cf'].forEach(t=>{const el=$('fin-'+t);if(el)el.style.display=t===btn.dataset.tab?'':'none';});});});
   $('scontent').querySelectorAll('.gpbtn').forEach(btn=>{btn.addEventListener('click',()=>{$('scontent').querySelectorAll('.gpbtn').forEach(b=>b.classList.remove('on'));btn.classList.add('on');CurGP=+btn.dataset.gp;drawFinCharts();});});
-  const pc=$('price-card');if(pc)pc.addEventListener('click',e=>{if(!e.target.closest('.rbtn')&&!e.target.closest('.rsi-toggle'))openPriceFS(CurPR);});
+  const pc=$('price-card');if(pc)pc.addEventListener('click',e=>{if(!e.target.closest('.rbtn'))openPriceFS(CurPR);});
   $('scontent').addEventListener('click',e=>{const card=e.target.closest('.ccard');if(!card)return;const canvId=card.dataset.canv,title=card.querySelector('.cctitle')?.textContent?.trim()||'',sub=card.querySelector('.ccsub')?.textContent?.trim()||'';if(canvId&&Charts[canvId])openChartFS(canvId,title,sub);});
-  // RSI toggle
-  const rsiToggle=$('rsi-toggle');if(rsiToggle)rsiToggle.addEventListener('click',e=>{e.stopPropagation();const sec=$('rsi-section');if(!sec)return;const on=sec.classList.toggle('open');rsiToggle.classList.toggle('on',on);if(on)drawRSI(CurPR);});
   drawPrice('1Y');
   if(earns.length)drawEarnCharts(earns);
   if(hasFMP)drawFinCharts();
@@ -815,9 +807,33 @@ function drawFinCharts(){
     mk('ch-div','bar',{labels:Y,datasets:[{label:'Div',...bO(B),data:div}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${Number(c.raw).toFixed(2)}`}}},scales:{x:xA,y:yA(v=>`$${Number(v).toFixed(2)}`)}});
     mk('ch-divg','bar',{labels:Y,datasets:[{label:'Growth',data:divG,borderRadius:3,borderSkipped:false,backgroundColor:divG.map(v=>rgba(v!=null&&v>=0?G:R,.75))}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw!=null?Number(c.raw).toFixed(2):'—'}%`}}},scales:{x:xA,y:yA(v=>`${Number(v).toFixed(2)}%`)}});
   }
-  // Dividend Yield History
-  if(dyhData.d.some(x=>x&&x>0)){
-    mk('ch-dyh','line',{labels:dyhData.y,datasets:[lnFill('Div Yield',dyhData.d,G)]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${Number(c.raw).toFixed(2)}%`}}},scales:{x:xA,y:yA(v=>`${Number(v).toFixed(2)}%`)}});
+  // Dividend Yield History — always try to render if any data present
+  const dyhDataFiltered=dyhData.d.filter(x=>x!=null&&x>0);
+  if(dyhDataFiltered.length>0){
+    setStat('s-dyh',`${(dyhData.d.filter(x=>x!=null).slice(-1)[0]||0).toFixed(2)}%`,'current yield','neu');
+    mk('ch-dyh','line',{labels:dyhData.y,datasets:[lnFill('Div Yield',dyhData.d,G)]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${Number(c.raw||0).toFixed(2)}%`}}},scales:{x:xA,y:yA(v=>`${Number(v).toFixed(2)}%`)}});
+  } else {
+    // Show placeholder if no yield data
+    const el=$('ch-dyh');if(el){const p=el.closest('.ccard');if(p)p.querySelector('.ccsub').textContent='No dividend yield data available';}
+  }
+  // RSI (14) — calculated from 1Y price data
+  const rsiPrices=CurPH?.['1Y']||CurPH?.['6M']||[];
+  const rsiDates=CurDates?.['1Y']||CurDates?.['6M']||[];
+  setStat('s-rsi','RSI (14)','1-year daily data','neu');
+  if(rsiPrices.length>14){
+    const rsiVals=calcRSI(rsiPrices,14);
+    const curRSI=rsiVals.filter(x=>x!=null).slice(-1)[0];
+    if(curRSI!=null){
+      const cls=curRSI>=70?'Overbought':curRSI<=30?'Oversold':'Neutral';
+      setStat('s-rsi',`${curRSI.toFixed(1)}`,cls,curRSI>=70?'neg':curRSI<=30?'pos':'neu');
+    }
+    const step=Math.max(1,Math.floor(rsiDates.length/12));
+    const rsiLabels=rsiDates.map((d,i)=>i%step===0?d.slice(0,7):'');
+    mk('ch-rsi','line',{labels:rsiLabels,datasets:[
+      {label:'RSI',data:rsiVals,borderColor:P,borderWidth:1.5,pointRadius:0,tension:.3,fill:false},
+      {data:rsiVals.map(()=>70),borderColor:rgba(R,.45),borderWidth:1,borderDash:[5,4],pointRadius:0,fill:false,label:'OB'},
+      {data:rsiVals.map(()=>30),borderColor:rgba(G,.45),borderWidth:1,borderDash:[5,4],pointRadius:0,fill:false,label:'OS'},
+    ]},{plugins:{legend:{display:false},tooltip:{callbacks:{title:ctx=>{const idx=ctx[0]?.dataIndex;return rsiDates[idx]||'';},label:ctx=>ctx.datasetIndex===0?`RSI: ${Number(ctx.raw).toFixed(1)}`:null,filter:i=>i.datasetIndex===0}}},scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:8},maxRotation:0,autoSkip:true}},y:{min:0,max:100,grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:9},callback:v=>`${v}`}}}});
   }
   mk('ch-deq','bar',{labels:Y,datasets:[{label:'Debt',...bO(R),data:debt},{label:'Equity',...bO(G),data:eq}]},{plugins:{legend:{display:true,labels:{color:'#7e7e96',boxWidth:9,font:{size:9}}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: $${Number(c.raw).toFixed(2)}B`}}},scales:{x:xA,y:yA(v=>`$${Number(v).toFixed(0)}B`)}});
   mk('ch-ni','bar',{labels:Y,datasets:[{label:'Net Income',...bO(P),data:ni},{label:'Free CF',...bO(B),data:fcf}]},{plugins:{legend:{display:true,labels:{color:'#7e7e96',boxWidth:9,font:{size:9}}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: $${Number(c.raw).toFixed(2)}B`}}},scales:{x:xA,y:yA(v=>`$${Number(v).toFixed(0)}B`)}});
