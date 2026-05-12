@@ -437,7 +437,13 @@ app.get('/api/fmp/financials/:symbol', async (req,res) => {
       kmYears:  km.map(k => k.calendarYear || k.date?.slice(0,4) || ''),
       peRatio:  km.map(getPE),
       roic:     km.map(getROIC),
-      dividendYieldPct: km.map(k => k.dividendYield != null && k.dividendYield > 0 ? +(k.dividendYield * 100).toFixed(4) : null),
+      dividendYieldPct: km.map(k => {
+        // FMP uses different field names across plan tiers
+        const dy = k.dividendYield ?? k.dividendYieldTTM ?? k.dividendYieldPercentageTTM ?? null;
+        if(dy == null || dy === 0) return null;
+        // Values >1 are already in %, values <1 are decimals — normalise to %
+        return +(Math.abs(dy) < 1 ? dy * 100 : dy).toFixed(4);
+      }),
       tableYears:  income.slice(0,4).reverse().map(i => i.calendarYear || i.date?.slice(0,4)),
       tableIncome: [
         { l:'Revenue',          vals: income.slice(0,4).reverse().map(i => `$${((i.revenue||0)/1e9).toFixed(2)}B`) },
@@ -468,11 +474,12 @@ app.get('/api/fmp/financials/:symbol', async (req,res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// Price history — YTD, 1M, 3M, 6M, 1Y, 5Y, 10Y, All
+// Price history — full history + YTD, 1M, 3M, 6M, 1Y, 5Y, 10Y, All
 app.get('/api/fmp/prices/:symbol', async (req,res) => {
   const { symbol } = req.params; const ck = `fmp-prices:${symbol}`; const hit = gc(ck); if(hit) return res.json(hit);
   try {
-    const data = await fmp('/historical-price-eod/light', { symbol });
+    // fetch=all by using from=1990 and a high limit — upgraded plan gives full history
+    const data = await fmp('/historical-price-eod/light', { symbol, from: '1990-01-01', limit: 10000 });
     const historical = Array.isArray(data) ? data : [];
     if (!historical.length) return res.json({});
     const now = Date.now();
@@ -483,14 +490,14 @@ app.get('/api/fmp/prices/:symbol', async (req,res) => {
       return { prices: filtered.map(d => +(d.price||d.close||0).toFixed(2)), dates: filtered.map(d => d.date) };
     };
     const ph = {
-      'YTD': mkRange(ytdCutoff),
       '1M':  mkRange(dAgoStr(30)),
       '3M':  mkRange(dAgoStr(90)),
       '6M':  mkRange(dAgoStr(180)),
+      'YTD': mkRange(ytdCutoff),
       '1Y':  mkRange(dAgoStr(365)),
       '5Y':  mkRange(dAgoStr(1825)),
       '10Y': mkRange(dAgoStr(3650)),
-      'All': mkRange('1900-01-01'),
+      'All': mkRange('1990-01-01'),
     };
     sc(ck, ph, TTL.fmpPrice);
     res.json(ph);
