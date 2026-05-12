@@ -575,7 +575,41 @@ $('shead-gobtn').addEventListener('click',()=>{const v=$('shead-sinp').value.tri
 
 // ── API / Nav ───────────────────────────────────────────
 async function apiFetch(path){const r=await fetch(`${API}${path}`);if(!r.ok)throw new Error(`${r.status}`);return r.json();}
-function go(ticker){$('home').classList.add('gone');$('spage').classList.add('on');$('shead-sinp').value='';$('home-sugg').classList.remove('open');window.scrollTo(0,0);destroyAll();CurPR='1Y';CurGP=10;loadStock(ticker.toUpperCase());}
+async function go(query){
+  const raw=(query||'').trim();if(!raw)return;
+  const upper=raw.toUpperCase();
+  // Looks like a ticker: ≤6 chars, only letters/digits/dots/hyphens
+  if(/^[A-Z0-9.\-]{1,6}$/.test(upper)){navigateToStock(upper);return;}
+  // Otherwise treat as a company name — search first
+  $('home').classList.add('gone');$('spage').classList.add('on');
+  $('shead-sinp').value='';$('home-sugg').classList.remove('open');
+  window.scrollTo(0,0);destroyAll();CurPR='1Y';CurGP=10;
+  $('scontent').innerHTML=`<div class="loading-wrap"><div class="loading-ring"></div><div class="loading-txt">Searching for "${esc(raw)}"&hellip;</div></div>`;
+  try{
+    // Check local DB first
+    const localHit=LOCAL_STOCKS.find(([s,n])=>n.toLowerCase()===raw.toLowerCase()||s===upper);
+    if(localHit){loadStock(localHit[0]);return;}
+    const d=await apiFetch(`/api/search?q=${encodeURIComponent(raw)}`);
+    const results=(d?.result||[]).filter(r=>r.symbol&&!r.symbol.match(/\.[A-Z]{2,}$/));
+    if(results.length>0){loadStock(results[0].symbol.toUpperCase());return;}
+    // Nothing found
+    $('scontent').innerHTML=`<div class="not-found">
+      <h3>No results for &ldquo;${esc(raw)}&rdquo;</h3>
+      <p style="margin-top:.5rem">Try a ticker symbol like <strong>AAPL</strong>, <strong>MSFT</strong>, or <strong>SPY</strong>, or search from the bar below.</p>
+      <div style="margin-top:1.5rem;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
+        <input id="nf-inp" class="sinp" style="max-width:260px;padding:.6rem .9rem;font-size:.85rem" placeholder="Try another search&hellip;" autocomplete="off"/>
+        <button class="gobtn" style="padding:.6rem 1rem;font-size:.85rem" onclick="go($('nf-inp').value)">Search</button>
+      </div>
+    </div>`;
+    const nfInp=$('nf-inp');if(nfInp){nfInp.focus();nfInp.addEventListener('keydown',e=>{if(e.key==='Enter')go(nfInp.value);});}
+  }catch{navigateToStock(upper);}
+}
+function navigateToStock(ticker){
+  $('home').classList.add('gone');$('spage').classList.add('on');
+  $('shead-sinp').value='';$('home-sugg').classList.remove('open');
+  window.scrollTo(0,0);destroyAll();CurPR='1Y';CurGP=10;
+  loadStock(ticker);
+}
 function goHome(){$('home').classList.remove('gone');$('spage').classList.remove('on');window.scrollTo(0,0);destroyAll();}
 function destroyAll(){[PriceChart,RSIChart,EarnLineChart,EarnBarChart,FSChart,...Object.values(Charts)].forEach(c=>{try{if(c)c.destroy();}catch{}});PriceChart=RSIChart=EarnLineChart=EarnBarChart=FSChart=null;Charts={};}
 
@@ -722,7 +756,7 @@ function drawPrice(r){
   const step=Math.max(1,Math.floor(rawDates.length/(maxL[r]||10)));
   const labels=rawDates.map((d,i)=>i%step===0?formatDateLabel(d,r):'');
   const isUp=prices[prices.length-1]>=prices[0],color=isUp?G:R;
-  PriceChart=new Chart(canvas,{type:'line',data:{labels,datasets:[{data:prices,borderColor:color,borderWidth:2,fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,260);g.addColorStop(0,rgba(color,.15));g.addColorStop(1,rgba(color,0));return g;},pointRadius:0,tension:.35}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:350},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{title:ctx=>{const idx=ctx[0]?.dataIndex;return rawDates[idx]||'';},label:ctx=>`$${Number(ctx.raw).toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:9},maxRotation:0,autoSkip:false}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:10},callback:v=>`$${Number(v).toFixed(2)}`}}}}});
+  PriceChart=new Chart(canvas,{type:'line',data:{labels,datasets:[{data:prices,borderColor:color,borderWidth:2,fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,260);g.addColorStop(0,rgba(color,.15));g.addColorStop(1,rgba(color,0));return g;},pointRadius:0,tension:.35}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:350},layout:{padding:{right:24,left:4}},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{title:ctx=>{const idx=ctx[0]?.dataIndex;return rawDates[idx]||'';},label:ctx=>`$${Number(ctx.raw).toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:9},maxRotation:0,autoSkip:false}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:10},callback:v=>`$${Number(v).toFixed(2)}`}}}}});
   const diff=prices[prices.length-1]-prices[0],pct=diff/prices[0]*100,up=diff>=0;
   const el=$('pcperf');if(el){el.className=`pcperf ${up?'up':'dn'}`;el.textContent=`${up?'▲':'▼'} ${up?'+':''}$${Math.abs(diff).toFixed(2)} (${up?'+':''}${pct.toFixed(2)}%)`;}
   // Redraw RSI if open
@@ -772,6 +806,18 @@ function drawFinCharts(){
   const gm=sl(f.grossMargin),om=sl(f.operatingMargin),nm=sl(f.netMargin),fm=sl(f.fcfMargin);
   const shares=sl(f.sharesOutstanding),netDebt=sl(f.netDebt);
   const peData=slKM(f.peRatio),roicData=slKM(f.roic),dyhData=slKM(f.dividendYieldPct||[]);
+  // Fallback: if FMP didn't return dividendYield, approximate from DPS ÷ (P/E × EPS)
+  if(!dyhData.d.some(x=>x!=null&&x>0)&&div.some(x=>x>0)){
+    const altY=Y.map((_,i)=>{
+      const dps=div[i];if(!dps||dps<=0)return null;
+      const yr=Y[i];const pi=peData.y.indexOf(yr);const pe=pi>=0?peData.d[pi]:null;
+      const ep=eps[i];
+      if(!pe||pe<=0||!ep||Math.abs(ep)<0.01)return null;
+      const approxPrice=pe*Math.abs(ep);
+      return approxPrice>0?+(dps/approxPrice*100).toFixed(4):null;
+    });
+    if(altY.some(x=>x!=null&&x>0)){dyhData.y=Y;dyhData.d=altY;}
+  }
   const revG=pctG(rev),epsG=pctG(eps),divG=pctG(div);
   const lr=last(rev),lrg=last(revG),lf=last(fcf),le=last(eps),leg=last(epsG);
   if(lr!=null)setStat('s-rv',`$${lr.toFixed(2)}B`,lrg!=null?`${sgn(lrg)}${lrg.toFixed(2)}% YoY`:'—',lrg>0?'pos':'neg');
@@ -807,14 +853,14 @@ function drawFinCharts(){
     mk('ch-div','bar',{labels:Y,datasets:[{label:'Div',...bO(B),data:div}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${Number(c.raw).toFixed(2)}`}}},scales:{x:xA,y:yA(v=>`$${Number(v).toFixed(2)}`)}});
     mk('ch-divg','bar',{labels:Y,datasets:[{label:'Growth',data:divG,borderRadius:3,borderSkipped:false,backgroundColor:divG.map(v=>rgba(v!=null&&v>=0?G:R,.75))}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw!=null?Number(c.raw).toFixed(2):'—'}%`}}},scales:{x:xA,y:yA(v=>`${Number(v).toFixed(2)}%`)}});
   }
-  // Dividend Yield History — always try to render if any data present
-  const dyhDataFiltered=dyhData.d.filter(x=>x!=null&&x>0);
-  if(dyhDataFiltered.length>0){
-    setStat('s-dyh',`${(dyhData.d.filter(x=>x!=null).slice(-1)[0]||0).toFixed(2)}%`,'current yield','neu');
-    mk('ch-dyh','line',{labels:dyhData.y,datasets:[lnFill('Div Yield',dyhData.d,G)]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${Number(c.raw||0).toFixed(2)}%`}}},scales:{x:xA,y:yA(v=>`${Number(v).toFixed(2)}%`)}});
+  // Dividend Yield History
+  const dyhFilt=dyhData.d.filter(x=>x!=null&&x>0);
+  if(dyhFilt.length>0){
+    const latestYield=dyhData.d.filter(x=>x!=null).slice(-1)[0]||0;
+    setStat('s-dyh',`${latestYield.toFixed(2)}%`,'current yield','neu');
+    mk('ch-dyh','line',{labels:dyhData.y,datasets:[lnFill('Div Yield',dyhData.d,G)]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${Number(c.raw||0).toFixed(2)}%`}}},scales:{x:xA,y:{...yA(v=>`${Number(v).toFixed(2)}%`),min:0}}});
   } else {
-    // Show placeholder if no yield data
-    const el=$('ch-dyh');if(el){const p=el.closest('.ccard');if(p)p.querySelector('.ccsub').textContent='No dividend yield data available';}
+    setStat('s-dyh','N/A','Not available from data','neu');
   }
   // RSI (14) — calculated from 1Y price data
   const rsiPrices=CurPH?.['1Y']||CurPH?.['6M']||[];
