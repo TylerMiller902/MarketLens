@@ -396,10 +396,10 @@ app.get('/api/fmp/financials/:symbol', async (req,res) => {
   const { symbol } = req.params; const ck = `fmp-fin:${symbol}`; const hit = gc(ck); if(hit) return res.json(hit);
   try {
     const [income, balance, cashflow, keyMetrics] = await Promise.all([
-      fmp('/income-statement',       { symbol, period: 'annual', limit: 10 }),
-      fmp('/balance-sheet-statement',{ symbol, period: 'annual', limit: 10 }),
-      fmp('/cash-flow-statement',    { symbol, period: 'annual', limit: 10 }),
-      fmpSafe('/key-metrics',        { symbol, period: 'annual', limit: 10 }),
+      fmp('/income-statement',       { symbol, period: 'annual', limit: 25 }),
+      fmp('/balance-sheet-statement',{ symbol, period: 'annual', limit: 25 }),
+      fmp('/cash-flow-statement',    { symbol, period: 'annual', limit: 25 }),
+      fmpSafe('/key-metrics',        { symbol, period: 'annual', limit: 25 }),
     ]);
 
     if (!Array.isArray(income) || !income.length) return res.json(null);
@@ -437,6 +437,7 @@ app.get('/api/fmp/financials/:symbol', async (req,res) => {
       kmYears:  km.map(k => k.calendarYear || k.date?.slice(0,4) || ''),
       peRatio:  km.map(getPE),
       roic:     km.map(getROIC),
+      dividendYieldPct: km.map(k => k.dividendYield != null && k.dividendYield > 0 ? +(k.dividendYield * 100).toFixed(4) : null),
       tableYears:  income.slice(0,4).reverse().map(i => i.calendarYear || i.date?.slice(0,4)),
       tableIncome: [
         { l:'Revenue',          vals: income.slice(0,4).reverse().map(i => `$${((i.revenue||0)/1e9).toFixed(2)}B`) },
@@ -467,7 +468,7 @@ app.get('/api/fmp/financials/:symbol', async (req,res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
-// Price history
+// Price history — YTD, 1M, 3M, 6M, 1Y, 5Y, 10Y, All
 app.get('/api/fmp/prices/:symbol', async (req,res) => {
   const { symbol } = req.params; const ck = `fmp-prices:${symbol}`; const hit = gc(ck); if(hit) return res.json(hit);
   try {
@@ -475,12 +476,22 @@ app.get('/api/fmp/prices/:symbol', async (req,res) => {
     const historical = Array.isArray(data) ? data : [];
     if (!historical.length) return res.json({});
     const now = Date.now();
-    const getRange = days => {
-      const cutoff = new Date(now - days * 86_400_000).toISOString().slice(0,10);
+    const ytdCutoff = `${new Date().getFullYear()}-01-01`;
+    const dAgoStr = n => new Date(now - n*86_400_000).toISOString().slice(0,10);
+    const mkRange = cutoff => {
       const filtered = historical.filter(d => d.date >= cutoff).reverse();
       return { prices: filtered.map(d => +(d.price||d.close||0).toFixed(2)), dates: filtered.map(d => d.date) };
     };
-    const ph = { '1M':getRange(30), '3M':getRange(90), '6M':getRange(180), '1Y':getRange(365), '5Y':getRange(1825) };
+    const ph = {
+      'YTD': mkRange(ytdCutoff),
+      '1M':  mkRange(dAgoStr(30)),
+      '3M':  mkRange(dAgoStr(90)),
+      '6M':  mkRange(dAgoStr(180)),
+      '1Y':  mkRange(dAgoStr(365)),
+      '5Y':  mkRange(dAgoStr(1825)),
+      '10Y': mkRange(dAgoStr(3650)),
+      'All': mkRange('1900-01-01'),
+    };
     sc(ck, ph, TTL.fmpPrice);
     res.json(ph);
   } catch(e) { res.status(500).json({ error: e.message }); }
