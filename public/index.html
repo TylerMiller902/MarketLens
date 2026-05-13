@@ -880,38 +880,28 @@ function drawFinCharts(){
   const div=sl(f.dividendPerShare),debt=sl(f.totalDebt),eq=sl(f.totalEquity);
   const gm=sl(f.grossMargin),om=sl(f.operatingMargin),nm=sl(f.netMargin),fm=sl(f.fcfMargin);
   const shares=sl(f.sharesOutstanding),netDebt=sl(f.netDebt);
-  // ── Dividend Yield History ────────────────────────────────
-  // Build year→price map from the longest available price history
+  // Pre-build dividend yield data (chart drawn later after mk is defined)
   const allPH=CurPH?.['All']||CurPH?.['10Y']||CurPH?.['5Y']||[];
   const allPD=CurDates?.['All']||CurDates?.['10Y']||CurDates?.['5Y']||[];
   const yearPrice={};
   allPD.forEach((d,i)=>{if(d&&allPH[i])yearPrice[d.slice(0,4)]=allPH[i];});
-
   let dyhY=[],dyhD=[];
   if(CurDivHistory?.years?.length>0){
-    // Use dedicated dividend endpoint data (most reliable)
     CurDivHistory.years.forEach((yr,i)=>{
-      const annualDiv=CurDivHistory.dividends[i];
-      if(!annualDiv||annualDiv<=0)return;
-      const price=yearPrice[yr];
-      if(price&&price>0){dyhY.push(yr);dyhD.push(+(annualDiv/price*100).toFixed(4));}
+      const annualDiv=CurDivHistory.dividends[i];if(!annualDiv||annualDiv<=0)return;
+      const price=yearPrice[yr];if(price&&price>0){dyhY.push(yr);dyhD.push(+(annualDiv/price*100).toFixed(4));}
     });
   }
-  // Secondary fallback: dividendPerShare from cashflow + prices
   if(!dyhD.length&&div.some(x=>x>0)){
     Y.forEach((yr,i)=>{
       const dps=div[i];if(!dps||dps<=0)return;
-      const price=yearPrice[yr];
-      if(price&&price>0){dyhY.push(yr);dyhD.push(+(dps/price*100).toFixed(4));}
+      const price=yearPrice[yr];if(price&&price>0){dyhY.push(yr);dyhD.push(+(dps/price*100).toFixed(4));}
     });
   }
-  if(dyhY.length>0){
-    const latest=dyhD.slice(-1)[0]||0;
-    setStat('s-dyh',`${latest.toFixed(2)}%`,'dividend yield','neu');
-    mk('ch-dyh','line',{labels:dyhY,datasets:[lnFill('Div Yield',dyhD,G)]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${Number(c.raw||0).toFixed(2)}%`}}},scales:{x:xA,y:{...yA(v=>`${Number(v).toFixed(2)}%`),min:0}}});
-  } else {
-    setStat('s-dyh','N/A','No yield data','neu');
-  }
+  // Set stat label now (chart drawn after mk is defined below)
+  if(dyhY.length>0)setStat('s-dyh',`${(dyhD.slice(-1)[0]||0).toFixed(2)}%`,'dividend yield','neu');
+  else setStat('s-dyh','N/A','No yield data','neu');
+
   const revG=pctG(rev),epsG=pctG(eps),divG=pctG(div);
   const lr=last(rev),lrg=last(revG),lf=last(fcf),le=last(eps),leg=last(epsG);
   if(lr!=null)setStat('s-rv',`$${lr.toFixed(2)}B`,lrg!=null?`${sgn(lrg)}${lrg.toFixed(2)}% YoY`:'—',lrg>0?'pos':'neg');
@@ -936,6 +926,8 @@ function drawFinCharts(){
   const lnOnly=(lb,data,c)=>({label:lb,data,borderColor:c,borderWidth:2,pointRadius:2,pointBackgroundColor:c,pointHoverRadius:4,tension:.35,fill:false});
   const xA={grid:{display:false},ticks:{color:'#7e7e96',font:{size:9}}},yA=fmt=>({grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:9},callback:fmt}}),base={responsive:true,maintainAspectRatio:false,animation:{duration:450}};
   const mk=(id,type,data,opts)=>{const el=$(id);if(!el)return;const c=new Chart(el,{type,data,options:{...base,...opts}});Charts[id]=c;};
+  // ── Dividend Yield History (drawn here so mk/lnFill/xA/yA are available) ──
+  if(dyhY.length>0)mk('ch-dyh','line',{labels:dyhY,datasets:[lnFill('Div Yield',dyhD,G)]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${Number(c.raw||0).toFixed(2)}%`}}},scales:{x:xA,y:{...yA(v=>`${Number(v).toFixed(2)}%`),min:0}}});
   mk('ch-rev','bar',{labels:Y,datasets:[{label:'Revenue',...bO(P),data:rev}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${Number(c.raw).toFixed(2)}B`}}},scales:{x:xA,y:yA(v=>`$${Number(v).toFixed(0)}B`)}});
   mk('ch-rvg','bar',{labels:Y,datasets:[{label:'Growth',data:revG,borderRadius:3,borderSkipped:false,backgroundColor:revG.map(v=>rgba(v!=null&&v>=0?G:R,.75))}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw!=null?Number(c.raw).toFixed(2):'—'}%`}}},scales:{x:xA,y:yA(v=>`${Number(v).toFixed(2)}%`)}});
   mk('ch-fcf','bar',{labels:Y,datasets:[{label:'FCF',data:fcf,borderRadius:3,borderSkipped:false,backgroundColor:fcf.map(v=>rgba(v>=0?B:R,.75))}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${Number(c.raw).toFixed(2)}B`}}},scales:{x:xA,y:yA(v=>`$${Number(v).toFixed(0)}B`)}});
