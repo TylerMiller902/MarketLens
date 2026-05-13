@@ -528,19 +528,21 @@ app.get('/api/fmp/prices/:symbol', async (req,res) => {
 app.get('/api/fmp/dividend-history/:symbol', async (req,res) => {
   const { symbol } = req.params; const ck=`divhist:${symbol}`; const hit=gc(ck); if(hit)return res.json(hit);
   try{
-    const data = await fmpSafe(`/dividends/${symbol}`);
-    const hist = data?.historical || (Array.isArray(data) ? data : []);
-    // Group payments by calendar year and sum
+    // FMP stable: /dividends?symbol=AAPL returns array of {date,adjDividend,dividend,...}
+    const data = await fmpSafe('/dividends', {symbol});
+    // Handle both array response and {historical:[...]} response
+    const hist = Array.isArray(data) ? data : (data?.historical||[]);
     const byYear={};
     hist.forEach(d=>{
-      const yr = (d.date||d.paymentDate||'').slice(0,4);
-      if(!yr||yr<'2000')return;
-      const amt = d.adjDividend ?? d.dividend ?? 0;
-      if(amt>0) byYear[yr]=(byYear[yr]||0)+amt;
+      const yr=(d.date||'').slice(0,4);
+      if(!yr||yr<'1990')return;
+      const amt=d.adjDividend??d.dividend??0;
+      if(amt>0)byYear[yr]=(byYear[yr]||0)+amt;
     });
     const years=Object.keys(byYear).sort();
-    sc(ck,{years,dividends:years.map(y=>+byYear[y].toFixed(4))},TTL.fmpFin);
-    res.json({years,dividends:years.map(y=>+byYear[y].toFixed(4))});
+    const result={years,dividends:years.map(y=>+byYear[y].toFixed(4))};
+    sc(ck,result,TTL.fmpFin);
+    res.json(result);
   }catch(e){res.status(500).json({error:e.message});}
 });
 
