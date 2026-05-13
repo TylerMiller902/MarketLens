@@ -592,6 +592,21 @@ app.get('/api/fmp/insiders/:symbol', async (req,res) => {
 });
 
 // Debug — inspect raw FMP field names for any endpoint
+// Debug intraday — exposes raw FMP v3 response so we can see what's coming back
+app.get('/api/debug-intraday/:symbol', async (req,res) => {
+  const { symbol } = req.params;
+  try{
+    const [m5, h1] = await Promise.all([
+      fmpV3Safe(`/historical-chart/5min/${symbol}`),
+      fmpV3Safe(`/historical-chart/1hour/${symbol}`),
+    ]);
+    res.json({
+      fiveMin:  { type: typeof m5,  isArray: Array.isArray(m5),  length: Array.isArray(m5)?m5.length:null,  first: Array.isArray(m5)?m5.slice(-3):m5 },
+      oneHour:  { type: typeof h1,  isArray: Array.isArray(h1),  length: Array.isArray(h1)?h1.length:null,  first: Array.isArray(h1)?h1.slice(-3):h1 },
+    });
+  }catch(e){ res.status(500).json({error:e.message}); }
+});
+
 app.get('/api/debug/:symbol', async (req,res) => {
   const { symbol } = req.params;
   try {
