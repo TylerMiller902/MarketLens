@@ -505,7 +505,26 @@ app.get('/api/fmp/prices/:symbol', async (req,res) => {
 });
 
 // Insider transactions
-// Intraday prices — 1D (5-min) and 1W (1-hour)
+// Historical dividend payments → annual yield history
+app.get('/api/fmp/dividend-history/:symbol', async (req,res) => {
+  const { symbol } = req.params; const ck=`divhist:${symbol}`; const hit=gc(ck); if(hit)return res.json(hit);
+  try{
+    const data = await fmpSafe(`/dividends/${symbol}`);
+    const hist = data?.historical || (Array.isArray(data) ? data : []);
+    // Group payments by calendar year and sum
+    const byYear={};
+    hist.forEach(d=>{
+      const yr = (d.date||d.paymentDate||'').slice(0,4);
+      if(!yr||yr<'2000')return;
+      const amt = d.adjDividend ?? d.dividend ?? 0;
+      if(amt>0) byYear[yr]=(byYear[yr]||0)+amt;
+    });
+    const years=Object.keys(byYear).sort();
+    sc(ck,{years,dividends:years.map(y=>+byYear[y].toFixed(4))},TTL.fmpFin);
+    res.json({years,dividends:years.map(y=>+byYear[y].toFixed(4))});
+  }catch(e){res.status(500).json({error:e.message});}
+});
+
 app.get('/api/fmp/intraday/:symbol', async (req,res) => {
   const { symbol } = req.params; const ck=`intraday:${symbol}`; const hit=gc(ck); if(hit)return res.json(hit);
   try{
