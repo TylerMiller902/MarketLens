@@ -421,7 +421,7 @@ const today=()=>new Date().toISOString().slice(0,10);
 const ETFS=['SPY','QQQ','IVV','VOO','VTI','EFA','AGG','GLD','VNQ','ARKK','VGT','XLF','XLE','VWO','DIA','IWM','BND','TLT','GDX','SLV'];
 Chart.defaults.color='#7e7e96';Chart.defaults.borderColor='rgba(255,255,255,0.05)';Chart.defaults.font.family='DM Mono';Chart.defaults.font.size=10;
 let PriceChart=null,RSIChart=null,EarnLineChart=null,EarnBarChart=null,FSChart=null,Charts={};
-let CurD=null,CurPH=null,CurDates=null,CurIntraday=null,CurFMP=null,CurInsiders=null,CurPR='1Y',CurGP=10;
+let CurD=null,CurPH=null,CurDates=null,CurIntraday=null,CurDivHistory=null,CurFMP=null,CurInsiders=null,CurPR='1Y',CurGP=10;
 let searchTimer=null,holdTimers={};
 
 // ── RSI Calculation ─────────────────────────────────────
@@ -612,7 +612,7 @@ function navigateToStock(ticker){
   loadStock(ticker);
 }
 function goHome(){$('home').classList.remove('gone');$('spage').classList.remove('on');window.scrollTo(0,0);destroyAll();}
-function destroyAll(){[PriceChart,RSIChart,EarnLineChart,EarnBarChart,FSChart,...Object.values(Charts)].forEach(c=>{try{if(c)c.destroy();}catch{}});PriceChart=RSIChart=EarnLineChart=EarnBarChart=FSChart=null;Charts={};CurIntraday=null;}
+function destroyAll(){[PriceChart,RSIChart,EarnLineChart,EarnBarChart,FSChart,...Object.values(Charts)].forEach(c=>{try{if(c)c.destroy();}catch{}});PriceChart=RSIChart=EarnLineChart=EarnBarChart=FSChart=null;Charts={};CurIntraday=null;CurDivHistory=null;}
 
 function generatePriceHistory(price,w52h,w52l,beta){
   const vol=(beta||1.0)*0.018,hi=w52h||price*1.15,lo=w52l||price*0.85,mid=(hi+lo)/2,drift=(price-mid)/mid/252;
@@ -624,16 +624,17 @@ function generatePriceHistory(price,w52h,w52l,beta){
 async function loadStock(ticker){
   $('scontent').innerHTML=`<div class="loading-wrap"><div class="loading-ring"></div><div class="loading-txt">Loading ${esc(ticker)}&hellip;</div></div>`;
   try{
-    const [stock,fmpPrices,fmpFin,insiders,intraday]=await Promise.all([
+    const [stock,fmpPrices,fmpFin,insiders,intraday,divHistory]=await Promise.all([
       apiFetch(`/api/stock/${ticker}?etf=1`),
       apiFetch(`/api/fmp/prices/${ticker}`).catch(()=>({})),
       apiFetch(`/api/fmp/financials/${ticker}`).catch(()=>null),
       apiFetch(`/api/fmp/insiders/${ticker}`).catch(()=>null),
       apiFetch(`/api/fmp/intraday/${ticker}`).catch(()=>null),
+      apiFetch(`/api/fmp/dividend-history/${ticker}`).catch(()=>null),
     ]);
     const isETF=stock?.profile?.isEtf===true||ETFS.includes(ticker);
     CurD={...stock,ticker,isETF};CurFMP=fmpFin;CurInsiders=insiders;
-    CurIntraday=intraday;
+    CurIntraday=intraday;CurDivHistory=divHistory;
     const m=stock?.metrics?.metric||{},price=stock?.quote?.c;
     const hasFMPPrices=fmpPrices&&Object.values(fmpPrices).some(r=>r?.prices?.length>2);
     if(hasFMPPrices){CurPH={};CurDates={};for(const r of['1M','3M','YTD','1Y','5Y','10Y','All']){CurPH[r]=fmpPrices[r]?.prices||[];CurDates[r]=fmpPrices[r]?.dates||[];}CurD.priceDataSource='live';}
@@ -670,8 +671,8 @@ function renderPage(){
   const rBars=[{l:'Strong Buy',n:rec.strongBuy||0,c:G},{l:'Buy',n:rec.buy||0,c:'#4ade80'},{l:'Hold',n:rec.hold||0,c:B},{l:'Sell',n:rec.sell||0,c:'#f87171'},{l:'Str Sell',n:rec.strongSell||0,c:R}];
   const mxB=Math.max(...rBars.map(b=>b.n),1),w52h=m['52WeekHigh'],w52l=m['52WeekLow'];
   const earns=earnings||[],upcoming=(earningsCal?.earningsCalendar||[]).filter(e=>e.date>=today())[0],newsItems=(news||[]).slice(0,5);
-  const hasDividend=CurFMP?.dividendPerShare?.some(x=>x>0);
-  const hasDivYield=CurFMP?.dividendYieldPct?.some(x=>x&&x>0);
+  const hasDividend=CurDivHistory?.years?.length>0||CurFMP?.dividendPerShare?.some(x=>x>0)||(CurD?.metrics?.metric?.dividendPerShareAnnual>0)||(CurD?.metrics?.metric?.dividendYieldIndicatedAnnual>0);
+  const hasDivYield=hasDividend; // always show yield chart when dividends exist
   const hasInsiders=CurInsiders?.transactions?.length>0;
   const ALL_RANGES=['1D','1W','1M','3M','YTD','1Y','5Y','10Y','All'];
   const stats=isETF?[{l:'Market Cap',v:fB((p?.marketCapitalization||0)*1e6)},{l:'52W High',v:f$(w52h)},{l:'52W Low',v:f$(w52l)},{l:'Beta',v:fN(m.beta)},{l:'P/E Ratio',v:fN(m.peBasicExclExtraTTM)},{l:'EPS (TTM)',v:f$(m.epsTTM)},{l:'Dividend Yield',v:m.dividendYieldIndicatedAnnual!=null?fP(m.dividendYieldIndicatedAnnual):'—'},{l:'Div Per Share',v:m.dividendPerShareAnnual!=null?f$(m.dividendPerShareAnnual):'—'},{l:'Gross Margin',v:fP(m.grossMarginTTM)},{l:'Net Margin',v:fP(m.netProfitMarginTTM)},{l:'ROE',v:fP(m.roeTTM)},{l:'Exchange',v:p?.exchange||'—'}]:[{l:'Market Cap',v:fB((p?.marketCapitalization||0)*1e6)},{l:'P/E Ratio',v:fN(m.peBasicExclExtraTTM)},{l:'EPS (TTM)',v:f$(m.epsTTM)},{l:'P/S Ratio',v:fN(m.psTTM)},{l:'Dividend Yield',v:m.dividendYieldIndicatedAnnual!=null?fP(m.dividendYieldIndicatedAnnual):'—'},{l:'Div Per Share (Ann)',v:m.dividendPerShareAnnual!=null?f$(m.dividendPerShareAnnual):'—'},{l:'Beta',v:fN(m.beta)},{l:'Current Ratio',v:fN(m.currentRatioAnnual)},{l:'Gross Margin',v:fP(m.grossMarginTTM)},{l:'Net Margin',v:fP(m.netProfitMarginTTM)},{l:'ROE',v:fP(m.roeTTM)},{l:'ROA',v:fP(m.roaTTM)}];
@@ -841,28 +842,37 @@ function drawFinCharts(){
   const div=sl(f.dividendPerShare),debt=sl(f.totalDebt),eq=sl(f.totalEquity);
   const gm=sl(f.grossMargin),om=sl(f.operatingMargin),nm=sl(f.netMargin),fm=sl(f.fcfMargin);
   const shares=sl(f.sharesOutstanding),netDebt=sl(f.netDebt);
-  const peData=slKM(f.peRatio),roicData=slKM(f.roic);
-  let dyhData=slKM(f.dividendYieldPct||[]);
-  // Fallback: compute yield from DPS ÷ actual historical year-end price
-  if(!dyhData.d.some(x=>x!=null&&x>0)&&div.some(x=>x>0)){
-    // Build year→closing price map from the longest available price history
-    const ph=CurPH?.['All']||CurPH?.['10Y']||CurPH?.['5Y']||[];
-    const pd=CurDates?.['All']||CurDates?.['10Y']||CurDates?.['5Y']||[];
-    const yearPrice={};
-    pd.forEach((d,i)=>{if(d&&ph[i])yearPrice[d.slice(0,4)]=ph[i];});
-    // Also try PE*EPS for years without a price (older data)
-    const altD=Y.map((yr,i)=>{
-      const dps=div[i];if(!dps||dps<=0)return null;
-      // Method 1: actual year-end price
+  // ── Dividend Yield History ────────────────────────────────
+  // Build year→price map from the longest available price history
+  const allPH=CurPH?.['All']||CurPH?.['10Y']||CurPH?.['5Y']||[];
+  const allPD=CurDates?.['All']||CurDates?.['10Y']||CurDates?.['5Y']||[];
+  const yearPrice={};
+  allPD.forEach((d,i)=>{if(d&&allPH[i])yearPrice[d.slice(0,4)]=allPH[i];});
+
+  let dyhY=[],dyhD=[];
+  if(CurDivHistory?.years?.length>0){
+    // Use dedicated dividend endpoint data (most reliable)
+    CurDivHistory.years.forEach((yr,i)=>{
+      const annualDiv=CurDivHistory.dividends[i];
+      if(!annualDiv||annualDiv<=0)return;
       const price=yearPrice[yr];
-      if(price&&price>0)return+(dps/price*100).toFixed(4);
-      // Method 2: approximate price from P/E × EPS
-      const pi=peData.y.indexOf(yr);const pe=pi>=0?peData.d[pi]:null;
-      const ep=eps[i];
-      if(pe&&pe>0&&ep&&Math.abs(ep)>=0.01)return+(dps/(pe*Math.abs(ep))*100).toFixed(4);
-      return null;
+      if(price&&price>0){dyhY.push(yr);dyhD.push(+(annualDiv/price*100).toFixed(4));}
     });
-    if(altD.some(x=>x!=null&&x>0))dyhData={y:Y,d:altD};
+  }
+  // Secondary fallback: dividendPerShare from cashflow + prices
+  if(!dyhD.length&&div.some(x=>x>0)){
+    Y.forEach((yr,i)=>{
+      const dps=div[i];if(!dps||dps<=0)return;
+      const price=yearPrice[yr];
+      if(price&&price>0){dyhY.push(yr);dyhD.push(+(dps/price*100).toFixed(4));}
+    });
+  }
+  if(dyhY.length>0){
+    const latest=dyhD.slice(-1)[0]||0;
+    setStat('s-dyh',`${latest.toFixed(2)}%`,'dividend yield','neu');
+    mk('ch-dyh','line',{labels:dyhY,datasets:[lnFill('Div Yield',dyhD,G)]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${Number(c.raw||0).toFixed(2)}%`}}},scales:{x:xA,y:{...yA(v=>`${Number(v).toFixed(2)}%`),min:0}}});
+  } else {
+    setStat('s-dyh','N/A','No yield data','neu');
   }
   const revG=pctG(rev),epsG=pctG(eps),divG=pctG(div);
   const lr=last(rev),lrg=last(revG),lf=last(fcf),le=last(eps),leg=last(epsG);
@@ -876,7 +886,7 @@ function drawFinCharts(){
   setStat('s-deq',de!=null?`${de.toFixed(2)}x`:'—','D/E ratio',de!=null&&de<1?'pos':de!=null&&de<2?'neu':'neg');
   setStat('s-ni',lf!=null?`$${lf.toFixed(2)}B`:'—',lf>0?'FCF positive':'FCF negative',lf>0?'pos':'neg');
   if(div.some(x=>x>0)){const ld2=last(div),ldg=last(divG);if(ld2!=null)setStat('s-div',`$${ld2.toFixed(2)}`,ldg!=null?`${sgn(ldg)}${ldg.toFixed(2)}% YoY`:'—',ldg>0?'pos':'neu');if(ldg!=null)setStat('s-divg',`${sgn(ldg)}${ldg.toFixed(2)}%`,'growth','neu');}
-  if(dyhData.d.some(x=>x&&x>0)){const ldyh=last(dyhData.d.filter(x=>x!=null));if(ldyh!=null)setStat('s-dyh',`${ldyh.toFixed(2)}%`,'current yield','neu');}
+  const peData=slKM(f.peRatio),roicData=slKM(f.roic);
   const lpe=last(peData.d),lroic=last(roicData.d),lsh=last(shares),lnd=last(netDebt);
   if(lpe!=null)setStat('s-pe',`${lpe.toFixed(1)}x`,'P/E ratio','neu');
   if(lroic!=null)setStat('s-roic',`${lroic.toFixed(2)}%`,lroic>10?'Strong':'Low',lroic>15?'pos':lroic>8?'neu':'neg');
@@ -898,15 +908,6 @@ function drawFinCharts(){
   if(div.some(x=>x>0)){
     mk('ch-div','bar',{labels:Y,datasets:[{label:'Div',...bO(B),data:div}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${Number(c.raw).toFixed(2)}`}}},scales:{x:xA,y:yA(v=>`$${Number(v).toFixed(2)}`)}});
     mk('ch-divg','bar',{labels:Y,datasets:[{label:'Growth',data:divG,borderRadius:3,borderSkipped:false,backgroundColor:divG.map(v=>rgba(v!=null&&v>=0?G:R,.75))}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw!=null?Number(c.raw).toFixed(2):'—'}%`}}},scales:{x:xA,y:yA(v=>`${Number(v).toFixed(2)}%`)}});
-  }
-  // Dividend Yield History
-  const dyhFilt=dyhData.d.filter(x=>x!=null&&x>0);
-  if(dyhFilt.length>0){
-    const latestYield=dyhData.d.filter(x=>x!=null).slice(-1)[0]||0;
-    setStat('s-dyh',`${latestYield.toFixed(2)}%`,'current yield','neu');
-    mk('ch-dyh','line',{labels:dyhData.y,datasets:[lnFill('Div Yield',dyhData.d,G)]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${Number(c.raw||0).toFixed(2)}%`}}},scales:{x:xA,y:{...yA(v=>`${Number(v).toFixed(2)}%`),min:0}}});
-  } else {
-    setStat('s-dyh','N/A','Not available from data','neu');
   }
   // RSI (14) — calculated from 1Y price data
   const rsiPrices=CurPH?.['1Y']||CurPH?.['6M']||[];
