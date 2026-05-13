@@ -559,8 +559,12 @@ app.get('/api/fmp/intraday/:symbol', async (req,res) => {
     const cutM  = new Date(Date.now()-33*86_400_000).toISOString().slice(0,10);
     const mon1h  = arr1h.filter(d=>d.date.slice(0,10)>=cutM);
 
+    // 3M: last 95 calendar days of hourly bars (~490 pts)
+    const cut3M = new Date(Date.now()-96*86_400_000).toISOString().slice(0,10);
+    const mon3h  = arr1h.filter(d=>d.date.slice(0,10)>=cut3M);
+
     const toSeries = arr => ({prices:arr.map(d=>+(d.close||0).toFixed(2)),times:arr.map(d=>d.date)});
-    const result = { '1D':toSeries(day5), '1W':toSeries(week1h), '1M':toSeries(mon1h) };
+    const result = { '1D':toSeries(day5), '1W':toSeries(week1h), '1M':toSeries(mon1h), '3M':toSeries(mon3h) };
     sc(ck, result, 3*60_000);
     res.json(result);
   }catch(e){ res.status(500).json({error:e.message}); }
