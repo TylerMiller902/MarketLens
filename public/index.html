@@ -806,15 +806,17 @@ function drawFinCharts(){
   const gm=sl(f.grossMargin),om=sl(f.operatingMargin),nm=sl(f.netMargin),fm=sl(f.fcfMargin);
   const shares=sl(f.sharesOutstanding),netDebt=sl(f.netDebt);
   const peData=slKM(f.peRatio),roicData=slKM(f.roic),dyhData=slKM(f.dividendYieldPct||[]);
-  // Fallback: if FMP didn't return dividendYield, approximate from DPS ÷ (P/E × EPS)
+  // Fallback: compute yield from actual historical prices (already loaded in CurPH)
   if(!dyhData.d.some(x=>x!=null&&x>0)&&div.some(x=>x>0)){
-    const altY=Y.map((_,i)=>{
+    const allPrices=CurPH?.['All']||CurPH?.['10Y']||CurPH?.['5Y']||[];
+    const allDates=CurDates?.['All']||CurDates?.['10Y']||CurDates?.['5Y']||[];
+    // Build a year→price map (last available price per year)
+    const yearPrice={};
+    allDates.forEach((d,i)=>{if(d&&allPrices[i])yearPrice[d.slice(0,4)]=allPrices[i];});
+    const altY=Y.map((yr,i)=>{
       const dps=div[i];if(!dps||dps<=0)return null;
-      const yr=Y[i];const pi=peData.y.indexOf(yr);const pe=pi>=0?peData.d[pi]:null;
-      const ep=eps[i];
-      if(!pe||pe<=0||!ep||Math.abs(ep)<0.01)return null;
-      const approxPrice=pe*Math.abs(ep);
-      return approxPrice>0?+(dps/approxPrice*100).toFixed(4):null;
+      const price=yearPrice[yr];if(!price||price<=0)return null;
+      return +(dps/price*100).toFixed(4);
     });
     if(altY.some(x=>x!=null&&x>0)){dyhData.y=Y;dyhData.d=altY;}
   }
