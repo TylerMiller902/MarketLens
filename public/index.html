@@ -318,6 +318,13 @@ button,input{font-family:var(--fb)}
 .ins-sell{display:inline-block;font-size:10px;padding:2px 7px;border-radius:4px;background:var(--Rbg);color:var(--R);font-weight:600}
 .not-found{text-align:center;padding:3rem 1.5rem;color:var(--mu)}
 .not-found h3{font-family:var(--fd);font-size:1.1rem;color:var(--tx);margin-bottom:.4rem}
+.etf-holdings{display:flex;flex-direction:column;gap:6px;margin-top:.4rem}
+.etf-h-row{display:grid;grid-template-columns:52px 1fr 80px 44px;align-items:center;gap:8px;padding:5px 0;border-bottom:1px solid rgba(255,255,255,.05);font-size:12px}
+.etf-h-sym{font-weight:600;font-family:var(--fm);font-size:11px}
+.etf-h-name{color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.etf-h-bar{height:4px;background:rgba(255,255,255,.08);border-radius:2px;overflow:hidden}
+.etf-h-fill{height:100%;background:var(--B);border-radius:2px;opacity:.7}
+.etf-h-pct{text-align:right;color:var(--tx);font-family:var(--fm);font-size:11px}
 @media(max-width:520px){.shdr,.analyst-grid{flex-direction:column}.sprice{text-align:left}.scontent{padding:.7rem}}
 </style>
 </head>
@@ -594,15 +601,13 @@ async function go(query){
     const results=(d?.result||[]).filter(r=>r.symbol&&!r.symbol.match(/\.[A-Z]{2,}$/));
     if(results.length>0){loadStock(results[0].symbol.toUpperCase());return;}
     // Nothing found
-    $('scontent').innerHTML=`<div class="not-found">
-      <h3>No results for &ldquo;${esc(raw)}&rdquo;</h3>
-      <p style="margin-top:.5rem">Try a ticker symbol like <strong>AAPL</strong>, <strong>MSFT</strong>, or <strong>SPY</strong>, or search from the bar below.</p>
-      <div style="margin-top:1.5rem;display:flex;gap:8px;justify-content:center;flex-wrap:wrap">
-        <input id="nf-inp" class="sinp" style="max-width:260px;padding:.6rem .9rem;font-size:.85rem" placeholder="Try another search&hellip;" autocomplete="off"/>
-        <button class="gobtn" style="padding:.6rem 1rem;font-size:.85rem" onclick="go($('nf-inp').value)">Search</button>
-      </div>
-    </div>`;
-    const nfInp=$('nf-inp');if(nfInp){nfInp.focus();nfInp.addEventListener('keydown',e=>{if(e.key==='Enter')go(nfInp.value);});}
+    $('scontent').innerHTML=`
+      <div class="not-found" style="padding:5rem 2rem">
+        <div style="font-size:2.5rem;margin-bottom:1rem">🔍</div>
+        <h3 style="font-size:1.3rem;margin-bottom:.5rem">&ldquo;${esc(raw)}&rdquo; not found</h3>
+        <p style="margin-bottom:1.5rem;line-height:1.6">No stock or ETF matched that search.<br>Try a ticker like <strong>AAPL</strong> or <strong>SPY</strong>.</p>
+        <button class="gobtn" onclick="goHome()" style="padding:.65rem 1.4rem;font-size:.9rem">← Back to Home</button>
+      </div>`;
   }catch{navigateToStock(upper);}
 }
 function navigateToStock(ticker){
@@ -633,6 +638,18 @@ async function loadStock(ticker){
       apiFetch(`/api/fmp/intraday/${ticker}`).catch(()=>null),
     ]);
     const isETF=stock?.profile?.isEtf===true||ETFS.includes(ticker);
+    // Validate — if FMP returned no price and no company name, ticker doesn't exist
+    const hasData = stock?.quote?.c || stock?.profile?.name || stock?.profile?.companyName;
+    if(!hasData){
+      $('scontent').innerHTML=`
+        <div class="not-found" style="padding:5rem 2rem">
+          <div style="font-size:2.5rem;margin-bottom:1rem">🔍</div>
+          <h3 style="font-size:1.3rem;margin-bottom:.5rem">&ldquo;${esc(ticker)}&rdquo; not found</h3>
+          <p style="margin-bottom:1.5rem;line-height:1.6">No stock or ETF matched that ticker.<br>Check the symbol and try again.</p>
+          <button class="gobtn" onclick="goHome()" style="padding:.65rem 1.4rem;font-size:.9rem">← Back to Home</button>
+        </div>`;
+      return;
+    }
     CurD={...stock,ticker,isETF};CurFMP=fmpFin;CurInsiders=insiders;
     CurIntraday=intraday;CurDivHistory=divHistory;
     console.log('[loadStock] intraday:', intraday
@@ -643,7 +660,15 @@ async function loadStock(ticker){
     if(hasFMPPrices){CurPH={};CurDates={};for(const r of['1M','3M','YTD','1Y','5Y','10Y','All']){CurPH[r]=fmpPrices[r]?.prices||[];CurDates[r]=fmpPrices[r]?.dates||[];}CurD.priceDataSource='live';}
     else{const gen=generatePriceHistory(price,m['52WeekHigh'],m['52WeekLow'],m.beta);CurPH=gen.prices;CurDates=gen.dates;CurD.priceDataSource='estimated';}
     renderPage();loadPeers(ticker);
-  }catch(e){$('scontent').innerHTML=`<div class="not-found"><h3>Could not load ${esc(ticker)}</h3><p>${e.message}</p></div>`;}
+  }catch(e){
+    $('scontent').innerHTML=`
+      <div class="not-found" style="padding:5rem 2rem">
+        <div style="font-size:2.5rem;margin-bottom:1rem">🔍</div>
+        <h3 style="font-size:1.3rem;margin-bottom:.5rem">&ldquo;${esc(ticker)}&rdquo; not found</h3>
+        <p style="margin-bottom:1.5rem;line-height:1.6">No stock or ETF matched that ticker.<br>Check the symbol and try again.</p>
+        <button class="gobtn" onclick="goHome()" style="padding:.65rem 1.4rem;font-size:.9rem">← Back to Home</button>
+      </div>`;
+  }
 }
 
 async function loadPeers(ticker){
@@ -699,6 +724,19 @@ function renderPage(){
 
     <div class="stitle-sm">${isETF?'ETF Statistics':'Key Statistics'} <span class="badge live">Live &middot; FMP</span></div>
     <div class="${isETF?'etf-stats-grid':'sgrid'}">${stats.map(s=>`<div class="scard"><div class="scl">${esc(s.l)}</div><div class="scv">${String(s.v)}</div></div>`).join('')}${build52W(q?.c,w52l,w52h)}</div>
+    ${isETF&&CurD?.etfHoldings?.holdings?.length>0?`
+    <div class="stitle-sm" style="margin-top:.9rem">Top Holdings <span class="badge live">Live &middot; FMP</span></div>
+    <div class="etf-holdings">
+      ${CurD.etfHoldings.holdings.slice(0,15).map(h=>{
+        const pct=+(h.percent||0).toFixed(2);
+        return `<div class="etf-h-row">
+          <div class="etf-h-sym" onclick="go('${esc(h.symbol||'')}')" style="cursor:pointer;color:var(--B)">${esc(h.symbol||'—')}</div>
+          <div class="etf-h-name">${esc(h.name||h.symbol||'—')}</div>
+          <div class="etf-h-bar"><div class="etf-h-fill" style="width:${Math.min(100,pct*5)}%"></div></div>
+          <div class="etf-h-pct">${pct}%</div>
+        </div>`;
+      }).join('')}
+    </div>`:''}
 
     <div class="stitle-sm">${isETF?'Similar ETFs':'Competitors'} <span class="badge live">Live &middot; FMP</span></div>
     <div class="${isETF?'peers-grid-etf':'peers-grid'}" id="peers-row"><span style="font-size:12px;color:var(--mu);font-family:var(--fm)">Loading&hellip;</span></div>
