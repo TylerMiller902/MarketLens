@@ -582,16 +582,17 @@ async function yahooIntraday(symbol) {
     const ts=res.timestamp||[],cls=res.indicators?.quote?.[0]?.close||[];
     return ts.map((t,i)=>cls[i]!=null?{date:tsToET(t),close:cls[i]}:null).filter(Boolean);
   };
-  const [d5m,d1h]=await Promise.all([
+  const [d5m, d15m, d1h]=await Promise.all([
     yGet(`/v8/finance/chart/${symbol}?interval=5m&range=1d`),
+    yGet(`/v8/finance/chart/${symbol}?interval=15m&range=5d`),
     yGet(`/v8/finance/chart/${symbol}?interval=60m&range=3mo`),
   ]);
-  const bars5m=parseY(d5m),bars1h=parseY(d1h);
+  const bars5m=parseY(d5m),bars15m=parseY(d15m),bars1h=parseY(d1h);
   const toS=arr=>({prices:arr.map(b=>+b.close.toFixed(2)),times:arr.map(b=>b.date)});
   const dAgo=n=>new Date(Date.now()-n*86_400_000).toISOString().slice(0,10);
   return{
     '1D':toS(bars5m),
-    '1W':toS(bars1h.filter(b=>b.date.slice(0,10)>=dAgo(8))),
+    '1W':toS(bars15m),
     '1M':toS(bars1h.filter(b=>b.date.slice(0,10)>=dAgo(33))),
     '3M':toS(bars1h.filter(b=>b.date.slice(0,10)>=dAgo(96))),
   };
