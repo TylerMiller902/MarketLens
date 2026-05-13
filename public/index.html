@@ -598,7 +598,7 @@ async function go(query){
     const localHit=LOCAL_STOCKS.find(([s,n])=>n.toLowerCase()===raw.toLowerCase()||s===upper);
     if(localHit){loadStock(localHit[0]);return;}
     const d=await apiFetch(`/api/search?q=${encodeURIComponent(raw)}`);
-    const results=(d?.result||[]).filter(r=>r.symbol&&!r.symbol.match(/\.[A-Z]{2,}$/));
+    const results=(d?.result||[]).filter(r=>r.symbol&&!r.symbol.match(/\.[A-Z]{2,}$/)&&r.symbol.length<=8);
     if(results.length>0){loadStock(results[0].symbol.toUpperCase());return;}
     // Nothing found
     $('scontent').innerHTML=`
@@ -639,7 +639,8 @@ async function loadStock(ticker){
     ]);
     const isETF=stock?.profile?.isEtf===true||ETFS.includes(ticker);
     // Validate — if FMP returned no price and no company name, ticker doesn't exist
-    const hasData = stock?.quote?.c || stock?.profile?.name || stock?.profile?.companyName;
+    // Require a real price (current or previous close) to confirm this is a tradeable security
+    const hasData = (stock?.quote?.c > 0) || (stock?.quote?.pc > 0) || (stock?.quote?.o > 0);
     if(!hasData){
       $('scontent').innerHTML=`
         <div class="not-found" style="padding:5rem 2rem">
