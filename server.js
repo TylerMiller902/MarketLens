@@ -24,6 +24,14 @@ async function fmpV3fn(ep, qs={}) {
 }
 const fmpV3Safe = async (ep, qs={}) => { try { return await fmpV3fn(ep, qs); } catch { return null; } };
 
+// ── Global safety net (prevents Railway crash on unhandled promise) ───────
+process.on('unhandledRejection', (reason) => {
+  console.error('[unhandledRejection]', reason);
+});
+process.on('uncaughtException', (err) => {
+  console.error('[uncaughtException]', err);
+});
+
 app.use(cors());
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
@@ -672,7 +680,7 @@ app.get('/health', (req,res) => res.json({ status: 'ok', version: '3.0', provide
 module.exports = app;
 if (require.main === module) {
   app.get('*', (req,res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-  app.listen(PORT, () => console.log(`\n✅ MarketLens v3.0 (FMP only) → http://localhost:${PORT}\n`));
+  app.listen(PORT, '0.0.0.0', () => console.log(`✅ MarketLens listening on port ${PORT}`));
 } else {
   app.get('*', (req,res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 }
