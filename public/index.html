@@ -637,7 +637,7 @@ async function loadStock(ticker){
     CurIntraday=intraday;CurDivHistory=divHistory;
     const m=stock?.metrics?.metric||{},price=stock?.quote?.c;
     const hasFMPPrices=fmpPrices&&Object.values(fmpPrices).some(r=>r?.prices?.length>2);
-    if(hasFMPPrices){CurPH={};CurDates={};for(const r of['3M','YTD','1Y','5Y','10Y','All']){CurPH[r]=fmpPrices[r]?.prices||[];CurDates[r]=fmpPrices[r]?.dates||[];}CurD.priceDataSource='live';}
+    if(hasFMPPrices){CurPH={};CurDates={};for(const r of['1M','3M','YTD','1Y','5Y','10Y','All']){CurPH[r]=fmpPrices[r]?.prices||[];CurDates[r]=fmpPrices[r]?.dates||[];}CurD.priceDataSource='live';}
     else{const gen=generatePriceHistory(price,m['52WeekHigh'],m['52WeekLow'],m.beta);CurPH=gen.prices;CurDates=gen.dates;CurD.priceDataSource='estimated';}
     renderPage();loadPeers(ticker);
   }catch(e){$('scontent').innerHTML=`<div class="not-found"><h3>Could not load ${esc(ticker)}</h3><p>${e.message}</p></div>`;}
@@ -748,98 +748,80 @@ function renderPage(){
   if(hasInsiders)drawInsiderChart();
 }
 
-// ── parse time components directly from FMP string "2024-01-15 09:30:00"
-// avoids timezone issues — FMP times are already in ET
-function parseHM(d){const t=(d.split(' ')[1]||'00:00:00').split(':');return{h:+t[0],mn:+t[1]};}
-function fmtTime(d){
-  const{h,mn}=parseHM(d);
-  const ap=h>=12?'PM':'AM';const h12=h%12||12;
-  return mn===0?`${h12} ${ap}`:`${h12}:${String(mn).padStart(2,'0')} ${ap}`;
+// ──────────────────────────────────────────────────────────
+//  PRICE CHART LABEL SYSTEM
+// ──────────────────────────────────────────────────────────
+// All FMP intraday strings are "YYYY-MM-DD HH:MM:SS" in Eastern Time.
+// We read hour/minute directly from string positions — no Date() timezone issues.
+function etH(d){return parseInt(d.slice(11,13)||'0');}
+function etM(d){return parseInt(d.slice(14,16)||'0');}
+function shortDate(d){
+  const dt=new Date(d.slice(0,10)+'T12:00:00');
+  return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
 }
-function fmtDate(dateStr,r){
-  // dateStr is always "YYYY-MM-DD" or "YYYY-MM-DD HH:MM:SS"
-  const ymd=dateStr.slice(0,10);
-  const dt=new Date(ymd+'T12:00:00');
-  const mo=dt.toLocaleDateString('en-US',{month:'short'});
-  const day=dt.getDate();
-  const yr=dt.getFullYear();
-  if(r==='YTD'||r==='1M'||r==='1W'||r==='3M')return`${mo} ${day}`;
-  if(r==='1Y')return mo; // just "Jan", "Feb" etc.
-  return String(yr);     // "2020", "2021" for 5Y+
+function shortMonth(d){
+  return new Date(d.slice(0,10)+'T12:00:00').toLocaleDateString('en-US',{month:'short'});
+}
+function hLabel(h){
+  const h12=h%12||12; return `${h12}${h>=12?'PM':'AM'}`;
 }
 
-// Tooltip display string
+// Tooltip title for each range
 function formatTimeLabel(d,r){
   if(!d)return'';
-  if(r==='1D')return`${d.slice(0,10)} ${fmtTime(d)}`;
-  if(r==='1W'||r==='1M'||r==='3M')return`${d.slice(0,10)} ${fmtTime(d)}`;
+  if(r==='1D'){
+    const h=etH(d),m=etM(d),h12=h%12||12,ap=h>=12?'PM':'AM';
+    return `${d.slice(0,10)}  ${h12}:${String(m).padStart(2,'0')} ${ap}`;
+  }
+  if(r==='1W'||r==='1M'||r==='3M'){
+    const h=etH(d),m=etM(d),h12=h%12||12,ap=h>=12?'PM':'AM';
+    return `${shortDate(d)}  ${h12}:${String(m).padStart(2,'0')} ${ap}`;
+  }
   return d.slice(0,10);
 }
 
-// Build x-axis label array — one correct label per tick position, no duplicates
+// X-axis label array — empty string = no label at that tick position
 function buildLabels(rawDates,r,isIntra){
-  if(!rawDates.length)return[];
-  const out=new Array(rawDates.length).fill('');
+  const n=rawDates.length; if(!n)return[];
+  const out=new Array(n).fill('');
+
   if(isIntra){
+    // ── Intraday (FMP ET times) ──────────────────────────────
     if(r==='1D'){
-      // 5-min bars: label at 9:30 open and each whole hour
+      // 5-min bars: "Open" at 9:30, then each whole hour 10-16
       rawDates.forEach((d,i)=>{
-        const{h,mn}=parseHM(d);
-        if(h===9&&mn===30){out[i]='Open';}
-        else if(mn===0&&h>=10&&h<=16){out[i]=fmtTime(d);}
+        const h=etH(d),m=etM(d);
+        if(h===9&&m===30)out[i]='Open';
+        else if(m===0&&h>=10&&h<=16)out[i]=hLabel(h);
       });
-    } else if(r==='1W'){
-      // Hourly bars: one label per trading day
-      const seenDay=new Set();
+    } else {
+      // 1W / 1M / 3M hourly: label the first bar of evenly-spaced trading days
+      const dayFirst={};const days=[];
       rawDates.forEach((d,i)=>{
         const day=d.slice(0,10);
-        if(!seenDay.has(day)){
-          seenDay.add(day);
-          const dt=new Date(day+'T12:00:00');
-          out[i]=dt.toLocaleDateString('en-US',{weekday:'short',month:'short',day:'numeric'});
-        }
+        if(!(day in dayFirst)){dayFirst[day]=i;days.push(day);}
       });
-    } else if(r==='1M'){
-      // Hourly bars: one label per Monday (weekly cadence)
-      const seenDay=new Set();
-      rawDates.forEach((d,i)=>{
-        const day=d.slice(0,10);
-        if(!seenDay.has(day)){
-          seenDay.add(day);
-          const dt=new Date(day+'T12:00:00');
-          // Label on Monday (dayOfWeek=1) or very first bar
-          if(dt.getDay()===1||seenDay.size===1)out[i]=fmtDate(d,'1M');
-        }
-      });
-    } else if(r==='3M'){
-      // Hourly bars: one label per month (first trading day of each month)
-      let lastMo=-1;
-      const seenDay=new Set();
-      rawDates.forEach((d,i)=>{
-        const day=d.slice(0,10);
-        if(!seenDay.has(day)){
-          seenDay.add(day);
-          const mo=new Date(day+'T12:00:00').getMonth();
-          if(mo!==lastMo){lastMo=mo;out[i]=fmtDate(d,'3M');}
-        }
+      const targets={'1W':5,'1M':5,'3M':5};
+      const target=targets[r]||5;
+      const step=Math.max(1,Math.floor(days.length/target));
+      days.forEach((day,di)=>{
+        if(di%step===0)out[dayFirst[day]]=shortDate(day);
       });
     }
   } else {
-    // EOD daily — label at natural calendar boundaries
-    if(r==='YTD'||r==='1Y'){
-      // Label first trading day of each month
-      let lastMo=-1;
-      rawDates.forEach((d,i)=>{
-        const mo=new Date(d.slice(0,10)+'T12:00:00').getMonth();
-        if(mo!==lastMo){lastMo=mo;out[i]=fmtDate(d,r);}
-      });
+    // ── EOD daily data ───────────────────────────────────────
+    if(r==='5Y'||r==='10Y'||r==='All'){
+      // One label per calendar year
+      let lastYr='';
+      rawDates.forEach((d,i)=>{const yr=d.slice(0,4);if(yr!==lastYr){lastYr=yr;out[i]=yr;}});
+    } else if(r==='YTD'||r==='1Y'){
+      // One label per calendar month
+      let lastMo='';
+      rawDates.forEach((d,i)=>{const mo=d.slice(0,7);if(mo!==lastMo){lastMo=mo;out[i]=shortMonth(d);}});
     } else {
-      // 5Y/10Y/All — label first trading day of each year
-      let lastYr=-1;
-      rawDates.forEach((d,i)=>{
-        const yr=+d.slice(0,4);
-        if(yr!==lastYr){lastYr=yr;out[i]=fmtDate(d,r);}
-      });
+      // Short ranges (1D/1W/1M/3M EOD fallback): ~6 evenly-spaced date labels
+      const step=Math.max(1,Math.round(n/6));
+      rawDates.forEach((d,i)=>{if(i%step===0)out[i]=shortDate(d);});
     }
   }
   return out;
@@ -850,24 +832,19 @@ function drawPrice(r){
   if(PriceChart){PriceChart.destroy();PriceChart=null;}
   const canvas=$('pc');if(!canvas)return;
 
-  // Data source: prefer intraday for 1D/1W/1M/3M, fall back to EOD
+  // Data source: intraday for 1D/1W/1M/3M when available, else EOD daily slices
   let prices,rawDates,isIntra=false;
-  if((r==='1D'||r==='1W'||r==='1M'||r==='3M')&&CurIntraday?.[r]?.prices?.length>1){
-    prices=CurIntraday[r].prices;rawDates=CurIntraday[r].times;isIntra=true;
-  } else if(r==='1D'){
-    const b=CurPH?.['YTD']||CurPH?.['1Y']||[];const bd=CurDates?.['YTD']||CurDates?.['1Y']||[];
-    prices=b.slice(-5);rawDates=bd.slice(-5);
-  } else if(r==='1W'){
-    const b=CurPH?.['YTD']||CurPH?.['1Y']||[];const bd=CurDates?.['YTD']||CurDates?.['1Y']||[];
-    prices=b.slice(-10);rawDates=bd.slice(-10);
-  } else if(r==='1M'){
-    const b=CurPH?.['YTD']||CurPH?.['1Y']||[];const bd=CurDates?.['YTD']||CurDates?.['1Y']||[];
-    prices=b.slice(-22);rawDates=bd.slice(-22);
-  } else if(r==='3M'){
-    const b=CurPH?.['YTD']||CurPH?.['1Y']||[];const bd=CurDates?.['YTD']||CurDates?.['1Y']||[];
-    prices=b.slice(-63);rawDates=bd.slice(-63);
+  const intra=CurIntraday;
+  if((r==='1D'||r==='1W'||r==='1M'||r==='3M')&&intra?.[r]?.prices?.length>1){
+    prices=intra[r].prices;rawDates=intra[r].times;isIntra=true;
   } else {
-    prices=CurPH?.[r]||[];rawDates=CurDates?.[r]||[];
+    // EOD fallback — use available daily data, sliced to range length
+    const eodSlice={'1D':5,'1W':10,'1M':22,'3M':63};
+    const src=CurPH?.[r]||CurPH?.['1Y']||[];
+    const srcD=CurDates?.[r]||CurDates?.['1Y']||[];
+    const n=eodSlice[r];
+    prices=n?src.slice(-n):src;
+    rawDates=n?srcD.slice(-n):srcD;
   }
 
   if(!prices.length){canvas.parentElement.innerHTML='<p style="color:var(--mu);font-size:12px;padding:1rem;text-align:center">No data available for this range.</p>';return;}
@@ -879,7 +856,7 @@ function drawPrice(r){
   const tension=isIntra?0:({'3M':0.15,'YTD':0.2,'1Y':0.3,'5Y':0.35,'10Y':0.35,'All':0.35}[r]??0.2);
   const isUp=prices[prices.length-1]>=prices[0],color=isUp?G:R;
 
-  PriceChart=new Chart(canvas,{type:'line',data:{labels,datasets:[{data:prices,borderColor:color,borderWidth:1.5,fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,260);g.addColorStop(0,rgba(color,.15));g.addColorStop(1,rgba(color,0));return g;},pointRadius:0,tension}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:250},layout:{padding:{right:24,left:4}},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{title:ctx=>{const idx=ctx[0]?.dataIndex;const d=rawDates[idx]||'';return isIntra?formatTimeLabel(d,r):d.slice(0,10);},label:ctx=>`$${Number(ctx.raw).toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:9},maxRotation:0,autoSkip:true,maxTicksLimit:9}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:10},callback:v=>`$${Number(v).toFixed(2)}`}}}}});
+  PriceChart=new Chart(canvas,{type:'line',data:{labels,datasets:[{data:prices,borderColor:color,borderWidth:1.5,fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,260);g.addColorStop(0,rgba(color,.15));g.addColorStop(1,rgba(color,0));return g;},pointRadius:0,tension}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:250},layout:{padding:{right:24,left:4}},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{title:ctx=>{const idx=ctx[0]?.dataIndex;const d=rawDates[idx]||'';return isIntra?formatTimeLabel(d,r):d.slice(0,10);},label:ctx=>`$${Number(ctx.raw).toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:9},maxRotation:0,autoSkip:false}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:10},callback:v=>`$${Number(v).toFixed(2)}`}}}}});
 
   const diff=prices[prices.length-1]-prices[0],pct=diff/prices[0]*100,up=diff>=0;
   const el=$('pcperf');if(el){el.className=`pcperf ${up?'up':'dn'}`;el.textContent=`${up?'▲':'▼'} ${up?'+':''}$${Math.abs(diff).toFixed(2)} (${up?'+':''}${pct.toFixed(2)}%)`;}
@@ -1057,22 +1034,19 @@ function renderFSPriceChart(range){
   if(FSChart){FSChart.destroy();FSChart=null;}
   const canvas=$('fs-canvas');if(!canvas)return;
   let prices,rawDates,isIntra=false;
-  if((range==='1D'||range==='1W'||range==='1M'||range==='3M')&&CurIntraday?.[range]?.prices?.length>1){
-    prices=CurIntraday[range].prices;rawDates=CurIntraday[range].times;isIntra=true;
-  } else if(range==='1D'){
-    const b=CurPH?.['YTD']||[];const bd=CurDates?.['YTD']||[];prices=b.slice(-5);rawDates=bd.slice(-5);
-  } else if(range==='1W'){
-    const b=CurPH?.['YTD']||[];const bd=CurDates?.['YTD']||[];prices=b.slice(-10);rawDates=bd.slice(-10);
-  } else if(range==='1M'){
-    const b=CurPH?.['YTD']||[];const bd=CurDates?.['YTD']||[];prices=b.slice(-22);rawDates=bd.slice(-22);
-  } else if(range==='3M'){
-    const b=CurPH?.['YTD']||[];const bd=CurDates?.['YTD']||[];prices=b.slice(-63);rawDates=bd.slice(-63);
+  const intra2=CurIntraday;
+  if((range==='1D'||range==='1W'||range==='1M'||range==='3M')&&intra2?.[range]?.prices?.length>1){
+    prices=intra2[range].prices;rawDates=intra2[range].times;isIntra=true;
   } else {
-    prices=CurPH?.[range]||[];rawDates=CurDates?.[range]||[];
+    const eodSlice={'1D':5,'1W':10,'1M':22,'3M':63};
+    const src=CurPH?.[range]||CurPH?.['1Y']||[];
+    const srcD=CurDates?.[range]||CurDates?.['1Y']||[];
+    const n=eodSlice[range];
+    prices=n?src.slice(-n):src;rawDates=n?srcD.slice(-n):srcD;
   }
   if(!prices.length)return;
   const labels=buildLabels(rawDates,range,isIntra);
-  const tension=isIntra?0:({'YTD':0.2,'1Y':0.3,'5Y':0.35,'10Y':0.35,'All':0.35}[range]??0.2);
+  const tension=isIntra?0:({'1M':0.15,'3M':0.15,'YTD':0.2,'1Y':0.3,'5Y':0.35,'10Y':0.35,'All':0.35}[range]??0.2);
   const isUp=prices[prices.length-1]>=prices[0],color=isUp?G:R;
   FSChart=new Chart(canvas,{type:'line',data:{labels,datasets:[{data:prices,borderColor:color,borderWidth:2,fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,500);g.addColorStop(0,rgba(color,.16));g.addColorStop(1,rgba(color,0));return g;},pointRadius:0,tension}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},layout:{padding:{right:24}},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{title:ctx=>{const idx=ctx[0]?.dataIndex;const d=rawDates[idx]||'';return isIntra?formatTimeLabel(d,range):d;},label:ctx=>`$${Number(ctx.raw).toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:10},maxRotation:0}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:12},callback:v=>`$${Number(v).toFixed(2)}`}}}}});
   const diff=prices[prices.length-1]-prices[0],pct=diff/prices[0]*100,up=diff>=0;
