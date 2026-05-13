@@ -12,6 +12,17 @@ const PORT = process.env.PORT || 3000;
 
 const FMP_KEY  = process.env.FMP_KEY || 'PASTE_FMP_KEY_HERE';
 const FMP_BASE = 'https://financialmodelingprep.com/stable';
+// Separate v3 base for endpoints not yet on stable (e.g. intraday historical-chart)
+const FMP_V3   = 'https://financialmodelingprep.com/api/v3';
+async function fmpV3fn(ep, qs={}) {
+  const params = new URLSearchParams({ apikey: FMP_KEY, ...qs });
+  const sep = ep.includes('?') ? '&' : '?';
+  const url = `${FMP_V3}${ep}${sep}${params}`;
+  const r = await fetch(url); const data = await r.json();
+  if(data?.['Error Message']) throw new Error(data['Error Message']);
+  return data;
+}
+const fmpV3Safe = async (ep, qs={}) => { try { return await fmpV3fn(ep, qs); } catch { return null; } };
 
 app.use(cors());
 app.use(express.json());
@@ -528,22 +539,29 @@ app.get('/api/fmp/dividend-history/:symbol', async (req,res) => {
 app.get('/api/fmp/intraday/:symbol', async (req,res) => {
   const { symbol } = req.params; const ck=`intraday:${symbol}`; const hit=gc(ck); if(hit)return res.json(hit);
   try{
+    // Use v3 — intraday historical-chart not on stable tier
     const [m5, h1] = await Promise.all([
-      fmpSafe(`/historical-chart/5min/${symbol}`),
-      fmpSafe(`/historical-chart/1hour/${symbol}`),
+      fmpV3Safe(`/historical-chart/5min/${symbol}`),
+      fmpV3Safe(`/historical-chart/1hour/${symbol}`),
     ]);
-    const arr5 = Array.isArray(m5) ? [...m5].sort((a,b)=>a.date<b.date?-1:1) : [];
-    const arr1h = Array.isArray(h1) ? [...h1].sort((a,b)=>a.date<b.date?-1:1) : [];
+    const arr5  = Array.isArray(m5)  ? [...m5].sort((a,b)=>a.date<b.date?-1:1)  : [];
+    const arr1h = Array.isArray(h1)  ? [...h1].sort((a,b)=>a.date<b.date?-1:1)  : [];
+
     // 1D: most recent trading day 5-min bars
-    const lastDay = arr5.length ? arr5[arr5.length-1].date.slice(0,10) : '';
-    const day5 = arr5.filter(d=>d.date.startsWith(lastDay));
-    // 1W: last ~35 hourly bars (5 trading days × 7 hours)
-    const week1h = arr1h.slice(-40);
-    const result = {
-      '1D':{ prices:day5.map(d=>+(d.close||0).toFixed(2)),  times:day5.map(d=>d.date) },
-      '1W':{ prices:week1h.map(d=>+(d.close||0).toFixed(2)), times:week1h.map(d=>d.date) },
-    };
-    sc(ck, result, 3*60_000); // 3-min cache for intraday
+    const lastDay5 = arr5.length ? arr5[arr5.length-1].date.slice(0,10) : '';
+    const day5     = arr5.filter(d=>d.date.startsWith(lastDay5));
+
+    // 1W: last 7 calendar days of hourly bars
+    const cutW  = new Date(Date.now()-8*86_400_000).toISOString().slice(0,10);
+    const week1h = arr1h.filter(d=>d.date.slice(0,10)>=cutW);
+
+    // 1M: last 32 calendar days of hourly bars (~150 pts for better definition)
+    const cutM  = new Date(Date.now()-33*86_400_000).toISOString().slice(0,10);
+    const mon1h  = arr1h.filter(d=>d.date.slice(0,10)>=cutM);
+
+    const toSeries = arr => ({prices:arr.map(d=>+(d.close||0).toFixed(2)),times:arr.map(d=>d.date)});
+    const result = { '1D':toSeries(day5), '1W':toSeries(week1h), '1M':toSeries(mon1h) };
+    sc(ck, result, 3*60_000);
     res.json(result);
   }catch(e){ res.status(500).json({error:e.message}); }
 });
