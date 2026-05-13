@@ -637,7 +637,7 @@ async function loadStock(ticker){
     CurIntraday=intraday;CurDivHistory=divHistory;
     const m=stock?.metrics?.metric||{},price=stock?.quote?.c;
     const hasFMPPrices=fmpPrices&&Object.values(fmpPrices).some(r=>r?.prices?.length>2);
-    if(hasFMPPrices){CurPH={};CurDates={};for(const r of['1M','3M','YTD','1Y','5Y','10Y','All']){CurPH[r]=fmpPrices[r]?.prices||[];CurDates[r]=fmpPrices[r]?.dates||[];}CurD.priceDataSource='live';}
+    if(hasFMPPrices){CurPH={};CurDates={};for(const r of['3M','YTD','1Y','5Y','10Y','All']){CurPH[r]=fmpPrices[r]?.prices||[];CurDates[r]=fmpPrices[r]?.dates||[];}CurD.priceDataSource='live';}
     else{const gen=generatePriceHistory(price,m['52WeekHigh'],m['52WeekLow'],m.beta);CurPH=gen.prices;CurDates=gen.dates;CurD.priceDataSource='estimated';}
     renderPage();loadPeers(ticker);
   }catch(e){$('scontent').innerHTML=`<div class="not-found"><h3>Could not load ${esc(ticker)}</h3><p>${e.message}</p></div>`;}
@@ -749,8 +749,8 @@ function renderPage(){
 }
 
 function formatDateLabel(d,r){
-  if(!d)return'';const dt=new Date(d+'T12:00:00');
-  if(r==='1M'||r==='3M')return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
+  if(!d)return'';const dt=new Date(d.slice(0,10)+'T12:00:00');
+  if(r==='1D'||r==='1W'||r==='1M'||r==='3M')return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
   if(r==='YTD')return dt.toLocaleDateString('en-US',{month:'short',day:'numeric'});
   if(r==='1Y')return dt.toLocaleDateString('en-US',{month:'short',year:'2-digit'});
   return dt.getFullYear().toString();
@@ -763,39 +763,81 @@ function formatTimeLabel(dtStr,r){
   return formatDateLabel(dtStr,r);
 }
 
+// Build clean, non-duplicate x-axis labels for any range
+function buildLabels(rawDates,r,isIntra){
+  if(!rawDates.length)return[];
+  const out=new Array(rawDates.length).fill('');
+  if(isIntra){
+    if(r==='1D'){
+      // Label at market open (9:30) and each subsequent whole hour
+      rawDates.forEach((d,i)=>{
+        const dt=new Date(d.replace(' ','T'));
+        const h=dt.getHours(),mn=dt.getMinutes();
+        if((h===9&&mn===30)||mn===0) out[i]=formatTimeLabel(d,r);
+      });
+    } else if(r==='1W'){
+      // Label once per day (first bar of each calendar day)
+      const seen=new Set();
+      rawDates.forEach((d,i)=>{
+        const day=d.slice(0,10);
+        if(!seen.has(day)){seen.add(day);out[i]=formatTimeLabel(d,r);}
+      });
+    } else if(r==='1M'){
+      // Hourly data for 1M: label once per week (Monday) or every 5 days
+      const seen=new Set();
+      rawDates.forEach((d,i)=>{
+        const day=d.slice(0,10);
+        if(!seen.has(day)){
+          const dt=new Date(day+'T12:00:00');
+          // Label Mondays only (day of week 1)
+          if(dt.getDay()===1||(seen.size===0)) {seen.add(day);out[i]=formatDateLabel(day,r);}
+          else seen.add(day);
+        }
+      });
+    }
+  } else {
+    // EOD daily data: evenly spaced labels
+    const maxL={'1D':5,'1W':8,'1M':6,'3M':8,'YTD':8,'1Y':12,'5Y':8,'10Y':10,'All':10};
+    const step=Math.max(1,Math.floor(rawDates.length/(maxL[r]||8)));
+    rawDates.forEach((d,i)=>{if(i%step===0)out[i]=formatDateLabel(d,r);});
+  }
+  return out;
+}
+
 function drawPrice(r){
   CurPR=r;
   if(PriceChart){PriceChart.destroy();PriceChart=null;}
   const canvas=$('pc');if(!canvas)return;
-  // Intraday source for 1D/1W
+
+  // Data source: prefer intraday for 1D/1W/1M, fall back to EOD
   let prices,rawDates,isIntra=false;
-  if((r==='1D'||r==='1W')&&CurIntraday?.[r]?.prices?.length>0){
-    // Intraday available — use it
+  if((r==='1D'||r==='1W'||r==='1M')&&CurIntraday?.[r]?.prices?.length>1){
     prices=CurIntraday[r].prices;rawDates=CurIntraday[r].times;isIntra=true;
   } else if(r==='1D'){
-    // 1D intraday not available → show last 5 EOD days from 1M
-    const base=CurPH?.['1M']||[];const baseDates=CurDates?.['1M']||[];
-    prices=base.slice(-5);rawDates=baseDates.slice(-5);
+    // Fallback: last 5 EOD trading days
+    const b=CurPH?.['3M']||CurPH?.['1Y']||[];const bd=CurDates?.['3M']||CurDates?.['1Y']||[];
+    prices=b.slice(-5);rawDates=bd.slice(-5);
   } else if(r==='1W'){
-    // 1W intraday not available → show last 15 EOD days from 1M
-    const base=CurPH?.['1M']||[];const baseDates=CurDates?.['1M']||[];
-    prices=base.slice(-15);rawDates=baseDates.slice(-15);
+    const b=CurPH?.['3M']||CurPH?.['1Y']||[];const bd=CurDates?.['3M']||CurDates?.['1Y']||[];
+    prices=b.slice(-12);rawDates=bd.slice(-12);
+  } else if(r==='1M'){
+    const b=CurPH?.['3M']||[];const bd=CurDates?.['3M']||[];
+    prices=b.slice(-22);rawDates=bd.slice(-22);
   } else {
     prices=CurPH?.[r]||[];rawDates=CurDates?.[r]||[];
   }
+
   if(!prices.length){canvas.parentElement.innerHTML='<p style="color:var(--mu);font-size:12px;padding:1rem;text-align:center">No data available for this range.</p>';return;}
-  // Label density
-  const maxL={'1D':8,'1W':5,'1M':8,'3M':8,'YTD':8,'1Y':12,'5Y':8,'10Y':10,'All':10};
-  const step=Math.max(1,Math.floor(rawDates.length/(maxL[r]||10)));
-  const labels=rawDates.map((d,i)=>{
-    if(r==='1D'){const mn=new Date(d.replace(' ','T')).getMinutes();return(i%12===0||mn===0)?formatTimeLabel(d,r):'';}
-    if(r==='1W'){return i%7===0?formatTimeLabel(d,r):'';}
-    return i%step===0?formatDateLabel(d,r):'';
-  });
-  // Tension: 0 for intraday/short (no waviness), smoothed for long
-  const tension={'1D':0,'1W':0,'1M':0.1,'3M':0.15,'YTD':0.2,'1Y':0.3,'5Y':0.35,'10Y':0.35,'All':0.35}[r]??0.3;
+
+  // Build clean, non-duplicate x-axis labels
+  const labels=buildLabels(rawDates,r,isIntra);
+
+  // Tension: crisp for short intraday, smooth for long EOD
+  const tension=isIntra?0:({'3M':0.15,'YTD':0.2,'1Y':0.3,'5Y':0.35,'10Y':0.35,'All':0.35}[r]??0.2);
   const isUp=prices[prices.length-1]>=prices[0],color=isUp?G:R;
+
   PriceChart=new Chart(canvas,{type:'line',data:{labels,datasets:[{data:prices,borderColor:color,borderWidth:1.5,fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,260);g.addColorStop(0,rgba(color,.15));g.addColorStop(1,rgba(color,0));return g;},pointRadius:0,tension}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:250},layout:{padding:{right:24,left:4}},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{title:ctx=>{const idx=ctx[0]?.dataIndex;const d=rawDates[idx]||'';return isIntra?formatTimeLabel(d,r):d;},label:ctx=>`$${Number(ctx.raw).toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:9},maxRotation:0,autoSkip:false}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:10},callback:v=>`$${Number(v).toFixed(2)}`}}}}});
+
   const diff=prices[prices.length-1]-prices[0],pct=diff/prices[0]*100,up=diff>=0;
   const el=$('pcperf');if(el){el.className=`pcperf ${up?'up':'dn'}`;el.textContent=`${up?'▲':'▼'} ${up?'+':''}$${Math.abs(diff).toFixed(2)} (${up?'+':''}${pct.toFixed(2)}%)`;}
 }
@@ -972,19 +1014,20 @@ function renderFSPriceChart(range){
   if(FSChart){FSChart.destroy();FSChart=null;}
   const canvas=$('fs-canvas');if(!canvas)return;
   let prices,rawDates,isIntra=false;
-  if((range==='1D'||range==='1W')&&CurIntraday?.[range]?.prices?.length>0){
+  if((range==='1D'||range==='1W'||range==='1M')&&CurIntraday?.[range]?.prices?.length>1){
     prices=CurIntraday[range].prices;rawDates=CurIntraday[range].times;isIntra=true;
   } else if(range==='1D'){
-    const base=CurPH?.['1M']||[];const bd=CurDates?.['1M']||[];prices=base.slice(-5);rawDates=bd.slice(-5);
+    const b=CurPH?.['3M']||[];const bd=CurDates?.['3M']||[];prices=b.slice(-5);rawDates=bd.slice(-5);
   } else if(range==='1W'){
-    const base=CurPH?.['1M']||[];const bd=CurDates?.['1M']||[];prices=base.slice(-15);rawDates=bd.slice(-15);
+    const b=CurPH?.['3M']||[];const bd=CurDates?.['3M']||[];prices=b.slice(-12);rawDates=bd.slice(-12);
+  } else if(range==='1M'){
+    const b=CurPH?.['3M']||[];const bd=CurDates?.['3M']||[];prices=b.slice(-22);rawDates=bd.slice(-22);
   } else {
     prices=CurPH?.[range]||[];rawDates=CurDates?.[range]||[];
   }
   if(!prices.length)return;
-  const step=Math.max(1,Math.floor(rawDates.length/12));
-  const labels=rawDates.map((d,i)=>i%step===0?(isIntra?formatTimeLabel(d,range):formatDateLabel(d,range)):'');
-  const tension={'1D':0,'1W':0,'1M':0.1,'3M':0.15,'YTD':0.2,'1Y':0.3,'5Y':0.35,'10Y':0.35,'All':0.35}[range]??0.3;
+  const labels=buildLabels(rawDates,range,isIntra);
+  const tension=isIntra?0:({'3M':0.15,'YTD':0.2,'1Y':0.3,'5Y':0.35,'10Y':0.35,'All':0.35}[range]??0.2);
   const isUp=prices[prices.length-1]>=prices[0],color=isUp?G:R;
   FSChart=new Chart(canvas,{type:'line',data:{labels,datasets:[{data:prices,borderColor:color,borderWidth:2,fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,500);g.addColorStop(0,rgba(color,.16));g.addColorStop(1,rgba(color,0));return g;},pointRadius:0,tension}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},layout:{padding:{right:24}},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{title:ctx=>{const idx=ctx[0]?.dataIndex;const d=rawDates[idx]||'';return isIntra?formatTimeLabel(d,range):d;},label:ctx=>`$${Number(ctx.raw).toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:10},maxRotation:0}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:12},callback:v=>`$${Number(v).toFixed(2)}`}}}}});
   const diff=prices[prices.length-1]-prices[0],pct=diff/prices[0]*100,up=diff>=0;
