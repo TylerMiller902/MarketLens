@@ -675,7 +675,6 @@ function renderPage(){
   const mxB=Math.max(...rBars.map(b=>b.n),1),w52h=m['52WeekHigh'],w52l=m['52WeekLow'];
   const earns=earnings||[],upcoming=(earningsCal?.earningsCalendar||[]).filter(e=>e.date>=today())[0],newsItems=(news||[]).slice(0,5);
   const hasDividend=CurDivHistory?.years?.length>0||CurFMP?.dividendPerShare?.some(x=>x>0)||(CurD?.metrics?.metric?.dividendPerShareAnnual>0)||(CurD?.metrics?.metric?.dividendYieldIndicatedAnnual>0);
-  const hasDivYield=hasDividend; // always show yield chart when dividends exist
   const hasInsiders=CurInsiders?.transactions?.length>0;
   const ALL_RANGES=['1D','1W','1M','3M','YTD','1Y','5Y','10Y','All'];
   const stats=isETF?[{l:'Market Cap',v:fB((p?.marketCapitalization||0)*1e6)},{l:'52W High',v:f$(w52h)},{l:'52W Low',v:f$(w52l)},{l:'Beta',v:fN(m.beta)},{l:'P/E Ratio',v:fN(m.peBasicExclExtraTTM)},{l:'EPS (TTM)',v:f$(m.epsTTM)},{l:'Dividend Yield',v:m.dividendYieldIndicatedAnnual!=null?fP(m.dividendYieldIndicatedAnnual):'—'},{l:'Div Per Share',v:m.dividendPerShareAnnual!=null?f$(m.dividendPerShareAnnual):'—'},{l:'Gross Margin',v:fP(m.grossMarginTTM)},{l:'Net Margin',v:fP(m.netProfitMarginTTM)},{l:'ROE',v:fP(m.roeTTM)},{l:'Exchange',v:p?.exchange||'—'}]:[{l:'Market Cap',v:fB((p?.marketCapitalization||0)*1e6)},{l:'P/E Ratio',v:fN(m.peBasicExclExtraTTM)},{l:'EPS (TTM)',v:f$(m.epsTTM)},{l:'P/S Ratio',v:fN(m.psTTM)},{l:'Dividend Yield',v:m.dividendYieldIndicatedAnnual!=null?fP(m.dividendYieldIndicatedAnnual):'—'},{l:'Div Per Share (Ann)',v:m.dividendPerShareAnnual!=null?f$(m.dividendPerShareAnnual):'—'},{l:'Beta',v:fN(m.beta)},{l:'Current Ratio',v:fN(m.currentRatioAnnual)},{l:'Gross Margin',v:fP(m.grossMarginTTM)},{l:'Net Margin',v:fP(m.netProfitMarginTTM)},{l:'ROE',v:fP(m.roeTTM)},{l:'ROA',v:fP(m.roaTTM)}];
@@ -725,7 +724,7 @@ function renderPage(){
       <div class="card" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;flex-wrap:wrap;gap:6px"><div><div class="cctitle">All Margins Over Time</div><div class="ccsub">Gross / Operating / Net / FCF</div></div><div style="display:flex;gap:12px;flex-wrap:wrap"><span style="font-size:10px;font-family:var(--fm);color:${G}">— Gross <span id="v-gm">—</span></span><span style="font-size:10px;font-family:var(--fm);color:${B}">— Oper <span id="v-om">—</span></span><span style="font-size:10px;font-family:var(--fm);color:${P}">— Net <span id="v-nm">—</span></span><span style="font-size:10px;font-family:var(--fm);color:#60a5fa">— FCF <span id="v-fm">—</span></span></div></div><div class="canv" style="height:220px"><canvas id="ch-mg"></canvas></div></div>
       <div class="stitle-sm" style="margin-top:.8rem">Earnings Per Share</div>
       <div class="c2">${ccard('EPS History','Diluted EPS','s-eps','ch-eps')}${ccard('EPS Growth YoY','% change','s-epsg','ch-epsg')}</div>
-      ${hasDividend||hasDivYield?`<div class="stitle-sm" style="margin-top:.8rem">Dividend</div><div class="c2">${ccard('Dividend Per Share','Annual payout per share','s-div','ch-div')}${ccard('Dividend Yield History','Annual yield % over time','s-dyh','ch-dyh')}${ccard('Dividend Growth YoY','% change','s-divg','ch-divg')}</div>`:''}
+      ${hasDividend?`<div class="stitle-sm" style="margin-top:.8rem">Dividend</div><div class="c2">${ccard('Dividend Per Share','Annual payout per share','s-div','ch-div')}${ccard('Dividend Growth YoY','% change','s-divg','ch-divg')}</div>`:''}
       <div class="stitle-sm" style="margin-top:.8rem">Technical</div>
       <div class="c2">${ccard('RSI (14) — 1 Year','Relative Strength Index &middot; 70 overbought &middot; 30 oversold','s-rsi','ch-rsi')}</div>
       <div class="stitle-sm" style="margin-top:.8rem">Balance Sheet</div>
@@ -904,27 +903,6 @@ function drawFinCharts(){
   const div=sl(f.dividendPerShare),debt=sl(f.totalDebt),eq=sl(f.totalEquity);
   const gm=sl(f.grossMargin),om=sl(f.operatingMargin),nm=sl(f.netMargin),fm=sl(f.fcfMargin);
   const shares=sl(f.sharesOutstanding),netDebt=sl(f.netDebt);
-  // Pre-build dividend yield data (chart drawn later after mk is defined)
-  const allPH=CurPH?.['All']||CurPH?.['10Y']||CurPH?.['5Y']||[];
-  const allPD=CurDates?.['All']||CurDates?.['10Y']||CurDates?.['5Y']||[];
-  const yearPrice={};
-  allPD.forEach((d,i)=>{if(d&&allPH[i])yearPrice[d.slice(0,4)]=allPH[i];});
-  let dyhY=[],dyhD=[];
-  if(CurDivHistory?.years?.length>0){
-    CurDivHistory.years.forEach((yr,i)=>{
-      const annualDiv=CurDivHistory.dividends[i];if(!annualDiv||annualDiv<=0)return;
-      const price=yearPrice[yr];if(price&&price>0){dyhY.push(yr);dyhD.push(+(annualDiv/price*100).toFixed(4));}
-    });
-  }
-  if(!dyhD.length&&div.some(x=>x>0)){
-    Y.forEach((yr,i)=>{
-      const dps=div[i];if(!dps||dps<=0)return;
-      const price=yearPrice[yr];if(price&&price>0){dyhY.push(yr);dyhD.push(+(dps/price*100).toFixed(4));}
-    });
-  }
-  // Set stat label now (chart drawn after mk is defined below)
-  if(dyhY.length>0)setStat('s-dyh',`${(dyhD.slice(-1)[0]||0).toFixed(2)}%`,'dividend yield','neu');
-  else setStat('s-dyh','N/A','No yield data','neu');
 
   const revG=pctG(rev),epsG=pctG(eps),divG=pctG(div);
   const lr=last(rev),lrg=last(revG),lf=last(fcf),le=last(eps),leg=last(epsG);
@@ -940,10 +918,15 @@ function drawFinCharts(){
   // ── Dividend Per Share: prefer CurDivHistory (reliable) over cashflow estimate ──
   let divChartY = Y, divChartD = div;
   if(CurDivHistory?.years?.length>1){
-    // Slice to CurGP years, aligned with income statement years where possible
     const n=CurGP===0?CurDivHistory.years.length:Math.min(CurGP,CurDivHistory.years.length);
     divChartY=CurDivHistory.years.slice(-n);
     divChartD=CurDivHistory.dividends.slice(-n);
+  }
+  // Remove current incomplete calendar year to prevent misleading negative growth
+  const curYr=new Date().getFullYear().toString();
+  if(divChartY.length>1&&divChartY[divChartY.length-1]===curYr){
+    divChartY=divChartY.slice(0,-1);
+    divChartD=divChartD.slice(0,-1);
   }
   const divChartG=pctG(divChartD);
   const hasDivChart=divChartD.some(x=>x>0);
@@ -962,8 +945,7 @@ function drawFinCharts(){
   const lnOnly=(lb,data,c)=>({label:lb,data,borderColor:c,borderWidth:2,pointRadius:2,pointBackgroundColor:c,pointHoverRadius:4,tension:.35,fill:false});
   const xA={grid:{display:false},ticks:{color:'#7e7e96',font:{size:9}}},yA=fmt=>({grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:9},callback:fmt}}),base={responsive:true,maintainAspectRatio:false,animation:{duration:450}};
   const mk=(id,type,data,opts)=>{const el=$(id);if(!el)return;const c=new Chart(el,{type,data,options:{...base,...opts}});Charts[id]=c;};
-  // ── Dividend Yield History (drawn here so mk/lnFill/xA/yA are available) ──
-  if(dyhY.length>0)mk('ch-dyh','line',{labels:dyhY,datasets:[lnFill('Div Yield',dyhD,G)]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${Number(c.raw||0).toFixed(2)}%`}}},scales:{x:xA,y:{...yA(v=>`${Number(v).toFixed(2)}%`),min:0}}});
+  // ── Dividend charts ──
   mk('ch-rev','bar',{labels:Y,datasets:[{label:'Revenue',...bO(P),data:rev}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${Number(c.raw).toFixed(2)}B`}}},scales:{x:xA,y:yA(v=>`$${Number(v).toFixed(0)}B`)}});
   mk('ch-rvg','bar',{labels:Y,datasets:[{label:'Growth',data:revG,borderRadius:3,borderSkipped:false,backgroundColor:revG.map(v=>rgba(v!=null&&v>=0?G:R,.75))}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw!=null?Number(c.raw).toFixed(2):'—'}%`}}},scales:{x:xA,y:yA(v=>`${Number(v).toFixed(2)}%`)}});
   mk('ch-fcf','bar',{labels:Y,datasets:[{label:'FCF',data:fcf,borderRadius:3,borderSkipped:false,backgroundColor:fcf.map(v=>rgba(v>=0?B:R,.75))}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${Number(c.raw).toFixed(2)}B`}}},scales:{x:xA,y:yA(v=>`$${Number(v).toFixed(0)}B`)}});
