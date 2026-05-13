@@ -769,9 +769,20 @@ function drawPrice(r){
   // Intraday source for 1D/1W
   let prices,rawDates,isIntra=false;
   if((r==='1D'||r==='1W')&&CurIntraday?.[r]?.prices?.length>0){
+    // Intraday available — use it
     prices=CurIntraday[r].prices;rawDates=CurIntraday[r].times;isIntra=true;
-  }else{prices=CurPH?.[r]||[];rawDates=CurDates?.[r]||[];}
-  if(!prices.length){canvas.parentElement.innerHTML='<p style="color:var(--mu);font-size:12px;padding:1rem;text-align:center">No data available.</p>';return;}
+  } else if(r==='1D'){
+    // 1D intraday not available → show last 5 EOD days from 1M
+    const base=CurPH?.['1M']||[];const baseDates=CurDates?.['1M']||[];
+    prices=base.slice(-5);rawDates=baseDates.slice(-5);
+  } else if(r==='1W'){
+    // 1W intraday not available → show last 15 EOD days from 1M
+    const base=CurPH?.['1M']||[];const baseDates=CurDates?.['1M']||[];
+    prices=base.slice(-15);rawDates=baseDates.slice(-15);
+  } else {
+    prices=CurPH?.[r]||[];rawDates=CurDates?.[r]||[];
+  }
+  if(!prices.length){canvas.parentElement.innerHTML='<p style="color:var(--mu);font-size:12px;padding:1rem;text-align:center">No data available for this range.</p>';return;}
   // Label density
   const maxL={'1D':8,'1W':5,'1M':8,'3M':8,'YTD':8,'1Y':12,'5Y':8,'10Y':10,'All':10};
   const step=Math.max(1,Math.floor(rawDates.length/(maxL[r]||10)));
@@ -959,11 +970,22 @@ function closeFS(){FSModal.classList.remove('open');document.body.style.overflow
 function renderFSPriceChart(range){
   if(FSChart){FSChart.destroy();FSChart=null;}
   const canvas=$('fs-canvas');if(!canvas)return;
-  const prices=CurPH?.[range]||[],rawDates=CurDates?.[range]||[];if(!prices.length)return;
+  let prices,rawDates,isIntra=false;
+  if((range==='1D'||range==='1W')&&CurIntraday?.[range]?.prices?.length>0){
+    prices=CurIntraday[range].prices;rawDates=CurIntraday[range].times;isIntra=true;
+  } else if(range==='1D'){
+    const base=CurPH?.['1M']||[];const bd=CurDates?.['1M']||[];prices=base.slice(-5);rawDates=bd.slice(-5);
+  } else if(range==='1W'){
+    const base=CurPH?.['1M']||[];const bd=CurDates?.['1M']||[];prices=base.slice(-15);rawDates=bd.slice(-15);
+  } else {
+    prices=CurPH?.[range]||[];rawDates=CurDates?.[range]||[];
+  }
+  if(!prices.length)return;
   const step=Math.max(1,Math.floor(rawDates.length/12));
-  const labels=rawDates.map((d,i)=>i%step===0?formatDateLabel(d,range):'');
+  const labels=rawDates.map((d,i)=>i%step===0?(isIntra?formatTimeLabel(d,range):formatDateLabel(d,range)):'');
+  const tension={'1D':0,'1W':0,'1M':0.1,'3M':0.15,'YTD':0.2,'1Y':0.3,'5Y':0.35,'10Y':0.35,'All':0.35}[range]??0.3;
   const isUp=prices[prices.length-1]>=prices[0],color=isUp?G:R;
-  FSChart=new Chart(canvas,{type:'line',data:{labels,datasets:[{data:prices,borderColor:color,borderWidth:2,fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,500);g.addColorStop(0,rgba(color,.16));g.addColorStop(1,rgba(color,0));return g;},pointRadius:0,tension:.35}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{title:ctx=>{const idx=ctx[0]?.dataIndex;return rawDates[idx]||'';},label:ctx=>`$${Number(ctx.raw).toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:10},maxRotation:0}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:12},callback:v=>`$${Number(v).toFixed(2)}`}}}}});
+  FSChart=new Chart(canvas,{type:'line',data:{labels,datasets:[{data:prices,borderColor:color,borderWidth:2,fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,500);g.addColorStop(0,rgba(color,.16));g.addColorStop(1,rgba(color,0));return g;},pointRadius:0,tension}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},layout:{padding:{right:24}},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{title:ctx=>{const idx=ctx[0]?.dataIndex;const d=rawDates[idx]||'';return isIntra?formatTimeLabel(d,range):d;},label:ctx=>`$${Number(ctx.raw).toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:10},maxRotation:0}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:12},callback:v=>`$${Number(v).toFixed(2)}`}}}}});
   const diff=prices[prices.length-1]-prices[0],pct=diff/prices[0]*100,up=diff>=0;
   const el=$('fs-perf');if(el){el.className=`fs-perf ${up?'up':'dn'}`;el.textContent=`${up?'▲':'▼'} ${up?'+':''}$${Math.abs(diff).toFixed(2)} (${up?'+':''}${pct.toFixed(2)}%)`;}
   const m=CurD?.metrics?.metric||{};
