@@ -550,16 +550,19 @@ app.get('/api/fmp/intraday/:symbol', async (req,res) => {
   const { symbol } = req.params; const ck=`intraday:${symbol}`; const hit=gc(ck); if(hit)return res.json(hit);
   try{
     // Use v3 — intraday historical-chart not on stable tier
+    const from5 = new Date(Date.now()-5*86_400_000).toISOString().slice(0,10);
+    const from1h = new Date(Date.now()-100*86_400_000).toISOString().slice(0,10);
     const [m5, h1] = await Promise.all([
-      fmpV3Safe(`/historical-chart/5min/${symbol}`),
-      fmpV3Safe(`/historical-chart/1hour/${symbol}`),
+      fmpV3Safe(`/historical-chart/5min/${symbol}`, {from: from5}),
+      fmpV3Safe(`/historical-chart/1hour/${symbol}`, {from: from1h}),
     ]);
     const arr5  = Array.isArray(m5)  ? [...m5].sort((a,b)=>a.date<b.date?-1:1)  : [];
     const arr1h = Array.isArray(h1)  ? [...h1].sort((a,b)=>a.date<b.date?-1:1)  : [];
 
     // 1D: most recent trading day 5-min bars
     const lastDay5 = arr5.length ? arr5[arr5.length-1].date.slice(0,10) : '';
-    const day5     = arr5.filter(d=>d.date.startsWith(lastDay5));
+    const day5 = lastDay5 ? arr5.filter(d=>d.date.startsWith(lastDay5)) : [];
+    console.log(`[intraday] ${symbol} 5min total=${arr5.length} lastDay=${lastDay5} day5=${day5.length} 1h total=${arr1h.length}`);
 
     // 1W: last 7 calendar days of hourly bars
     const cutW  = new Date(Date.now()-8*86_400_000).toISOString().slice(0,10);
