@@ -793,7 +793,7 @@ function buildLabels(rawDates,r,isIntra){
       if(h===9&&m===30)out[i]='Open';
       else if(m===0&&h>=10&&h<=16)out[i]=fmtHour(d);
     });
-  } else if(isIntra&&(r==='1M'||r==='3M')){
+  } else if(isIntra&&(r==='1W'||r==='1M'||r==='3M')){
     // Hourly data: one label per unique trading day, evenly spaced
     const dayFirst={};const days=[];
     rawDates.forEach((d,i)=>{const day=d.slice(0,10);if(!(day in dayFirst)){dayFirst[day]=i;days.push(day);}});
@@ -833,7 +833,7 @@ function drawPrice(r){
   if(r==='1D'&&intra?.['1D']?.prices?.length>1){
     // Intraday 5-min bars for 1D
     prices=intra['1D'].prices;rawDates=intra['1D'].times;isIntra=true;
-  } else if((r==='1M'||r==='3M')&&intra?.[r]?.prices?.length>1){
+  } else if((r==='1W'||r==='1M'||r==='3M')&&intra?.[r]?.prices?.length>1){
     // Intraday hourly for 1M/3M
     prices=intra[r].prices;rawDates=intra[r].times;isIntra=true;
   } else {
@@ -937,7 +937,19 @@ function drawFinCharts(){
   const ld=last(debt),leq=last(eq),de=ld&&leq&&leq>.001?ld/leq:null;
   setStat('s-deq',de!=null?`${de.toFixed(2)}x`:'—','D/E ratio',de!=null&&de<1?'pos':de!=null&&de<2?'neu':'neg');
   setStat('s-ni',lf!=null?`$${lf.toFixed(2)}B`:'—',lf>0?'FCF positive':'FCF negative',lf>0?'pos':'neg');
+  // ── Dividend Per Share: prefer CurDivHistory (reliable) over cashflow estimate ──
+  let divChartY = Y, divChartD = div;
+  if(CurDivHistory?.years?.length>1){
+    // Slice to CurGP years, aligned with income statement years where possible
+    const n=CurGP===0?CurDivHistory.years.length:Math.min(CurGP,CurDivHistory.years.length);
+    divChartY=CurDivHistory.years.slice(-n);
+    divChartD=CurDivHistory.dividends.slice(-n);
+  }
+  const divChartG=pctG(divChartD);
+  const hasDivChart=divChartD.some(x=>x>0);
+
   if(div.some(x=>x>0)){const ld2=last(div),ldg=last(divG);if(ld2!=null)setStat('s-div',`$${ld2.toFixed(2)}`,ldg!=null?`${sgn(ldg)}${ldg.toFixed(2)}% YoY`:'—',ldg>0?'pos':'neu');if(ldg!=null)setStat('s-divg',`${sgn(ldg)}${ldg.toFixed(2)}%`,'growth','neu');}
+  else if(hasDivChart){const ld=last(divChartD),ldg=last(divChartG);setStat('s-div',`$${(ld||0).toFixed(2)}`,ldg!=null?`${sgn(ldg)}${ldg.toFixed(2)}% YoY`:'—',ldg>0?'pos':'neu');if(ldg!=null)setStat('s-divg',`${sgn(ldg)}${ldg.toFixed(2)}%`,'growth','neu');}
   const peData=slKM(f.peRatio),roicData=slKM(f.roic);
   const lpe=last(peData.d),lroic=last(roicData.d),lsh=last(shares),lnd=last(netDebt);
   if(lpe!=null)setStat('s-pe',`${lpe.toFixed(1)}x`,'P/E ratio','neu');
@@ -959,7 +971,10 @@ function drawFinCharts(){
   mk('ch-mg','line',{labels:Y,datasets:[lnOnly('Gross',gm,G),lnOnly('Operating',om,B),lnOnly('Net',nm,P),lnOnly('FCF',fm,'#60a5fa')]},{plugins:{legend:{display:true,labels:{color:'#7e7e96',boxWidth:10,font:{size:9}}},tooltip:{callbacks:{label:c=>`${c.dataset.label}: ${Number(c.raw).toFixed(2)}%`}}},scales:{x:xA,y:yA(v=>`${Number(v).toFixed(2)}%`)}});
   mk('ch-eps','bar',{labels:Y,datasets:[{label:'EPS',...bO(P),data:eps}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${Number(c.raw).toFixed(2)}`}}},scales:{x:xA,y:yA(v=>`$${Number(v).toFixed(2)}`)}});
   mk('ch-epsg','bar',{labels:Y,datasets:[{label:'Growth',data:epsG,borderRadius:3,borderSkipped:false,backgroundColor:epsG.map(v=>rgba(v!=null&&v>=0?G:R,.75))}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw!=null?Number(c.raw).toFixed(2):'—'}%`}}},scales:{x:xA,y:yA(v=>`${Number(v).toFixed(2)}%`)}});
-  if(div.some(x=>x>0)){
+  if(hasDivChart){
+    mk('ch-div','bar',{labels:divChartY,datasets:[{label:'Div',...bO(B),data:divChartD}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${Number(c.raw).toFixed(2)}`}}},scales:{x:xA,y:yA(v=>`$${Number(v).toFixed(2)}`)}});
+    mk('ch-divg','bar',{labels:divChartY,datasets:[{label:'Growth',data:divChartG,borderRadius:3,borderSkipped:false,backgroundColor:divChartG.map(v=>rgba(v!=null&&v>=0?G:R,.75))}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw!=null?Number(c.raw).toFixed(2):'—'}%`}}},scales:{x:xA,y:yA(v=>`${Number(v).toFixed(2)}%`)}});
+  } else if(div.some(x=>x>0)){
     mk('ch-div','bar',{labels:Y,datasets:[{label:'Div',...bO(B),data:div}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`$${Number(c.raw).toFixed(2)}`}}},scales:{x:xA,y:yA(v=>`$${Number(v).toFixed(2)}`)}});
     mk('ch-divg','bar',{labels:Y,datasets:[{label:'Growth',data:divG,borderRadius:3,borderSkipped:false,backgroundColor:divG.map(v=>rgba(v!=null&&v>=0?G:R,.75))}]},{plugins:{legend:{display:false},tooltip:{callbacks:{label:c=>`${c.raw!=null?Number(c.raw).toFixed(2):'—'}%`}}},scales:{x:xA,y:yA(v=>`${Number(v).toFixed(2)}%`)}});
   }
@@ -1029,7 +1044,7 @@ function renderFSPriceChart(range){
   const intra=CurIntraday;
   if(range==='1D'&&intra?.['1D']?.prices?.length>1){
     prices=intra['1D'].prices;rawDates=intra['1D'].times;isIntra=true;
-  } else if((range==='1M'||range==='3M')&&intra?.[range]?.prices?.length>1){
+  } else if((range==='1W'||range==='1M'||range==='3M')&&intra?.[range]?.prices?.length>1){
     prices=intra[range].prices;rawDates=intra[range].times;isIntra=true;
   } else {
     const slices={'1D':5,'1W':10,'1M':22,'3M':63};
