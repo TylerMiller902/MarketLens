@@ -546,41 +546,84 @@ app.get('/api/fmp/dividend-history/:symbol', async (req,res) => {
   }catch(e){res.status(500).json({error:e.message});}
 });
 
-app.get('/api/fmp/intraday/:symbol', async (req,res) => {
-  const { symbol } = req.params; const ck=`intraday:${symbol}`; const hit=gc(ck); if(hit)return res.json(hit);
+// ── Yahoo Finance intraday (free, no API key needed) ─────────────────────
+async function yahooIntraday(symbol) {
+  const hdrs={
+    'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/124.0.0.0 Safari/537.36',
+    'Accept':'application/json, text/plain, */*',
+    'Accept-Language':'en-US,en;q=0.9',
+    'Referer':'https://finance.yahoo.com/',
+    'Origin':'https://finance.yahoo.com',
+  };
+  const yFetch=async url=>{
+    try{
+      const r=await fetch(url,{headers:hdrs});
+      if(!r.ok){console.log(`[yahoo] ${url} → HTTP ${r.status}`);return null;}
+      return await r.json();
+    }catch(e){console.log(`[yahoo] fetch error: ${e.message}`);return null;}
+  };
+  // Try query1, fall back to query2 if needed
+  const yGet=async path=>{
+    const d=await yFetch(`https://query1.finance.yahoo.com${path}`);
+    if(d?.chart?.result?.[0])return d;
+    return yFetch(`https://query2.finance.yahoo.com${path}`);
+  };
+  // Convert Yahoo UTC timestamp seconds → "YYYY-MM-DD HH:MM:SS" in Eastern Time
+  function tsToET(sec){
+    const d=new Date(sec*1000);
+    try{
+      const p=new Intl.DateTimeFormat('en-US',{timeZone:'America/New_York',year:'numeric',month:'2-digit',day:'2-digit',hour:'2-digit',minute:'2-digit',second:'2-digit',hour12:false}).formatToParts(d);
+      const g=t=>p.find(x=>x.type===t)?.value||'00';
+      return `${g('year')}-${g('month')}-${g('day')} ${g('hour')==='24'?'00':g('hour')}:${g('minute')}:${g('second')}`;
+    }catch{return new Date(sec*1000-4*3600000).toISOString().replace('T',' ').slice(0,19);}
+  }
+  const parseY=data=>{
+    const res=data?.chart?.result?.[0];if(!res)return[];
+    const ts=res.timestamp||[],cls=res.indicators?.quote?.[0]?.close||[];
+    return ts.map((t,i)=>cls[i]!=null?{date:tsToET(t),close:cls[i]}:null).filter(Boolean);
+  };
+  const [d5m,d1h]=await Promise.all([
+    yGet(`/v8/finance/chart/${symbol}?interval=5m&range=1d`),
+    yGet(`/v8/finance/chart/${symbol}?interval=60m&range=3mo`),
+  ]);
+  const bars5m=parseY(d5m),bars1h=parseY(d1h);
+  const toS=arr=>({prices:arr.map(b=>+b.close.toFixed(2)),times:arr.map(b=>b.date)});
+  const dAgo=n=>new Date(Date.now()-n*86_400_000).toISOString().slice(0,10);
+  return{
+    '1D':toS(bars5m),
+    '1W':toS(bars1h.filter(b=>b.date.slice(0,10)>=dAgo(8))),
+    '1M':toS(bars1h.filter(b=>b.date.slice(0,10)>=dAgo(33))),
+    '3M':toS(bars1h.filter(b=>b.date.slice(0,10)>=dAgo(96))),
+  };
+}
+
+// Test endpoint — visit /api/test-intraday/AAPL to verify Yahoo Finance works
+app.get('/api/test-intraday/:symbol', async (req,res) => {
+  const{symbol}=req.params;
   try{
-    // Use v3 — intraday historical-chart not on stable tier
-    const from5 = new Date(Date.now()-5*86_400_000).toISOString().slice(0,10);
-    const from1h = new Date(Date.now()-100*86_400_000).toISOString().slice(0,10);
-    const [m5, h1] = await Promise.all([
-      fmpV3Safe(`/historical-chart/5min/${symbol}`, {from: from5}),
-      fmpV3Safe(`/historical-chart/1hour/${symbol}`, {from: from1h}),
-    ]);
-    const arr5  = Array.isArray(m5)  ? [...m5].sort((a,b)=>a.date<b.date?-1:1)  : [];
-    const arr1h = Array.isArray(h1)  ? [...h1].sort((a,b)=>a.date<b.date?-1:1)  : [];
+    const url=`https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=5m&range=1d`;
+    const r=await fetch(url,{headers:{'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','Accept':'application/json','Referer':'https://finance.yahoo.com/'}});
+    const raw=await r.json();
+    const result=raw?.chart?.result?.[0];
+    const pts=result?.timestamp?.length||0;
+    res.json({
+      status: pts>0?'✅ Yahoo Finance working':'❌ No data from Yahoo Finance',
+      points: pts,
+      firstBar: pts>0?{ts:result.timestamp[0],close:result.indicators?.quote?.[0]?.close?.[0]}:null,
+      lastBar: pts>0?{ts:result.timestamp[pts-1],close:result.indicators?.quote?.[0]?.close?.[pts-1]}:null,
+      error: raw?.chart?.error||null,
+    });
+  }catch(e){res.json({status:'❌ Fetch failed',error:e.message});}
+});
 
-    // 1D: most recent trading day 5-min bars
-    const lastDay5 = arr5.length ? arr5[arr5.length-1].date.slice(0,10) : '';
-    const day5 = lastDay5 ? arr5.filter(d=>d.date.startsWith(lastDay5)) : [];
-    console.log(`[intraday] ${symbol} 5min total=${arr5.length} lastDay=${lastDay5} day5=${day5.length} 1h total=${arr1h.length}`);
-
-    // 1W: last 7 calendar days of hourly bars
-    const cutW  = new Date(Date.now()-8*86_400_000).toISOString().slice(0,10);
-    const week1h = arr1h.filter(d=>d.date.slice(0,10)>=cutW);
-
-    // 1M: last 32 calendar days of hourly bars (~150 pts for better definition)
-    const cutM  = new Date(Date.now()-33*86_400_000).toISOString().slice(0,10);
-    const mon1h  = arr1h.filter(d=>d.date.slice(0,10)>=cutM);
-
-    // 3M: last 95 calendar days of hourly bars (~490 pts)
-    const cut3M = new Date(Date.now()-96*86_400_000).toISOString().slice(0,10);
-    const mon3h  = arr1h.filter(d=>d.date.slice(0,10)>=cut3M);
-
-    const toSeries = arr => ({prices:arr.map(d=>+(d.close||0).toFixed(2)),times:arr.map(d=>d.date)});
-    const result = { '1D':toSeries(day5), '1W':toSeries(week1h), '1M':toSeries(mon1h), '3M':toSeries(mon3h) };
-    sc(ck, result, 3*60_000);
+app.get('/api/fmp/intraday/:symbol', async (req,res) => {
+  const{symbol}=req.params;const ck=`intraday:${symbol}`;const hit=gc(ck);if(hit)return res.json(hit);
+  try{
+    const result=await yahooIntraday(symbol);
+    console.log(`[intraday] ${symbol} 1D=${result['1D'].prices.length}pts 1M=${result['1M'].prices.length}pts`);
+    sc(ck,result,3*60_000);
     res.json(result);
-  }catch(e){ res.status(500).json({error:e.message}); }
+  }catch(e){res.status(500).json({error:e.message});}
 });
 
 app.get('/api/fmp/insiders/:symbol', async (req,res) => {
@@ -685,7 +728,10 @@ app.get('/health', (req,res) => res.json({ status: 'ok', version: '3.0', provide
 module.exports = app;
 if (require.main === module) {
   app.get('*', (req,res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-  app.listen(PORT, '0.0.0.0', () => console.log(`✅ MarketLens listening on port ${PORT}`));
+  app.listen(PORT, '0.0.0.0', () => {
+    console.log(`✅ MarketLens v4.1 (Yahoo intraday) listening on port ${PORT}`);
+    console.log(`   Test intraday: http://localhost:${PORT}/api/test-intraday/AAPL`);
+  });
 } else {
   app.get('*', (req,res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 }
