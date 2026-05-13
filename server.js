@@ -452,8 +452,8 @@ app.get('/api/fmp/financials/:symbol', async (req,res) => {
         { l:'Net Income',       vals: income.slice(0,4).reverse().map(i => `$${((i.netIncome||0)/1e9).toFixed(2)}B`) },
         { l:'EBITDA',           vals: income.slice(0,4).reverse().map(i => `$${((i.ebitda||0)/1e9).toFixed(2)}B`) },
         { l:'EPS (Diluted)',    vals: income.slice(0,4).reverse().map(i => `$${(i.epsdiluted||i.eps||0).toFixed(2)}`) },
-        { l:'Gross Margin',     vals: income.slice(0,4).reverse().map(i => `${((i.grossProfitRatio||0)*100).toFixed(2)}%`) },
-        { l:'Net Margin',       vals: income.slice(0,4).reverse().map(i => `${((i.netIncomeRatio||0)*100).toFixed(2)}%`) },
+        { l:'Gross Margin',     vals: income.slice(0,4).reverse().map(i => { const r=i.revenue||0; return r>0?`${((i.grossProfit||0)/r*100).toFixed(1)}%`:'—'; }) },
+        { l:'Net Margin',       vals: income.slice(0,4).reverse().map(i => { const r=i.revenue||0; return r>0?`${((i.netIncome||0)/r*100).toFixed(1)}%`:'—'; }) },
       ],
       tableBalance: [
         { l:'Total Assets',  vals: balance.slice(0,4).reverse().map(b => `$${((b.totalAssets||0)/1e9).toFixed(2)}B`) },
@@ -505,6 +505,30 @@ app.get('/api/fmp/prices/:symbol', async (req,res) => {
 });
 
 // Insider transactions
+// Intraday prices — 1D (5-min) and 1W (1-hour)
+app.get('/api/fmp/intraday/:symbol', async (req,res) => {
+  const { symbol } = req.params; const ck=`intraday:${symbol}`; const hit=gc(ck); if(hit)return res.json(hit);
+  try{
+    const [m5, h1] = await Promise.all([
+      fmpSafe(`/historical-chart/5min/${symbol}`),
+      fmpSafe(`/historical-chart/1hour/${symbol}`),
+    ]);
+    const arr5 = Array.isArray(m5) ? [...m5].sort((a,b)=>a.date<b.date?-1:1) : [];
+    const arr1h = Array.isArray(h1) ? [...h1].sort((a,b)=>a.date<b.date?-1:1) : [];
+    // 1D: most recent trading day 5-min bars
+    const lastDay = arr5.length ? arr5[arr5.length-1].date.slice(0,10) : '';
+    const day5 = arr5.filter(d=>d.date.startsWith(lastDay));
+    // 1W: last ~35 hourly bars (5 trading days × 7 hours)
+    const week1h = arr1h.slice(-40);
+    const result = {
+      '1D':{ prices:day5.map(d=>+(d.close||0).toFixed(2)),  times:day5.map(d=>d.date) },
+      '1W':{ prices:week1h.map(d=>+(d.close||0).toFixed(2)), times:week1h.map(d=>d.date) },
+    };
+    sc(ck, result, 3*60_000); // 3-min cache for intraday
+    res.json(result);
+  }catch(e){ res.status(500).json({error:e.message}); }
+});
+
 app.get('/api/fmp/insiders/:symbol', async (req,res) => {
   const { symbol } = req.params; const ck = `fmp-ins:${symbol}`; const hit = gc(ck); if(hit) return res.json(hit);
   try {
