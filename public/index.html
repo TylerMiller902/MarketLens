@@ -488,6 +488,57 @@ button,input{font-family:var(--fb)}
   </div>
   <div class="scontent" id="scontent"></div>
 </div>
+<!-- ══ Portfolio Page ══════════════════════════════════════ -->
+<div id="pfpage" class="gone">
+  <div class="pf-topbar">
+    <button class="backbtn-sm" onclick="closePortfolioPage()">&#8592; Back</button>
+    <div class="pf-page-ttl">Portfolio</div>
+    <div style="width:60px"></div>
+  </div>
+  <div id="pf-scroll">
+    <div class="pf-overview" id="pf-overview"></div>
+    <div class="pf-chart-card" id="pf-chart-card" style="display:none">
+      <div class="pf-range-row" id="pf-ranges"></div>
+      <div class="pcwrap" style="height:200px"><canvas id="pf-canvas" height="200"></canvas></div>
+      <div id="pf-perf" class="pcperf" style="margin-top:.3rem"></div>
+    </div>
+    <div class="pf-pos-hdr">
+      <span class="pf-pos-hdr-ttl">Positions</span>
+      <button class="pf-add-pos-btn" id="pf-add-btn">+ Add Stock / ETF Position</button>
+    </div>
+    <div id="pf-list"></div>
+    <div class="pf-empty-state" id="pf-empty">
+      <div style="font-size:2.2rem;margin-bottom:.75rem">💼</div>
+      <div style="font-size:14px;font-weight:600;margin-bottom:.4rem">Your portfolio is empty</div>
+      <div style="font-size:12px">Add positions to start tracking performance.</div>
+    </div>
+  </div>
+  <!-- Add Position Modal -->
+  <div class="pf-modal-bg" id="pf-modal-bg" style="display:none">
+    <div class="pf-modal-box">
+      <div class="pf-modal-ttl">Add Position</div>
+      <div class="pf-mrow">
+        <label>Stock / ETF</label>
+        <input class="pf-inp" id="pf-ticker-inp" placeholder="Search ticker or company&hellip;" autocomplete="off"/>
+        <div class="pf-sdrop" id="pf-sdrop" style="display:none"></div>
+        <div class="pf-selected-tag" id="pf-sel-tag" style="display:none"></div>
+      </div>
+      <div class="pf-mrow">
+        <label>Shares</label>
+        <input class="pf-inp" id="pf-shares-inp" type="number" min="0.0001" step="any" placeholder="e.g. 10"/>
+      </div>
+      <div class="pf-mrow">
+        <label>Purchase Price / Share ($)</label>
+        <input class="pf-inp" id="pf-price-inp" type="number" min="0.01" step="any" placeholder="e.g. 150.00"/>
+      </div>
+      <div class="pf-modal-acts">
+        <button class="pf-bcnl" onclick="closePfModal()">Cancel</button>
+        <button class="pf-badd" id="pf-confirm-btn">Add Position</button>
+      </div>
+    </div>
+  </div>
+</div>
+
 <script>
 const API='https://marketlens-production-031f.up.railway.app';
 const $=id=>document.getElementById(id);
@@ -1328,56 +1379,5 @@ function renderFSPriceChart(range){
   $('fs-info').innerHTML=`<div class="fs-info-item"><div class="fs-info-lbl">Current Price</div><div class="fs-info-val">${f$(CurD?.quote?.c)}</div></div><div class="fs-info-item"><div class="fs-info-lbl">52W High</div><div class="fs-info-val" style="color:var(--G)">${f$(m['52WeekHigh'])}</div></div><div class="fs-info-item"><div class="fs-info-lbl">52W Low</div><div class="fs-info-val" style="color:var(--R)">${f$(m['52WeekLow'])}</div></div><div class="fs-info-item"><div class="fs-info-lbl">Source</div><div class="fs-info-val" style="color:${CurD?.priceDataSource==='live'?'var(--G)':'var(--B)'}">${CurD?.priceDataSource==='live'?'&#x25CF; FMP Live':'&#x25CE; Est. from 52W'}</div></div>`;
 }
 </script>
-
-<!-- ══ Portfolio Page ══════════════════════════════════════ -->
-<div id="pfpage" class="gone">
-  <div class="pf-topbar">
-    <button class="backbtn-sm" onclick="closePortfolioPage()">&#8592; Back</button>
-    <div class="pf-page-ttl">Portfolio</div>
-    <div style="width:60px"></div>
-  </div>
-  <div id="pf-scroll">
-    <div class="pf-overview" id="pf-overview"></div>
-    <div class="pf-chart-card" id="pf-chart-card" style="display:none">
-      <div class="pf-range-row" id="pf-ranges"></div>
-      <div class="pcwrap" style="height:200px"><canvas id="pf-canvas" height="200"></canvas></div>
-      <div id="pf-perf" class="pcperf" style="margin-top:.3rem"></div>
-    </div>
-    <div class="pf-pos-hdr">
-      <span class="pf-pos-hdr-ttl">Positions</span>
-      <button class="pf-add-pos-btn" id="pf-add-btn">+ Add Stock / ETF Position</button>
-    </div>
-    <div id="pf-list"></div>
-    <div class="pf-empty-state" id="pf-empty">
-      <div style="font-size:2.2rem;margin-bottom:.75rem">💼</div>
-      <div style="font-size:14px;font-weight:600;margin-bottom:.4rem">Your portfolio is empty</div>
-      <div style="font-size:12px">Add positions to start tracking performance.</div>
-    </div>
-  </div>
-  <!-- Add Position Modal -->
-  <div class="pf-modal-bg" id="pf-modal-bg" style="display:none">
-    <div class="pf-modal-box">
-      <div class="pf-modal-ttl">Add Position</div>
-      <div class="pf-mrow">
-        <label>Stock / ETF</label>
-        <input class="pf-inp" id="pf-ticker-inp" placeholder="Search ticker or company&hellip;" autocomplete="off"/>
-        <div class="pf-sdrop" id="pf-sdrop" style="display:none"></div>
-        <div class="pf-selected-tag" id="pf-sel-tag" style="display:none"></div>
-      </div>
-      <div class="pf-mrow">
-        <label>Shares</label>
-        <input class="pf-inp" id="pf-shares-inp" type="number" min="0.0001" step="any" placeholder="e.g. 10"/>
-      </div>
-      <div class="pf-mrow">
-        <label>Purchase Price / Share ($)</label>
-        <input class="pf-inp" id="pf-price-inp" type="number" min="0.01" step="any" placeholder="e.g. 150.00"/>
-      </div>
-      <div class="pf-modal-acts">
-        <button class="pf-bcnl" onclick="closePfModal()">Cancel</button>
-        <button class="pf-badd" id="pf-confirm-btn">Add Position</button>
-      </div>
-    </div>
-  </div>
-</div>
 </body>
 </html>
