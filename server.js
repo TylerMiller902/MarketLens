@@ -1,5 +1,5 @@
 /**
- * MarketLens — Proxy Server v3.0
+ * StockScope — Proxy Server v3.0
  * FMP-only — all data from Financial Modeling Prep stable API
  */
 
@@ -59,7 +59,7 @@ async function fmp(ep, qs={}) {
   const params = new URLSearchParams({ apikey: FMP_KEY, ...qs });
   const sep = ep.includes('?') ? '&' : '?';
   const url = `${FMP_BASE}${ep}${sep}${params}`;
-  const r = await fetch(url, { headers: { 'User-Agent': 'MarketLens/3.0' } });
+  const r = await fetch(url, { headers: { 'User-Agent': 'StockScope/3.0' } });
   if (!r.ok) throw new Error(`FMP ${r.status} ${ep}`);
   const data = await r.json();
   if (data?.['Error Message']) throw new Error(`FMP: ${data['Error Message']}`);
@@ -730,7 +730,7 @@ module.exports = app;
 if (require.main === module) {
   app.get('*', (req,res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
   app.listen(PORT, '0.0.0.0', () => {
-    console.log(`✅ MarketLens v4.1 (Yahoo intraday) listening on port ${PORT}`);
+    console.log(`✅ StockScope v4.1 (Yahoo intraday) listening on port ${PORT}`);
     console.log(`   Test intraday: http://localhost:${PORT}/api/test-intraday/AAPL`);
   });
 } else {
