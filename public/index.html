@@ -345,13 +345,17 @@ button,input{font-family:var(--fb)}
 .pf-page-ttl{font-family:var(--fd);font-size:1rem;font-weight:600;flex:1;text-align:center}
 .backbtn-sm{background:none;border:1px solid var(--b2);color:var(--tx);padding:5px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--fm)}
 .backbtn-sm:hover{border-color:var(--P);color:var(--P)}
-#pf-scroll{flex:1;overflow-y:auto;padding:.8rem 1rem}
+#pf-scroll{flex:1;overflow-y:auto;padding:.8rem 1.4rem}
 .pf-overview{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:.8rem}
 @media(max-width:480px){.pf-overview{grid-template-columns:repeat(2,1fr)}}
 .pf-ov-card{background:var(--bg2);border:1px solid var(--b1);border-radius:10px;padding:.55rem .75rem}
 .pf-ov-v{font-family:var(--fm);font-size:.88rem;font-weight:600}
 .pf-ov-l{font-size:10px;color:var(--mu);margin-top:2px}
 .pf-chart-card{background:var(--bg2);border:1px solid var(--b1);border-radius:14px;padding:.8rem 1rem .6rem;margin-bottom:.8rem}
+.pf-pos-box{background:var(--bg2);border:1px solid var(--b1);border-radius:14px;overflow:hidden;margin-bottom:1rem}
+.pf-pos-box-hdr{padding:.65rem 1rem;font-family:var(--fd);font-size:.8rem;font-weight:600;border-bottom:1px solid var(--b1);color:var(--di);text-transform:uppercase;letter-spacing:.06em}
+.pf-pos-box-footer{padding:.75rem 1rem;border-top:1px solid var(--b1);display:flex;justify-content:center}
+.pf-pos-box-footer .pf-add-pos-btn{padding:9px 24px;font-size:13px;border-radius:22px}
 .pf-range-row{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:.5rem}
 .pf-rb{background:none;border:1px solid var(--b2);color:var(--mu);padding:3px 9px;border-radius:20px;cursor:pointer;font-size:11px;font-family:var(--fm);transition:all .15s}
 .pf-rb:hover,.pf-rb.on{background:var(--P);border-color:var(--P);color:#fff}
@@ -360,7 +364,7 @@ button,input{font-family:var(--fb)}
 .pf-add-pos-btn{background:var(--P);border:none;color:#fff;padding:6px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-family:var(--fm)}
 .pf-add-pos-btn:hover{opacity:.85}
 /* Position strip */
-.pf-strip{display:grid;grid-template-columns:34px 1fr 68px 80px 80px 68px 28px;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05);transition:background .12s;cursor:pointer}
+.pf-strip{display:grid;grid-template-columns:34px 1fr 68px 80px 80px 68px 28px;align-items:center;gap:8px;padding:9px 1rem;border-bottom:1px solid rgba(255,255,255,.05);transition:background .12s;cursor:pointer}
 .pf-strip:hover{background:rgba(255,255,255,.025);border-radius:8px;padding-left:6px;padding-right:6px}
 @media(max-width:560px){.pf-strip{grid-template-columns:30px 1fr 60px 68px 28px}.pf-col-hold,.pf-col-pl{display:none}}
 .pf-strip-logo img{width:30px;height:30px;border-radius:6px;object-fit:contain;background:var(--bg3);padding:2px}
@@ -500,19 +504,23 @@ button,input{font-family:var(--fb)}
   <div class="pf-topbar">
     <button class="backbtn-sm" onclick="closePortfolioPage()">&#8592; Back</button>
     <div class="pf-page-ttl">Portfolio</div>
-    <button class="pf-add-pos-btn" id="pf-add-btn" style="display:none">+ Add Position</button>
+    <div></div>
   </div>
   <div id="pf-scroll">
     <div class="pf-overview" id="pf-overview"></div>
     <div class="pf-chart-card" id="pf-chart-card" style="display:none">
       <div class="pf-range-row" id="pf-ranges"></div>
-      <div class="pcwrap" style="height:200px"><canvas id="pf-canvas" height="200"></canvas></div>
+      <div class="pcwrap" style="height:400px"><canvas id="pf-canvas" height="400"></canvas></div>
       <div id="pf-perf" class="pcperf" style="margin-top:.3rem"></div>
     </div>
-    <div class="pf-pos-hdr" id="pf-pos-hdr" style="display:none">
-      <span class="pf-pos-hdr-ttl">Positions</span>
+    <!-- Positions box — strips + add button together -->
+    <div class="pf-pos-box" id="pf-pos-box" style="display:none">
+      <div class="pf-pos-box-hdr">Positions</div>
+      <div id="pf-list"></div>
+      <div class="pf-pos-box-footer">
+        <button class="pf-add-pos-btn" id="pf-add-btn" onclick="openPfModal()">＋ Add Stock / ETF Position</button>
+      </div>
     </div>
-    <div id="pf-list"></div>
     <div class="pf-empty-state" id="pf-empty">
       <div style="font-size:2.8rem;margin-bottom:.75rem">💼</div>
       <div style="font-size:15px;font-weight:600;color:var(--tx);margin-bottom:.4rem">Your portfolio is empty</div>
@@ -655,8 +663,7 @@ async function renderPfPage(){
     .map(r=>`<button class="pf-rb${r===PfRangeActive?' on':''}" onclick="setPfRange('${r}')">${r}</button>`).join('');
   $('pf-empty').style.display=pos.length?'none':'block';
   $('pf-chart-card').style.display=pos.length?'block':'none';
-  const posHdr=$('pf-pos-hdr');if(posHdr)posHdr.style.display=pos.length?'flex':'none';
-  const addBtn=$('pf-add-btn');if(addBtn)addBtn.style.display=pos.length?'inline-block':'none';
+  const posBox=$('pf-pos-box');if(posBox)posBox.style.display=pos.length?'block':'none';
   if(!pos.length){$('pf-overview').innerHTML='';$('pf-list').innerHTML='';return;}
 
   // Fetch current quotes for all positions
