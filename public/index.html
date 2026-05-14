@@ -335,6 +335,60 @@ button,input{font-family:var(--fb)}
 .etf-h-fill{height:100%;background:var(--B);border-radius:2px;opacity:.7}
 .etf-h-pct{text-align:right;color:var(--tx);font-family:var(--fm);font-size:11px}
 @media(max-width:520px){.shdr,.analyst-grid{flex-direction:column}.sprice{text-align:left}.scontent{padding:.7rem}}
+
+/* ── Portfolio Page ──────────────────────────────────────── */
+#pfpage{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;flex-direction:column;overflow:hidden}
+#pfpage.gone{display:none}
+.pf-topbar{display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;border-bottom:1px solid var(--b1);background:var(--bg);flex-shrink:0}
+.pf-page-ttl{font-family:var(--fd);font-size:1rem;font-weight:600;flex:1;text-align:center}
+.backbtn-sm{background:none;border:1px solid var(--b2);color:var(--tx);padding:5px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--fm)}
+.backbtn-sm:hover{border-color:var(--P);color:var(--P)}
+#pf-scroll{flex:1;overflow-y:auto;padding:.8rem 1rem}
+.pf-overview{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin-bottom:.8rem}
+@media(max-width:480px){.pf-overview{grid-template-columns:repeat(2,1fr)}}
+.pf-ov-card{background:var(--bg2);border:1px solid var(--b1);border-radius:10px;padding:.55rem .75rem}
+.pf-ov-v{font-family:var(--fm);font-size:.88rem;font-weight:600}
+.pf-ov-l{font-size:10px;color:var(--mu);margin-top:2px}
+.pf-chart-card{background:var(--bg2);border:1px solid var(--b1);border-radius:14px;padding:.8rem 1rem .6rem;margin-bottom:.8rem}
+.pf-range-row{display:flex;gap:4px;flex-wrap:wrap;margin-bottom:.5rem}
+.pf-rb{background:none;border:1px solid var(--b2);color:var(--mu);padding:3px 9px;border-radius:20px;cursor:pointer;font-size:11px;font-family:var(--fm);transition:all .15s}
+.pf-rb:hover,.pf-rb.on{background:var(--P);border-color:var(--P);color:#fff}
+.pf-pos-hdr{display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem}
+.pf-pos-hdr-ttl{font-family:var(--fd);font-size:.85rem;font-weight:600}
+.pf-add-pos-btn{background:var(--P);border:none;color:#fff;padding:6px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-family:var(--fm)}
+.pf-add-pos-btn:hover{opacity:.85}
+/* Position strip */
+.pf-strip{display:grid;grid-template-columns:34px 1fr 68px 80px 80px 68px 28px;align-items:center;gap:8px;padding:9px 0;border-bottom:1px solid rgba(255,255,255,.05);transition:background .12s;cursor:pointer}
+.pf-strip:hover{background:rgba(255,255,255,.025);border-radius:8px;padding-left:6px;padding-right:6px}
+@media(max-width:560px){.pf-strip{grid-template-columns:30px 1fr 60px 68px 28px}.pf-col-hold,.pf-col-pl{display:none}}
+.pf-strip-logo img{width:30px;height:30px;border-radius:6px;object-fit:contain;background:var(--bg3);padding:2px}
+.pf-sname{font-size:12px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf-stick{font-size:10px;color:var(--mu);font-family:var(--fm)}
+.pf-col{text-align:right}
+.pf-col .pv{font-size:12px;font-family:var(--fm);font-weight:500}
+.pf-col .pl{font-size:10px;color:var(--mu);margin-top:1px}
+.pf-del{background:none;border:none;color:var(--mu);cursor:pointer;font-size:14px;padding:2px 4px;border-radius:4px}
+.pf-del:hover{color:var(--R)}
+.pf-empty-state{text-align:center;padding:4rem 1rem;color:var(--mu)}
+/* Add position modal */
+.pf-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;display:flex;align-items:center;justify-content:center;padding:1rem}
+.pf-modal-box{background:var(--bg2);border:1px solid var(--b2);border-radius:16px;padding:1.25rem;width:100%;max-width:360px;box-shadow:0 30px 80px rgba(0,0,0,.7)}
+.pf-modal-ttl{font-family:var(--fd);font-size:.95rem;font-weight:600;margin-bottom:.9rem}
+.pf-mrow{margin-bottom:.7rem;position:relative}
+.pf-mrow label{display:block;font-size:10px;color:var(--mu);margin-bottom:.25rem;font-family:var(--fm);text-transform:uppercase;letter-spacing:.04em}
+.pf-inp{width:100%;background:var(--bg3);border:1px solid var(--b2);color:var(--tx);padding:8px 11px;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box}
+.pf-inp:focus{border-color:var(--P)}
+.pf-sdrop{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bg2);border:1px solid var(--b2);border-radius:10px;z-index:10;overflow:hidden;box-shadow:0 10px 30px rgba(0,0,0,.5);max-height:200px;overflow-y:auto}
+.pf-sitem{padding:9px 12px;cursor:pointer;font-size:12px;display:flex;gap:8px;border-bottom:1px solid rgba(255,255,255,.04)}
+.pf-sitem:last-child{border-bottom:none}
+.pf-sitem:hover{background:var(--Pbg);color:var(--P)}
+.pf-ssym{font-weight:700;font-family:var(--fm);min-width:48px;font-size:11px}
+.pf-sname-sm{color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.pf-selected-tag{background:var(--Pbg);border:1px solid var(--P);border-radius:6px;padding:6px 10px;font-size:12px;color:var(--P);margin-top:6px}
+.pf-modal-acts{display:flex;gap:8px;margin-top:.9rem}
+.pf-bcnl{flex:1;background:none;border:1px solid var(--b2);color:var(--mu);padding:9px;border-radius:8px;cursor:pointer;font-size:13px}
+.pf-badd{flex:2;background:var(--P);border:none;color:#fff;padding:9px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
+.pf-badd:hover{opacity:.9}
 </style>
 </head>
 <body>
@@ -509,10 +563,156 @@ document.addEventListener('click',e=>{const s=$('chip-sugg');if(s&&!$('chip-inp'
 renderChips();
 
 // ── Movers ──────────────────────────────────────────────
-let moversLoaded=false;
+// ── Portfolio ───────────────────────────────────────────────
+let PfChart=null,PfRangeActive='1Y';
+const fVal=n=>{if(n==null||isNaN(n))return'—';const x=+n;if(x>=1e9)return`$${(x/1e9).toFixed(2)}B`;if(x>=1e6)return`$${(x/1e6).toFixed(2)}M`;return x.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2});};
+function getPf(){try{return JSON.parse(localStorage.getItem('ml_portfolio')||'{"positions":[]}')}catch{return{positions:[]};}}
+function savePf(pf){localStorage.setItem('ml_portfolio',JSON.stringify(pf));}
 
-// ── Menu dropdown ──────────────────────────────────────────
-const menuBtn=$('menu-btn'),menuPanel=$('menu-panel');
+function openPage(page){
+  if(menuPanel)menuPanel.style.display='none';
+  if(page==='portfolio'){
+    $('home').classList.add('gone');
+    $('pfpage').classList.remove('gone');
+    renderPfPage();
+  } else {
+    alert(`${page.charAt(0).toUpperCase()+page.slice(1)} — coming soon!`);
+  }
+}
+function closePortfolioPage(){
+  $('pfpage').classList.add('gone');
+  $('home').classList.remove('gone');
+  if(PfChart){PfChart.destroy();PfChart=null;}
+}
+
+async function renderPfPage(){
+  const pf=getPf();const pos=pf.positions||[];
+  // Range buttons
+  const rEl=$('pf-ranges');
+  if(rEl) rEl.innerHTML=['1D','1W','1M','3M','YTD','1Y','5Y','10Y','All']
+    .map(r=>`<button class="pf-rb${r===PfRangeActive?' on':''}" onclick="setPfRange('${r}')">${r}</button>`).join('');
+  $('pf-empty').style.display=pos.length?'none':'block';
+  $('pf-chart-card').style.display=pos.length?'block':'none';
+  if(!pos.length){$('pf-overview').innerHTML='';$('pf-list').innerHTML='';return;}
+
+  // Fetch current quotes for all positions
+  const quotes=await Promise.all(pos.map(p=>apiFetch(`/api/stock/${p.ticker}?etf=1`).catch(()=>null)));
+  let totalVal=0,totalCost=0;
+  const enriched=pos.map((p,i)=>{
+    const q=quotes[i]?.quote;const pr=quotes[i]?.profile;
+    const cp=q?.c||q?.pc||p.costBasis;
+    const cv=p.shares*cp,cb=p.shares*p.costBasis,pl=cv-cb,plp=cb>0?pl/cb*100:0;
+    totalVal+=cv;totalCost+=cb;
+    return{...p,name:pr?.name||p.name||p.ticker,logo:pr?.logo||p.logo||'',cp,cv,cb,pl,plp};
+  });
+  const tpl=totalVal-totalCost,tplp=totalCost>0?tpl/totalCost*100:0;
+
+  // Overview stats
+  $('pf-overview').innerHTML=`
+    <div class="pf-ov-card"><div class="pf-ov-v">${fVal(totalVal)}</div><div class="pf-ov-l">Total Value</div></div>
+    <div class="pf-ov-card"><div class="pf-ov-v">${fVal(totalCost)}</div><div class="pf-ov-l">Cost Basis</div></div>
+    <div class="pf-ov-card"><div class="pf-ov-v" style="color:${tpl>=0?'var(--G)':'var(--R)'}">${tpl>=0?'+':''}${fVal(Math.abs(tpl))}</div><div class="pf-ov-l">Total P/L</div></div>
+    <div class="pf-ov-card"><div class="pf-ov-v" style="color:${tplp>=0?'var(--G)':'var(--R)'}">${tplp>=0?'+':''}${tplp.toFixed(2)}%</div><div class="pf-ov-l">Return</div></div>`;
+
+  // Position strips
+  $('pf-list').innerHTML=enriched.map((p,i)=>{
+    const pp=totalVal>0?p.cv/totalVal*100:0;const up=p.pl>=0;
+    return`<div class="pf-strip" onclick="go('${esc(p.ticker)}');closePortfolioPage()">
+      <div class="pf-strip-logo"><img src="${esc(p.logo)}" onerror="this.style.display='none'"/></div>
+      <div><div class="pf-sname">${esc(p.name)}</div><div class="pf-stick">${esc(p.ticker)}</div></div>
+      <div class="pf-col"><div class="pv">${pp.toFixed(1)}%</div><div class="pl">of portfolio</div></div>
+      <div class="pf-col pf-col-hold"><div class="pv">${fVal(p.cv)}</div><div class="pl">${p.shares} sh</div></div>
+      <div class="pf-col pf-col-pl"><div class="pv" style="color:${up?'var(--G)':'var(--R)'}">${up?'+':''}${fVal(Math.abs(p.pl))}</div><div class="pl">P/L</div></div>
+      <div class="pf-col"><div class="pv" style="color:${up?'var(--G)':'var(--R)'}">${up?'▲':'▼'} ${Math.abs(p.plp).toFixed(2)}%</div><div class="pl">gain/loss</div></div>
+      <button class="pf-del" title="Remove" onclick="event.stopPropagation();removePfPos(${i})">✕</button>
+    </div>`;
+  }).join('');
+
+  drawPfChart(PfRangeActive);
+}
+
+async function drawPfChart(r){
+  PfRangeActive=r;
+  document.querySelectorAll('.pf-rb').forEach(b=>b.classList.toggle('on',b.textContent===r));
+  if(PfChart){PfChart.destroy();PfChart=null;}
+  const canvas=$('pf-canvas');if(!canvas)return;
+  const pos=getPf().positions||[];if(!pos.length)return;
+  const histories=await Promise.all(pos.map(p=>apiFetch(`/api/fmp/prices/${p.ticker}`).catch(()=>null)));
+  const dateMap={};
+  pos.forEach((p,i)=>{
+    const rd=histories[i]?.[r];if(!rd)return;
+    const{prices:ps,dates:ds}=rd;
+    (ds||[]).forEach((d,j)=>{dateMap[d]=(dateMap[d]||0)+p.shares*(ps[j]||0);});
+  });
+  const dates=Object.keys(dateMap).sort();if(!dates.length)return;
+  const prices=dates.map(d=>+dateMap[d].toFixed(2));
+  const labels=buildLabels(dates,r,false);
+  const up=prices[prices.length-1]>=prices[0],color=up?G:R;
+  const tension={'1D':0,'1W':0,'1M':0.1,'3M':0.2,'YTD':0.3,'1Y':0.35,'5Y':0.4,'10Y':0.4,'All':0.4}[r]??0.35;
+  PfChart=new Chart(canvas,{type:'line',data:{labels,datasets:[{data:prices,borderColor:color,borderWidth:1.5,fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,200);g.addColorStop(0,rgba(color,.15));g.addColorStop(1,rgba(color,0));return g;},pointRadius:0,tension}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},layout:{padding:{right:20,left:4}},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{title:ctx=>dates[ctx[0]?.dataIndex]||'',label:ctx=>fVal(ctx.raw)}}},scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:9},maxRotation:0,autoSkip:false}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:10},callback:v=>fVal(v)}}}}});
+  const diff=prices[prices.length-1]-prices[0],pct=diff/prices[0]*100;
+  const pe=$('pf-perf');if(pe){pe.className=`pcperf ${up?'up':'dn'}`;pe.textContent=`${up?'▲':'▼'} ${up?'+':''}${fVal(Math.abs(diff))} (${up?'+':''}${pct.toFixed(2)}%)`;}
+}
+function setPfRange(r){PfRangeActive=r;drawPfChart(r);}
+function removePfPos(idx){
+  if(!confirm('Remove this position?'))return;
+  const pf=getPf();pf.positions.splice(idx,1);savePf(pf);renderPfPage();
+}
+
+// ── Add Position Modal ─────────────────────────────────────
+let pfSel=null,pfSearchTmr=null;
+$('pf-add-btn').addEventListener('click',()=>{
+  pfSel=null;
+  ['pf-ticker-inp','pf-shares-inp','pf-price-inp'].forEach(id=>$(id).value='');
+  $('pf-sel-tag').style.display='none';$('pf-sdrop').style.display='none';
+  $('pf-modal-bg').style.display='flex';
+  setTimeout(()=>$('pf-ticker-inp').focus(),80);
+});
+function closePfModal(){$('pf-modal-bg').style.display='none';}
+$('pf-ticker-inp').addEventListener('input',()=>{
+  clearTimeout(pfSearchTmr);pfSel=null;$('pf-sel-tag').style.display='none';
+  const q=$('pf-ticker-inp').value.trim();
+  if(!q){$('pf-sdrop').style.display='none';return;}
+  pfSearchTmr=setTimeout(async()=>{
+    try{
+      const d=await apiFetch(`/api/search?q=${encodeURIComponent(q)}`);
+      const rs=(d?.result||[]).filter(r=>r.symbol&&!r.symbol.match(/\.[A-Z]{2,}$/)).slice(0,6);
+      if(!rs.length){$('pf-sdrop').style.display='none';return;}
+      $('pf-sdrop').innerHTML=rs.map(r=>`<div class="pf-sitem" onclick="pfPickStock('${esc(r.symbol)}','${esc((r.description||'').replace(/'/g,"\\'"))}')"><span class="pf-ssym">${esc(r.symbol)}</span><span class="pf-sname-sm">${esc(r.description||'')}</span></div>`).join('');
+      $('pf-sdrop').style.display='block';
+    }catch{}
+  },250);
+});
+async function pfPickStock(sym,name){
+  pfSel={ticker:sym,name};
+  $('pf-ticker-inp').value=sym;$('pf-sdrop').style.display='none';
+  $('pf-sel-tag').textContent=`${sym} — ${name}`;$('pf-sel-tag').style.display='block';
+  try{
+    const d=await apiFetch(`/api/stock/${sym}?etf=1`);
+    const price=d?.quote?.c||d?.quote?.pc;
+    if(price&&!$('pf-price-inp').value)$('pf-price-inp').value=price.toFixed(2);
+    pfSel.logo=d?.profile?.logo||'';
+    pfSel.name=d?.profile?.name||name;
+  }catch{}
+}
+$('pf-confirm-btn').addEventListener('click',()=>{
+  if(!pfSel){alert('Select a stock or ETF first.');return;}
+  const shares=parseFloat($('pf-shares-inp').value);
+  const costBasis=parseFloat($('pf-price-inp').value);
+  if(!shares||shares<=0){alert('Enter a valid number of shares.');return;}
+  if(!costBasis||costBasis<=0){alert('Enter a valid purchase price.');return;}
+  const pf=getPf();
+  const ei=pf.positions.findIndex(p=>p.ticker===pfSel.ticker);
+  if(ei>=0){
+    const ex=pf.positions[ei];
+    const newShares=ex.shares+shares;
+    ex.costBasis=(ex.costBasis*ex.shares+costBasis*shares)/newShares;
+    ex.shares=newShares;
+  } else {
+    pf.positions.push({ticker:pfSel.ticker,name:pfSel.name,logo:pfSel.logo||'',shares,costBasis,addedAt:new Date().toISOString()});
+  }
+  savePf(pf);closePfModal();renderPfPage();
+});
 if(menuBtn&&menuPanel){
   menuBtn.addEventListener('click',e=>{
     e.stopPropagation();
@@ -1129,5 +1329,56 @@ function renderFSPriceChart(range){
   $('fs-info').innerHTML=`<div class="fs-info-item"><div class="fs-info-lbl">Current Price</div><div class="fs-info-val">${f$(CurD?.quote?.c)}</div></div><div class="fs-info-item"><div class="fs-info-lbl">52W High</div><div class="fs-info-val" style="color:var(--G)">${f$(m['52WeekHigh'])}</div></div><div class="fs-info-item"><div class="fs-info-lbl">52W Low</div><div class="fs-info-val" style="color:var(--R)">${f$(m['52WeekLow'])}</div></div><div class="fs-info-item"><div class="fs-info-lbl">Source</div><div class="fs-info-val" style="color:${CurD?.priceDataSource==='live'?'var(--G)':'var(--B)'}">${CurD?.priceDataSource==='live'?'&#x25CF; FMP Live':'&#x25CE; Est. from 52W'}</div></div>`;
 }
 </script>
+
+<!-- ══ Portfolio Page ══════════════════════════════════════ -->
+<div id="pfpage" class="gone">
+  <div class="pf-topbar">
+    <button class="backbtn-sm" onclick="closePortfolioPage()">&#8592; Back</button>
+    <div class="pf-page-ttl">Portfolio</div>
+    <div style="width:60px"></div>
+  </div>
+  <div id="pf-scroll">
+    <div class="pf-overview" id="pf-overview"></div>
+    <div class="pf-chart-card" id="pf-chart-card" style="display:none">
+      <div class="pf-range-row" id="pf-ranges"></div>
+      <div class="pcwrap" style="height:200px"><canvas id="pf-canvas" height="200"></canvas></div>
+      <div id="pf-perf" class="pcperf" style="margin-top:.3rem"></div>
+    </div>
+    <div class="pf-pos-hdr">
+      <span class="pf-pos-hdr-ttl">Positions</span>
+      <button class="pf-add-pos-btn" id="pf-add-btn">+ Add Stock / ETF Position</button>
+    </div>
+    <div id="pf-list"></div>
+    <div class="pf-empty-state" id="pf-empty">
+      <div style="font-size:2.2rem;margin-bottom:.75rem">💼</div>
+      <div style="font-size:14px;font-weight:600;margin-bottom:.4rem">Your portfolio is empty</div>
+      <div style="font-size:12px">Add positions to start tracking performance.</div>
+    </div>
+  </div>
+  <!-- Add Position Modal -->
+  <div class="pf-modal-bg" id="pf-modal-bg" style="display:none">
+    <div class="pf-modal-box">
+      <div class="pf-modal-ttl">Add Position</div>
+      <div class="pf-mrow">
+        <label>Stock / ETF</label>
+        <input class="pf-inp" id="pf-ticker-inp" placeholder="Search ticker or company&hellip;" autocomplete="off"/>
+        <div class="pf-sdrop" id="pf-sdrop" style="display:none"></div>
+        <div class="pf-selected-tag" id="pf-sel-tag" style="display:none"></div>
+      </div>
+      <div class="pf-mrow">
+        <label>Shares</label>
+        <input class="pf-inp" id="pf-shares-inp" type="number" min="0.0001" step="any" placeholder="e.g. 10"/>
+      </div>
+      <div class="pf-mrow">
+        <label>Purchase Price / Share ($)</label>
+        <input class="pf-inp" id="pf-price-inp" type="number" min="0.01" step="any" placeholder="e.g. 150.00"/>
+      </div>
+      <div class="pf-modal-acts">
+        <button class="pf-bcnl" onclick="closePfModal()">Cancel</button>
+        <button class="pf-badd" id="pf-confirm-btn">Add Position</button>
+      </div>
+    </div>
+  </div>
+</div>
 </body>
 </html>
