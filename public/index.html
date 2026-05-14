@@ -346,10 +346,13 @@ button,input{font-family:var(--fb)}
 .backbtn-sm{background:none;border:1px solid var(--b2);color:var(--tx);padding:5px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--fm)}
 .backbtn-sm:hover{border-color:var(--P);color:var(--P)}
 #pf-scroll{flex:1;overflow-y:auto;padding:.8rem 1.4rem}
-.pf-overview{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:.9rem}
-.pf-ov-card{background:var(--bg2);border:1px solid var(--b1);border-radius:12px;padding:.85rem 1.1rem;display:flex;justify-content:space-between;align-items:center;gap:8px}
-.pf-ov-v{font-family:var(--fm);font-size:1.05rem;font-weight:700}
-.pf-ov-l{font-size:11px;color:var(--mu);font-family:var(--fm)}
+.pf-stats-bar{display:flex;align-items:center;gap:0;flex-wrap:nowrap;overflow-x:auto;padding:.55rem .9rem;border-bottom:1px solid var(--b1);scrollbar-width:none}
+.pf-stats-bar::-webkit-scrollbar{display:none}
+.pf-sbi{display:flex;flex-direction:column;align-items:flex-start;padding:.2rem .9rem;border-right:1px solid rgba(255,255,255,.08);flex-shrink:0}
+.pf-sbi:first-child{padding-left:.2rem}
+.pf-sbi:last-child{border-right:none}
+.pf-sbl{font-size:9px;color:var(--mu);font-family:var(--fm);text-transform:uppercase;letter-spacing:.05em;margin-bottom:2px}
+.pf-sbv{font-family:var(--fm);font-size:.9rem;font-weight:700;white-space:nowrap}
 .pf-chart-card{background:var(--bg2);border:1px solid var(--b1);border-radius:14px;padding:.8rem 1rem .6rem;margin-bottom:.8rem}
 .pf-pos-box{background:var(--bg2);border:1px solid var(--b1);border-radius:14px;overflow:hidden;margin-bottom:1rem}
 .pf-pos-box-hdr{padding:.65rem 1rem;font-family:var(--fd);font-size:.8rem;font-weight:600;border-bottom:1px solid var(--b1);color:var(--di);text-transform:uppercase;letter-spacing:.06em}
@@ -363,9 +366,9 @@ button,input{font-family:var(--fb)}
 .pf-add-pos-btn{background:var(--P);border:none;color:#fff;padding:6px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-family:var(--fm)}
 .pf-add-pos-btn:hover{opacity:.85}
 /* Position strip */
-.pf-strip{display:grid;grid-template-columns:36px 1fr 78px 95px 95px 82px 34px;align-items:center;gap:10px;padding:13px 1.2rem;border-bottom:1px solid rgba(255,255,255,.05);transition:background .12s;cursor:pointer}
+.pf-strip{display:grid;grid-template-columns:36px minmax(100px,1fr) 80px 110px 100px 90px 30px;align-items:center;gap:8px;padding:14px 1.2rem;border-bottom:1px solid rgba(255,255,255,.05);transition:background .12s;cursor:pointer}
 .pf-strip:hover{background:rgba(255,255,255,.025);border-radius:8px;padding-left:6px;padding-right:6px}
-@media(max-width:560px){.pf-strip{grid-template-columns:32px 1fr 70px 76px 30px}.pf-col-hold,.pf-col-pl{display:none}}
+@media(max-width:600px){.pf-strip{grid-template-columns:32px 1fr 72px 80px 28px}.pf-col-hold,.pf-col-pl{display:none}}
 .pf-strip-logo img{width:30px;height:30px;border-radius:6px;object-fit:contain;background:var(--bg3);padding:2px}
 .pf-sname{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
 .pf-stick{font-size:11px;color:var(--mu);font-family:var(--fm)}
@@ -394,7 +397,7 @@ button,input{font-family:var(--fb)}
 .pf-mrow label{display:block;font-size:10px;color:var(--mu);margin-bottom:.25rem;font-family:var(--fm);text-transform:uppercase;letter-spacing:.04em}
 .pf-inp{width:100%;background:var(--bg3);border:1px solid var(--b2);color:var(--tx);padding:8px 11px;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box}
 .pf-inp:focus{border-color:var(--P)}
-.pf-sdrop{position:absolute;top:calc(100% + 4px);left:0;right:0;background:var(--bg2);border:1px solid var(--b2);border-radius:10px;z-index:200;box-shadow:0 10px 30px rgba(0,0,0,.5);max-height:200px;overflow-y:auto}
+.pf-sdrop{position:fixed;background:var(--bg2);border:1px solid var(--b2);border-radius:10px;z-index:300;box-shadow:0 10px 30px rgba(0,0,0,.5);max-height:220px;overflow-y:auto}
 .pf-sitem{padding:9px 12px;cursor:pointer;font-size:12px;display:flex;gap:8px;border-bottom:1px solid rgba(255,255,255,.04)}
 .pf-sitem:last-child{border-bottom:none}
 .pf-sitem:hover{background:var(--Pbg);color:var(--P)}
@@ -512,11 +515,11 @@ button,input{font-family:var(--fb)}
     <div></div>
   </div>
   <div id="pf-scroll">
-    <div class="pf-overview" id="pf-overview"></div>
     <div class="pf-chart-card" id="pf-chart-card" style="display:none">
-      <div class="pf-range-row" id="pf-ranges"></div>
-      <div class="pcwrap" style="height:400px"><canvas id="pf-canvas" height="400"></canvas></div>
-      <div id="pf-perf" class="pcperf" style="margin-top:.3rem"></div>
+      <div class="pf-stats-bar" id="pf-stats-bar"></div>
+      <div class="pf-range-row" id="pf-ranges" style="padding:.5rem .9rem .2rem"></div>
+      <div class="pcwrap" style="height:400px;padding:0 .5rem"><canvas id="pf-canvas" height="400"></canvas></div>
+      <div id="pf-perf" class="pcperf" style="margin-top:.3rem;padding-bottom:.4rem;text-align:center"></div>
     </div>
     <!-- Positions box — strips + add button together -->
     <div class="pf-pos-box" id="pf-pos-box" style="display:none">
@@ -662,6 +665,11 @@ function openPage(page){
     alert(`${page.charAt(0).toUpperCase()+page.slice(1)} — coming soon!`);
   }
 }
+function navigatePfToStock(ticker){
+  $('pfpage').classList.add('gone');
+  if(PfChart){PfChart.destroy();PfChart=null;}
+  go(ticker);
+}
 function closePortfolioPage(){
   $('pfpage').classList.add('gone');
   $('home').classList.remove('gone');
@@ -677,7 +685,7 @@ async function renderPfPage(){
   $('pf-empty').style.display=pos.length?'none':'block';
   $('pf-chart-card').style.display=pos.length?'block':'none';
   const posBox=$('pf-pos-box');if(posBox)posBox.style.display=pos.length?'block':'none';
-  if(!pos.length){$('pf-overview').innerHTML='';$('pf-list').innerHTML='';return;}
+  if(!pos.length){$('pf-list').innerHTML='';return;}
 
   // Fetch current quotes for all positions
   const quotes=await Promise.all(pos.map(p=>apiFetch(`/api/stock/${p.ticker}?etf=1`).catch(()=>null)));
@@ -692,20 +700,22 @@ async function renderPfPage(){
   const tpl=totalVal-totalCost,tplp=totalCost>0?tpl/totalCost*100:0;
 
   // Overview stats
-  $('pf-overview').innerHTML=`
-    <div class="pf-ov-card"><div class="pf-ov-l">Total Value</div><div class="pf-ov-v">${fVal(totalVal)}</div></div>
-    <div class="pf-ov-card"><div class="pf-ov-l">Cost Basis</div><div class="pf-ov-v">${fVal(totalCost)}</div></div>
-    <div class="pf-ov-card"><div class="pf-ov-l">Total P/L</div><div class="pf-ov-v" style="color:${tpl>=0?'var(--G)':'var(--R)'}">${tpl>=0?'+':''}${fVal(Math.abs(tpl))}</div></div>
-    <div class="pf-ov-card"><div class="pf-ov-l">Return</div><div class="pf-ov-v" style="color:${tplp>=0?'var(--G)':'var(--R)'}">${tplp>=0?'+':''}${tplp.toFixed(2)}%</div></div>`;
+  // Stats bar (single line above chart)
+  const sb=$('pf-stats-bar');
+  if(sb)sb.innerHTML=`
+    <div class="pf-sbi"><div class="pf-sbl">Total Value</div><div class="pf-sbv">${fVal(totalVal)}</div></div>
+    <div class="pf-sbi"><div class="pf-sbl">Cost Basis</div><div class="pf-sbv">${fVal(totalCost)}</div></div>
+    <div class="pf-sbi"><div class="pf-sbl">P/L</div><div class="pf-sbv" style="color:${tpl>=0?'var(--G)':'var(--R)'}">${tpl>=0?'+':''}${fVal(Math.abs(tpl))}</div></div>
+    <div class="pf-sbi"><div class="pf-sbl">Return</div><div class="pf-sbv" style="color:${tplp>=0?'var(--G)':'var(--R)'}">${tplp>=0?'+':''}${tplp.toFixed(2)}%</div></div>`;
 
   // Position strips
   $('pf-list').innerHTML=enriched.map((p,i)=>{
     const pp=totalVal>0?p.cv/totalVal*100:0;const up=p.pl>=0;
-    return`<div class="pf-strip" onclick="go('${esc(p.ticker)}');closePortfolioPage()">
+    return`<div class="pf-strip" onclick="navigatePfToStock('${esc(p.ticker)}')">
       <div class="pf-strip-logo"><img src="${esc(p.logo)}" onerror="this.style.display='none'"/></div>
       <div><div class="pf-sname">${esc(p.name)}</div><div class="pf-stick">${esc(p.ticker)}</div></div>
       <div class="pf-col"><div class="pv">${pp.toFixed(1)}%</div><div class="pl">of portfolio</div></div>
-      <div class="pf-col pf-col-hold"><div class="pv">${fVal(p.cv)}</div><div class="pl">${p.shares} sh</div></div>
+      <div class="pf-col pf-col-hold"><div class="pv">${fVal(p.cv)}</div><div class="pl">${p.shares} Shares</div></div>
       <div class="pf-col pf-col-pl"><div class="pv" style="color:${up?'var(--G)':'var(--R)'}">${up?'+':''}${fVal(Math.abs(p.pl))}</div><div class="pl">P/L</div></div>
       <div class="pf-col"><div class="pv" style="color:${up?'var(--G)':'var(--R)'}">${up?'▲':'▼'} ${Math.abs(p.plp).toFixed(2)}%</div><div class="pl">gain/loss</div></div>
       <button class="pf-del" title="Remove" onclick="event.stopPropagation();removePfPos(${i},'${esc(p.ticker)}')">✕</button>
@@ -795,6 +805,15 @@ function openPfModal(){
   setTimeout(()=>$('pf-ticker-inp').focus(),80);
 }
 function closePfModal(){$('pf-modal-bg').style.display='none';}
+function showPfDrop(results){
+  const inp=$('pf-ticker-inp'),drop=$('pf-sdrop');
+  const rect=inp.getBoundingClientRect();
+  drop.style.top=(rect.bottom+4)+'px';
+  drop.style.left=rect.left+'px';
+  drop.style.width=rect.width+'px';
+  drop.innerHTML=results.map(r=>`<div class="pf-sitem" onclick="pfPickStock('${esc(r.symbol)}','${esc((r.description||'').replace(/'/g,"\\'"))}')"><span class="pf-ssym">${esc(r.symbol)}</span><span class="pf-sname-sm">${esc(r.description||'')}</span></div>`).join('');
+  drop.style.display='block';
+}
 $('pf-ticker-inp').addEventListener('focus',()=>{
   if(!$('pf-ticker-inp').value&&!pfSel)$('pf-chips').style.display='block';
 });
@@ -808,10 +827,9 @@ $('pf-ticker-inp').addEventListener('input',()=>{
       const d=await apiFetch(`/api/search?q=${encodeURIComponent(q)}`);
       const rs=(d?.result||[]).filter(r=>r.symbol&&!r.symbol.match(/\.[A-Z]{2,}$/)).slice(0,6);
       if(!rs.length){$('pf-sdrop').style.display='none';return;}
-      $('pf-sdrop').innerHTML=rs.map(r=>`<div class="pf-sitem" onclick="pfPickStock('${esc(r.symbol)}','${esc((r.description||'').replace(/'/g,"\\'"))}')"><span class="pf-ssym">${esc(r.symbol)}</span><span class="pf-sname-sm">${esc(r.description||'')}</span></div>`).join('');
-      $('pf-sdrop').style.display='block';
+      showPfDrop(rs);
     }catch{}
-  },250);
+  },200);
 });
 async function pfPickStock(sym,name){
   pfSel={ticker:sym,name};
