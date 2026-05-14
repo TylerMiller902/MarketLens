@@ -391,13 +391,13 @@ button,input{font-family:var(--fb)}
 .pf-del-no{background:none;border:1px solid var(--b2);color:var(--mu);padding:7px 18px;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--fm)}
 /* Add position modal */
 .pf-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;display:flex;align-items:center;justify-content:center;padding:1rem}
-.pf-modal-box{background:var(--bg2);border:1px solid var(--b2);border-radius:16px;padding:1.25rem;width:100%;max-width:360px;box-shadow:0 30px 80px rgba(0,0,0,.7)}
+.pf-modal-box{background:var(--bg2);border:1px solid var(--b2);border-radius:16px;padding:1.25rem;width:100%;max-width:360px;box-shadow:0 30px 80px rgba(0,0,0,.7);max-height:90vh;overflow-y:auto}
 .pf-modal-ttl{font-family:var(--fd);font-size:.95rem;font-weight:600;margin-bottom:.9rem}
 .pf-mrow{margin-bottom:.7rem;position:relative}
 .pf-mrow label{display:block;font-size:10px;color:var(--mu);margin-bottom:.25rem;font-family:var(--fm);text-transform:uppercase;letter-spacing:.04em}
 .pf-inp{width:100%;background:var(--bg3);border:1px solid var(--b2);color:var(--tx);padding:8px 11px;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box}
 .pf-inp:focus{border-color:var(--P)}
-.pf-sdrop{position:fixed;background:var(--bg2);border:1px solid var(--b2);border-radius:10px;z-index:300;box-shadow:0 10px 30px rgba(0,0,0,.5);max-height:220px;overflow-y:auto}
+.pf-sdrop{background:var(--bg3);border:1px solid var(--b2);border-radius:8px;margin-top:4px;max-height:200px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.45)}
 .pf-sitem{padding:9px 12px;cursor:pointer;font-size:12px;display:flex;gap:8px;border-bottom:1px solid rgba(255,255,255,.04)}
 .pf-sitem:last-child{border-bottom:none}
 .pf-sitem:hover{background:var(--Pbg);color:var(--P)}
@@ -806,11 +806,8 @@ function openPfModal(){
 }
 function closePfModal(){$('pf-modal-bg').style.display='none';}
 function showPfDrop(results){
-  const inp=$('pf-ticker-inp'),drop=$('pf-sdrop');
-  const rect=inp.getBoundingClientRect();
-  drop.style.top=(rect.bottom+4)+'px';
-  drop.style.left=rect.left+'px';
-  drop.style.width=rect.width+'px';
+  const drop=$('pf-sdrop');if(!drop)return;
+  if(!results.length){drop.style.display='none';return;}
   drop.innerHTML=results.map(r=>`<div class="pf-sitem" onclick="pfPickStock('${esc(r.symbol)}','${esc((r.description||'').replace(/'/g,"\\'"))}')"><span class="pf-ssym">${esc(r.symbol)}</span><span class="pf-sname-sm">${esc(r.description||'')}</span></div>`).join('');
   drop.style.display='block';
 }
@@ -821,14 +818,19 @@ $('pf-ticker-inp').addEventListener('input',()=>{
   clearTimeout(pfSearchTmr);pfSel=null;$('pf-sel-tag').style.display='none';
   const q=$('pf-ticker-inp').value.trim();
   if(!q){$('pf-sdrop').style.display='none';return;}
+  // Show local results immediately
+  const local=localSearch(q);
+  showPfDrop(local);
+  // Enhance with FMP results after short delay
   pfSearchTmr=setTimeout(async()=>{
     try{
       const d=await apiFetch(`/api/search?q=${encodeURIComponent(q)}`);
-      const rs=(d?.result||[]).filter(r=>r.symbol&&!r.symbol.match(/\.[A-Z]{2,}$/)).slice(0,6);
-      if(!rs.length){$('pf-sdrop').style.display='none';return;}
-      showPfDrop(rs);
-    }catch{}
-  },200);
+      const fmp=(d?.result||[]).filter(r=>r.symbol&&!r.symbol.match(/\.[A-Z]{2,}$/)).slice(0,6);
+      if(!fmp.length)return;
+      const localSyms=new Set(local.map(r=>r.symbol));
+      showPfDrop([...local,...fmp.filter(r=>!localSyms.has(r.symbol))].slice(0,6));
+    }catch(e){console.warn('[pf-search]',e.message);}
+  },300);
 });
 async function pfPickStock(sym,name){
   pfSel={ticker:sym,name};
