@@ -340,6 +340,7 @@ button,input{font-family:var(--fb)}
 #pfpage{position:fixed;top:44px;bottom:0;left:0;right:0;background:var(--bg);z-index:50;display:flex;flex-direction:column;overflow:hidden}
 #pfpage.gone{display:none}
 .pf-topbar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:.5rem;padding:.7rem 1rem;border-bottom:1px solid var(--b1);background:var(--bg);flex-shrink:0}
+.pf-topbar>:first-child{justify-self:start}
 .pf-topbar>:last-child{display:flex;justify-content:flex-end}
 .pf-page-ttl{font-family:var(--fd);font-size:1rem;font-weight:600;flex:1;text-align:center}
 .backbtn-sm{background:none;border:1px solid var(--b2);color:var(--tx);padding:5px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--fm)}
@@ -530,9 +531,7 @@ button,input{font-family:var(--fb)}
         <div class="pf-selected-tag" id="pf-sel-tag" style="display:none"></div>
         <div class="pf-prompt-chips" id="pf-chips">
           <div style="font-size:10px;color:var(--mu);margin-bottom:5px;font-family:var(--fm)">Popular</div>
-          <div style="display:flex;flex-wrap:wrap;gap:5px">
-            ${['AAPL','MSFT','NVDA','AMZN','GOOGL','META','TSLA','SPY','QQQ','VTI'].map(t=>`<button class="pf-chip" onclick="pfPickStock('${t}','${t}')">${t}</button>`).join('')}
-          </div>
+          <div id="pf-chips-row" style="display:flex;flex-wrap:wrap;gap:5px"></div>
         </div>
       </div>
       <div class="pf-mrow">
@@ -731,6 +730,9 @@ function openPfModal(){
   pfSel=null;
   ['pf-ticker-inp','pf-shares-inp','pf-price-inp'].forEach(id=>$(id).value='');
   $('pf-sel-tag').style.display='none';$('pf-sdrop').style.display='none';
+  // Render popular chips from JS (not HTML template literals)
+  const chipsRow=$('pf-chips-row');
+  if(chipsRow)chipsRow.innerHTML=DEFAULT_CHIPS.map(c=>`<button class="pf-chip" onclick="pfPickStock('${c.t}','${c.l}')">${c.t}</button>`).join('');
   $('pf-chips').style.display='block';
   $('pf-modal-bg').style.display='flex';
   setTimeout(()=>$('pf-ticker-inp').focus(),80);
