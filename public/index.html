@@ -713,23 +713,22 @@ $('pf-confirm-btn').addEventListener('click',()=>{
   }
   savePf(pf);closePfModal();renderPfPage();
 });
+
+// ── Menu + Movers ───────────────────────────────────────────
+let moversLoaded=false;
+const menuBtn=$('menu-btn'),menuPanel=$('menu-panel');
 if(menuBtn&&menuPanel){
   menuBtn.addEventListener('click',e=>{
     e.stopPropagation();
     const open=menuPanel.style.display!=='none';
     menuPanel.style.display=open?'none':'block';
-    // Close movers panel if open
     const mp=$('movers-panel');if(mp)mp.style.display='none';
   });
   document.addEventListener('click',e=>{
     if(!$('menu-wrap')?.contains(e.target))menuPanel.style.display='none';
   });
 }
-function openPage(page){
-  if(menuPanel)menuPanel.style.display='none';
-  // Placeholder — these pages will be built out
-  alert(`${page.charAt(0).toUpperCase()+page.slice(1)} — coming soon!`);
-}
+// (openPage is defined in the Portfolio section above — no duplicate here)
 $('movers-btn').addEventListener('click',async()=>{
   const panel=$('movers-panel');const isOpen=panel.style.display!=='none';
   panel.style.display=isOpen?'none':'block';
