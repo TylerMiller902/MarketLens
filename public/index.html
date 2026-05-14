@@ -138,6 +138,8 @@ button,input{font-family:var(--fb)}
 @keyframes spin{to{transform:rotate(360deg)}}
 .loading-txt{font-size:12px;color:var(--mu);font-family:var(--fm)}
 .shdr{display:flex;gap:.75rem;align-items:flex-start;margin-bottom:1rem;flex-wrap:wrap}
+.pf-back-to{background:var(--Pbg);border:1px solid var(--P);color:var(--P);padding:6px 12px;border-radius:20px;cursor:pointer;font-size:11px;font-family:var(--fm);font-weight:600;white-space:nowrap;flex-shrink:0;align-self:center;transition:background .15s}
+.pf-back-to:hover{background:var(--P);color:#fff}
 .slogo{width:48px;height:48px;border-radius:10px;background:var(--bg3);border:1.5px solid var(--b2);flex-shrink:0;display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
 .slogo img{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;padding:4px}
 .stitle{flex:1;min-width:150px}
@@ -653,7 +655,7 @@ renderChips();
 
 // ── Movers ──────────────────────────────────────────────
 // ── Portfolio ───────────────────────────────────────────────
-let PfChart=null,PfRangeActive='1Y';
+let PfChart=null,PfRangeActive='1Y',CameFromPortfolio=false;
 const fVal=n=>{if(n==null||isNaN(n))return'—';const x=+n;if(x>=1e9)return`$${(x/1e9).toFixed(2)}B`;if(x>=1e6)return`$${(x/1e6).toFixed(2)}M`;return x.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2});};
 function getPf(){try{return JSON.parse(localStorage.getItem('ml_portfolio')||'{"positions":[]}')}catch{return{positions:[]};}}
 function savePf(pf){localStorage.setItem('ml_portfolio',JSON.stringify(pf));}
@@ -669,14 +671,23 @@ function openPage(page){
   }
 }
 function navigatePfToStock(ticker){
+  CameFromPortfolio=true;
   $('pfpage').classList.add('gone');
   if(PfChart){PfChart.destroy();PfChart=null;}
   go(ticker);
 }
 function closePortfolioPage(){
+  CameFromPortfolio=false;
   $('pfpage').classList.add('gone');
   $('home').classList.remove('gone');
   if(PfChart){PfChart.destroy();PfChart=null;}
+}
+function backToPortfolio(){
+  CameFromPortfolio=false;
+  $('spage').classList.remove('on');
+  $('pfpage').classList.remove('gone');
+  destroyAll();
+  renderPfPage();
 }
 
 async function renderPfPage(){
@@ -1102,7 +1113,7 @@ function renderPage(){
   const stats=isETF?[{l:'Market Cap',v:fB((p?.marketCapitalization||0)*1e6)},{l:'52W High',v:f$(w52h)},{l:'52W Low',v:f$(w52l)},{l:'Beta',v:fN(m.beta)},{l:'P/E Ratio',v:fN(m.peBasicExclExtraTTM)},{l:'EPS (TTM)',v:f$(m.epsTTM)},{l:'Dividend Yield',v:m.dividendYieldIndicatedAnnual!=null?fP(m.dividendYieldIndicatedAnnual):'—'},{l:'Div Per Share',v:m.dividendPerShareAnnual!=null?f$(m.dividendPerShareAnnual):'—'},{l:'Gross Margin',v:fP(m.grossMarginTTM)},{l:'Net Margin',v:fP(m.netProfitMarginTTM)},{l:'ROE',v:fP(m.roeTTM)},{l:'Exchange',v:p?.exchange||'—'}]:[{l:'Market Cap',v:fB((p?.marketCapitalization||0)*1e6)},{l:'P/E Ratio',v:fN(m.peBasicExclExtraTTM)},{l:'EPS (TTM)',v:f$(m.epsTTM)},{l:'P/S Ratio',v:fN(m.psTTM)},{l:'Dividend Yield',v:m.dividendYieldIndicatedAnnual!=null?fP(m.dividendYieldIndicatedAnnual):'—'},{l:'Div Per Share (Ann)',v:m.dividendPerShareAnnual!=null?f$(m.dividendPerShareAnnual):'—'},{l:'Beta',v:fN(m.beta)},{l:'Current Ratio',v:fN(m.currentRatioAnnual)},{l:'Gross Margin',v:fP(m.grossMarginTTM)},{l:'Net Margin',v:fP(m.netProfitMarginTTM)},{l:'ROE',v:fP(m.roeTTM)},{l:'ROA',v:fP(m.roaTTM)}];
 
   $('scontent').innerHTML=`
-    <div class="shdr"><div class="slogo"><img src="${esc(p?.logo||'')}" onerror="this.style.display='none'"/></div><div class="stitle"><div class="sname">${esc(p?.name||ticker)}</div><div class="smeta"><span class="stk">${esc(ticker)}</span>${p?.exchange?`<span class="sexch">${esc(p.exchange)}</span>`:''}${p?.finnhubIndustry?`<span class="ssect">&middot; ${esc(p.finnhubIndustry)}</span>`:''}${isETF?'<span class="etfbadge">ETF</span>':''}</div><div class="ohlc">${q?.o?`<div class="ohlci"><div class="ohlcl">Open</div><div class="ohlcv">${f$(q.o)}</div></div>`:''} ${q?.h?`<div class="ohlci"><div class="ohlcl">High</div><div class="ohlcv" style="color:var(--G)">${f$(q.h)}</div></div>`:''} ${q?.l?`<div class="ohlci"><div class="ohlcl">Low</div><div class="ohlcv" style="color:var(--R)">${f$(q.l)}</div></div>`:''} ${q?.pc?`<div class="ohlci"><div class="ohlcl">Prev Close</div><div class="ohlcv">${f$(q.pc)}</div></div>`:''}</div></div><div class="sprice"><div class="bigp">${q?.c?f$(q.c):'—'}</div><div class="pchg ${isUp?'up':'dn'}">${isUp?'▲':'▼'} ${sgn(q?.d||0)}${f$(Math.abs(q?.d||0)).slice(1)} (${sgn(q?.dp||0)}${Math.abs(q?.dp||0).toFixed(2)}%)</div><div style="font-size:10px;font-family:var(--fm);margin-top:2px;color:var(--G)">&#x25CF; Live &middot; FMP</div></div></div>
+    <div class="shdr">${CameFromPortfolio?`<button class="pf-back-to" onclick="backToPortfolio()">&#8592; Portfolio</button>`:''}<div class="slogo"><img src="${esc(p?.logo||'')}" onerror="this.style.display='none'"/></div><div class="stitle"><div class="sname">${esc(p?.name||ticker)}</div><div class="smeta"><span class="stk">${esc(ticker)}</span>${p?.exchange?`<span class="sexch">${esc(p.exchange)}</span>`:''}${p?.finnhubIndustry?`<span class="ssect">&middot; ${esc(p.finnhubIndustry)}</span>`:''}${isETF?'<span class="etfbadge">ETF</span>':''}</div><div class="ohlc">${q?.o?`<div class="ohlci"><div class="ohlcl">Open</div><div class="ohlcv">${f$(q.o)}</div></div>`:''} ${q?.h?`<div class="ohlci"><div class="ohlcl">High</div><div class="ohlcv" style="color:var(--G)">${f$(q.h)}</div></div>`:''} ${q?.l?`<div class="ohlci"><div class="ohlcl">Low</div><div class="ohlcv" style="color:var(--R)">${f$(q.l)}</div></div>`:''} ${q?.pc?`<div class="ohlci"><div class="ohlcl">Prev Close</div><div class="ohlcv">${f$(q.pc)}</div></div>`:''}</div></div><div class="sprice"><div class="bigp">${q?.c?f$(q.c):'—'}</div><div class="pchg ${isUp?'up':'dn'}">${isUp?'▲':'▼'} ${sgn(q?.d||0)}${f$(Math.abs(q?.d||0)).slice(1)} (${sgn(q?.dp||0)}${Math.abs(q?.dp||0).toFixed(2)}%)</div><div style="font-size:10px;font-family:var(--fm);margin-top:2px;color:var(--G)">&#x25CF; Live &middot; FMP</div></div></div>
 
     <div class="card" id="price-card" style="cursor:pointer">
       <div class="chart-top">
