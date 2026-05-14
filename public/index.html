@@ -337,7 +337,7 @@ button,input{font-family:var(--fb)}
 @media(max-width:520px){.shdr,.analyst-grid{flex-direction:column}.sprice{text-align:left}.scontent{padding:.7rem}}
 
 /* ── Portfolio Page ──────────────────────────────────────── */
-#pfpage{position:fixed;inset:0;background:var(--bg);z-index:50;display:flex;flex-direction:column;overflow:hidden}
+#pfpage{position:fixed;top:44px;bottom:0;left:0;right:0;background:var(--bg);z-index:50;display:flex;flex-direction:column;overflow:hidden}
 #pfpage.gone{display:none}
 .pf-topbar{display:flex;align-items:center;gap:.75rem;padding:.75rem 1rem;border-bottom:1px solid var(--b1);background:var(--bg);flex-shrink:0}
 .pf-page-ttl{font-family:var(--fd);font-size:1rem;font-weight:600;flex:1;text-align:center}
@@ -370,6 +370,11 @@ button,input{font-family:var(--fb)}
 .pf-del{background:none;border:none;color:var(--mu);cursor:pointer;font-size:14px;padding:2px 4px;border-radius:4px}
 .pf-del:hover{color:var(--R)}
 .pf-empty-state{text-align:center;padding:4rem 1rem;color:var(--mu)}
+.pf-add-big{background:var(--P);border:none;color:#fff;padding:14px 32px;border-radius:28px;cursor:pointer;font-size:15px;font-family:var(--fm);font-weight:600;margin-top:1.5rem;letter-spacing:.02em;box-shadow:0 4px 20px rgba(139,92,246,.35);transition:opacity .15s}
+.pf-add-big:hover{opacity:.88}
+.pf-prompt-chips{margin-top:8px;padding:10px 12px;background:var(--bg3);border-radius:8px;border:1px solid var(--b1)}
+.pf-chip{background:var(--bg2);border:1px solid var(--b2);color:var(--tx);padding:4px 10px;border-radius:12px;cursor:pointer;font-size:11px;font-family:var(--fm);font-weight:600;transition:border-color .12s,color .12s}
+.pf-chip:hover{border-color:var(--P);color:var(--P)}
 /* Add position modal */
 .pf-modal-bg{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:100;display:flex;align-items:center;justify-content:center;padding:1rem}
 .pf-modal-box{background:var(--bg2);border:1px solid var(--b2);border-radius:16px;padding:1.25rem;width:100%;max-width:360px;box-shadow:0 30px 80px rgba(0,0,0,.7)}
@@ -493,7 +498,7 @@ button,input{font-family:var(--fb)}
   <div class="pf-topbar">
     <button class="backbtn-sm" onclick="closePortfolioPage()">&#8592; Back</button>
     <div class="pf-page-ttl">Portfolio</div>
-    <div style="width:60px"></div>
+    <button class="pf-add-pos-btn" id="pf-add-btn" style="display:none">+ Add Position</button>
   </div>
   <div id="pf-scroll">
     <div class="pf-overview" id="pf-overview"></div>
@@ -502,15 +507,15 @@ button,input{font-family:var(--fb)}
       <div class="pcwrap" style="height:200px"><canvas id="pf-canvas" height="200"></canvas></div>
       <div id="pf-perf" class="pcperf" style="margin-top:.3rem"></div>
     </div>
-    <div class="pf-pos-hdr">
+    <div class="pf-pos-hdr" id="pf-pos-hdr" style="display:none">
       <span class="pf-pos-hdr-ttl">Positions</span>
-      <button class="pf-add-pos-btn" id="pf-add-btn">+ Add Stock / ETF Position</button>
     </div>
     <div id="pf-list"></div>
     <div class="pf-empty-state" id="pf-empty">
-      <div style="font-size:2.2rem;margin-bottom:.75rem">💼</div>
-      <div style="font-size:14px;font-weight:600;margin-bottom:.4rem">Your portfolio is empty</div>
-      <div style="font-size:12px">Add positions to start tracking performance.</div>
+      <div style="font-size:2.8rem;margin-bottom:.75rem">💼</div>
+      <div style="font-size:15px;font-weight:600;color:var(--tx);margin-bottom:.4rem">Your portfolio is empty</div>
+      <div style="font-size:12px;margin-bottom:0">Track your stocks and ETFs in one place.</div>
+      <button class="pf-add-big" onclick="openPfModal()">+ Add Stock / ETF Position</button>
     </div>
   </div>
   <!-- Add Position Modal -->
@@ -522,6 +527,12 @@ button,input{font-family:var(--fb)}
         <input class="pf-inp" id="pf-ticker-inp" placeholder="Search ticker or company&hellip;" autocomplete="off"/>
         <div class="pf-sdrop" id="pf-sdrop" style="display:none"></div>
         <div class="pf-selected-tag" id="pf-sel-tag" style="display:none"></div>
+        <div class="pf-prompt-chips" id="pf-chips">
+          <div style="font-size:10px;color:var(--mu);margin-bottom:5px;font-family:var(--fm)">Popular</div>
+          <div style="display:flex;flex-wrap:wrap;gap:5px">
+            ${['AAPL','MSFT','NVDA','AMZN','GOOGL','META','TSLA','SPY','QQQ','VTI'].map(t=>`<button class="pf-chip" onclick="pfPickStock('${t}','${t}')">${t}</button>`).join('')}
+          </div>
+        </div>
       </div>
       <div class="pf-mrow">
         <label>Shares</label>
@@ -644,6 +655,8 @@ async function renderPfPage(){
     .map(r=>`<button class="pf-rb${r===PfRangeActive?' on':''}" onclick="setPfRange('${r}')">${r}</button>`).join('');
   $('pf-empty').style.display=pos.length?'none':'block';
   $('pf-chart-card').style.display=pos.length?'block':'none';
+  const posHdr=$('pf-pos-hdr');if(posHdr)posHdr.style.display=pos.length?'flex':'none';
+  const addBtn=$('pf-add-btn');if(addBtn)addBtn.style.display=pos.length?'inline-block':'none';
   if(!pos.length){$('pf-overview').innerHTML='';$('pf-list').innerHTML='';return;}
 
   // Fetch current quotes for all positions
@@ -716,13 +729,18 @@ $('pf-add-btn').addEventListener('click',()=>{
   pfSel=null;
   ['pf-ticker-inp','pf-shares-inp','pf-price-inp'].forEach(id=>$(id).value='');
   $('pf-sel-tag').style.display='none';$('pf-sdrop').style.display='none';
+  $('pf-chips').style.display='block';
   $('pf-modal-bg').style.display='flex';
   setTimeout(()=>$('pf-ticker-inp').focus(),80);
 });
 function closePfModal(){$('pf-modal-bg').style.display='none';}
+$('pf-ticker-inp').addEventListener('focus',()=>{
+  if(!$('pf-ticker-inp').value&&!pfSel)$('pf-chips').style.display='block';
+});
 $('pf-ticker-inp').addEventListener('input',()=>{
   clearTimeout(pfSearchTmr);pfSel=null;$('pf-sel-tag').style.display='none';
   const q=$('pf-ticker-inp').value.trim();
+  $('pf-chips').style.display=q?'none':'block';
   if(!q){$('pf-sdrop').style.display='none';return;}
   pfSearchTmr=setTimeout(async()=>{
     try{
@@ -736,7 +754,7 @@ $('pf-ticker-inp').addEventListener('input',()=>{
 });
 async function pfPickStock(sym,name){
   pfSel={ticker:sym,name};
-  $('pf-ticker-inp').value=sym;$('pf-sdrop').style.display='none';
+  $('pf-ticker-inp').value=sym;$('pf-sdrop').style.display='none';$('pf-chips').style.display='none';
   $('pf-sel-tag').textContent=`${sym} — ${name}`;$('pf-sel-tag').style.display='block';
   try{
     const d=await apiFetch(`/api/stock/${sym}?etf=1`);
