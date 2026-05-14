@@ -161,6 +161,7 @@ button,input{font-family:var(--fb)}
 .badge.est{background:var(--Bbg);color:var(--B)}
 .chart-top{display:flex;justify-content:space-between;align-items:center;margin-bottom:.6rem;flex-wrap:wrap;gap:6px}
 .pcperf{font-family:var(--fm);font-size:12px;font-weight:500}
+#pf-perf.pcperf{font-size:15px;font-weight:600;padding:.4rem 0}
 .pcperf.up{color:var(--G)}.pcperf.dn{color:var(--R)}
 .ranges{display:flex;gap:3px;flex-wrap:wrap}
 .rbtn{background:transparent;border:1px solid var(--b1);color:var(--mu);padding:3px 9px;border-radius:6px;cursor:pointer;font-size:11px;font-family:var(--fm)}
@@ -366,7 +367,7 @@ button,input{font-family:var(--fb)}
 .pf-add-pos-btn{background:var(--P);border:none;color:#fff;padding:6px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-family:var(--fm)}
 .pf-add-pos-btn:hover{opacity:.85}
 /* Position strip */
-.pf-strip{display:grid;grid-template-columns:36px 2fr 1fr 1.3fr 1fr 1fr 28px;align-items:center;gap:0 10px;padding:14px 1rem;border-bottom:1px solid rgba(255,255,255,.05);transition:background .12s;cursor:pointer}
+.pf-strip{display:grid;grid-template-columns:36px 2fr 1fr 1.3fr 1fr 1fr 44px;align-items:center;gap:0 10px;padding:14px 1rem;border-bottom:1px solid rgba(255,255,255,.05);transition:background .12s;cursor:pointer}
 .pf-strip:hover{background:rgba(255,255,255,.025);border-radius:8px;padding-left:6px;padding-right:6px}
 @media(max-width:520px){.pf-strip{grid-template-columns:32px 1.5fr 1fr 1fr 24px}.pf-col-hold,.pf-col-pl{display:none}}
 .pf-strip-logo img{width:30px;height:30px;border-radius:6px;object-fit:contain;background:var(--bg3);padding:2px}
@@ -375,7 +376,7 @@ button,input{font-family:var(--fb)}
 .pf-col{text-align:right}
 .pf-col .pv{font-size:13px;font-family:var(--fm);font-weight:600}
 .pf-col .pl{font-size:10px;color:var(--mu);margin-top:2px}
-.pf-del{background:none;border:none;color:var(--mu);cursor:pointer;font-size:14px;padding:2px 4px;border-radius:4px}
+.pf-del{background:none;border:none;color:var(--mu);cursor:pointer;font-size:14px;padding:4px 8px;border-radius:4px;margin-left:4px}
 .pf-del:hover{color:var(--R)}
 .pf-empty-state{text-align:center;padding:4rem 1rem;color:var(--mu)}
 .pf-add-big{background:var(--P);border:none;color:#fff;padding:14px 32px;border-radius:28px;cursor:pointer;font-size:15px;font-family:var(--fm);font-weight:600;margin-top:1.5rem;letter-spacing:.02em;box-shadow:0 4px 20px rgba(139,92,246,.35);transition:opacity .15s}
@@ -398,12 +399,14 @@ button,input{font-family:var(--fb)}
 .pf-inp{width:100%;background:var(--bg3);border:1px solid var(--b2);color:var(--tx);padding:8px 11px;border-radius:8px;font-size:13px;outline:none;box-sizing:border-box}
 .pf-inp:focus{border-color:var(--P)}
 .pf-sdrop{background:var(--bg3);border:1px solid var(--b2);border-radius:8px;margin-top:4px;max-height:200px;overflow-y:auto;box-shadow:0 4px 16px rgba(0,0,0,.45)}
-.pf-sitem{padding:9px 12px;cursor:pointer;font-size:12px;display:flex;gap:8px;border-bottom:1px solid rgba(255,255,255,.04)}
+.pf-sitem{padding:8px 12px;cursor:pointer;font-size:12px;display:flex;align-items:center;gap:9px;border-bottom:1px solid rgba(255,255,255,.04)}
+.pf-sitem-logo{width:22px;height:22px;border-radius:4px;object-fit:contain;background:var(--bg);flex-shrink:0}
 .pf-sitem:last-child{border-bottom:none}
 .pf-sitem:hover{background:var(--Pbg);color:var(--P)}
 .pf-ssym{font-weight:700;font-family:var(--fm);min-width:48px;font-size:11px}
 .pf-sname-sm{color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.pf-selected-tag{background:var(--Pbg);border:1px solid var(--P);border-radius:6px;padding:6px 10px;font-size:12px;color:var(--P);margin-top:6px}
+.pf-selected-tag{background:var(--Pbg);border:1px solid var(--P);border-radius:6px;padding:7px 10px;font-size:12px;color:var(--P);margin-top:6px;display:flex;align-items:center;gap:8px}
+.pf-sel-logo{width:22px;height:22px;border-radius:4px;object-fit:contain;background:var(--bg);flex-shrink:0}
 .pf-modal-acts{display:flex;gap:8px;margin-top:.9rem}
 .pf-bcnl{flex:1;background:none;border:1px solid var(--b2);color:var(--mu);padding:9px;border-radius:8px;cursor:pointer;font-size:13px}
 .pf-badd{flex:2;background:var(--P);border:none;color:#fff;padding:9px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
@@ -808,7 +811,7 @@ function closePfModal(){$('pf-modal-bg').style.display='none';}
 function showPfDrop(results){
   const drop=$('pf-sdrop');if(!drop)return;
   if(!results.length){drop.style.display='none';return;}
-  drop.innerHTML=results.map(r=>`<div class="pf-sitem" onclick="pfPickStock('${esc(r.symbol)}','${esc((r.description||'').replace(/'/g,"\\'"))}')"><span class="pf-ssym">${esc(r.symbol)}</span><span class="pf-sname-sm">${esc(r.description||'')}</span></div>`).join('');
+  drop.innerHTML=results.map(r=>`<div class="pf-sitem" onclick="pfPickStock('${esc(r.symbol)}','${esc((r.description||'').replace(/'/g,"\\'"))}')"><img class="pf-sitem-logo" src="https://images.financialmodelingprep.com/symbol/${esc(r.symbol)}.png" onerror="this.style.display='none'"/><span class="pf-ssym">${esc(r.symbol)}</span><span class="pf-sname-sm">${esc(r.description||'')}</span></div>`).join('');
   drop.style.display='block';
 }
 $('pf-ticker-inp').addEventListener('focus',()=>{
@@ -835,7 +838,7 @@ $('pf-ticker-inp').addEventListener('input',()=>{
 async function pfPickStock(sym,name){
   pfSel={ticker:sym,name};
   $('pf-ticker-inp').value=sym;$('pf-sdrop').style.display='none';$('pf-chips').style.display='none';
-  $('pf-sel-tag').textContent=`${sym} — ${name}`;$('pf-sel-tag').style.display='block';
+  $('pf-sel-tag').innerHTML=`<img class="pf-sel-logo" src="https://images.financialmodelingprep.com/symbol/${esc(sym)}.png" onerror="this.style.display='none'"/><span>${esc(sym)} — ${esc(name)}</span>`;$('pf-sel-tag').style.display='flex';
   try{
     const d=await apiFetch(`/api/stock/${sym}?etf=1`);
     const price=d?.quote?.c||d?.quote?.pc;
