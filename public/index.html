@@ -60,6 +60,15 @@ button,input{font-family:var(--fb)}
 .movers-bubble .dot{width:6px;height:6px;border-radius:50%;background:var(--G);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
 .movers-panel{margin-top:8px;background:var(--bg2);border:1px solid var(--b2);border-radius:14px;overflow:hidden;width:300px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
 .movers-header{display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--b1);font-size:11px;font-family:var(--fm);color:var(--di)}
+.menu-wrap{position:absolute;top:1.2rem;left:1.2rem;z-index:10;text-align:left}
+.menu-bubble{background:var(--bg3);border:1px solid var(--b2);color:var(--tx);padding:8px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-family:var(--fm);display:flex;align-items:center;gap:6px;transition:border-color .15s,background .15s;white-space:nowrap;}
+.menu-bubble:hover{border-color:var(--P);background:var(--Pbg)}
+.menu-panel{margin-top:8px;background:var(--bg2);border:1px solid var(--b2);border-radius:14px;overflow:hidden;min-width:160px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.menu-item{display:flex;align-items:center;gap:10px;padding:11px 16px;font-size:13px;cursor:pointer;transition:background .12s;border-bottom:1px solid var(--b1);}
+.menu-item:last-child{border-bottom:none}
+.menu-item:hover{background:var(--Pbg);color:var(--P)}
+.menu-item-icon{font-size:15px;flex-shrink:0}
+.menu-item-lbl{font-family:var(--fm);font-size:12px}
 .mover-item{display:grid;grid-template-columns:22px 62px 1fr 60px;align-items:center;column-gap:8px;padding:8px 14px;border-bottom:1px solid var(--b1);cursor:pointer;transition:background .12s;opacity:0;transform:translateX(10px);animation:slideIn .3s forwards;}
 .mover-item:last-child{border-bottom:none}
 .mover-item:hover{background:var(--bg3)}
@@ -361,6 +370,22 @@ button,input{font-family:var(--fb)}
 </div>
 
 <div id="home">
+  <!-- Menu bubble — top left -->
+  <div class="menu-wrap" id="menu-wrap">
+    <button class="menu-bubble" id="menu-btn">&#9776; Menu &#x25BE;</button>
+    <div class="menu-panel" id="menu-panel" style="display:none">
+      <div class="menu-item" onclick="openPage('portfolio')">
+        <span class="menu-item-icon">💼</span><span class="menu-item-lbl">Portfolio</span>
+      </div>
+      <div class="menu-item" onclick="openPage('dividends')">
+        <span class="menu-item-icon">💰</span><span class="menu-item-lbl">Dividends</span>
+      </div>
+      <div class="menu-item" onclick="openPage('news')">
+        <span class="menu-item-icon">📰</span><span class="menu-item-lbl">News</span>
+      </div>
+    </div>
+  </div>
+
   <div class="movers-wrap" id="movers-wrap">
     <button class="movers-bubble" id="movers-btn">
       <span class="dot"></span> Biggest Daily Movers &#x25BE;
@@ -485,6 +510,26 @@ renderChips();
 
 // ── Movers ──────────────────────────────────────────────
 let moversLoaded=false;
+
+// ── Menu dropdown ──────────────────────────────────────────
+const menuBtn=$('menu-btn'),menuPanel=$('menu-panel');
+if(menuBtn&&menuPanel){
+  menuBtn.addEventListener('click',e=>{
+    e.stopPropagation();
+    const open=menuPanel.style.display!=='none';
+    menuPanel.style.display=open?'none':'block';
+    // Close movers panel if open
+    const mp=$('movers-panel');if(mp)mp.style.display='none';
+  });
+  document.addEventListener('click',e=>{
+    if(!$('menu-wrap')?.contains(e.target))menuPanel.style.display='none';
+  });
+}
+function openPage(page){
+  if(menuPanel)menuPanel.style.display='none';
+  // Placeholder — these pages will be built out
+  alert(`${page.charAt(0).toUpperCase()+page.slice(1)} — coming soon!`);
+}
 $('movers-btn').addEventListener('click',async()=>{
   const panel=$('movers-panel');const isOpen=panel.style.display!=='none';
   panel.style.display=isOpen?'none':'block';
