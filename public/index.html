@@ -779,21 +779,27 @@ function timeAgo(ts){
 
 async function renderNewsPage(){
   const pos=getPf().positions||[];
+  console.log('[news] positions in portfolio:',pos.length, pos.map(p=>p.ticker));
+
   // Fetch quotes (includes pre-transformed news) to rank by portfolio %
   const quotes=pos.length
-    ?await Promise.all(pos.map(p=>apiFetch(`/api/stock/${p.ticker}?etf=1`).catch(()=>null)))
+    ?await Promise.all(pos.map(p=>apiFetch(`/api/stock/${p.ticker}?etf=1`).catch(e=>{console.warn('[news] quote fail',p.ticker,e.message);return null;})))
     :[];
+  
+  console.log('[news] quotes fetched:', quotes.length, 'sample news count:', quotes[0]?.news?.length);
+  
   let totalVal=0;
   const enriched=pos.map((p,i)=>{
     const q=quotes[i]?.quote;const pr=quotes[i]?.profile;
     const cp=q?.c||q?.pc||p.costBasis;const cv=p.shares*cp;totalVal+=cv;
-    // news is already transformed: [{headline,source,url,datetime,image}]
     const news=quotes[i]?.news||[];
+    console.log(`[news] ${p.ticker} news count:`, news.length, news[0]?.headline||'(no headline)');
     return{...p,name:pr?.name||p.name||p.ticker,logo:pr?.logo||p.logo||'',cv,news};
   }).map(p=>({...p,pct:totalVal>0?p.cv/totalVal*100:0})).sort((a,b)=>b.pct-a.pct);
 
   // Market news (from server endpoint)
-  const mktNews=await apiFetch('/api/news/market').catch(()=>[]);
+  const mktNews=await apiFetch('/api/news/market').catch(e=>{console.warn('[news] market fail:',e.message);return[];});
+  console.log('[news] market news count:', Array.isArray(mktNews)?mktNews.length:typeof mktNews, mktNews?.[0]?.headline||'(no headline)');
 
   // Position News
   const posList=$('news-pos-list');
