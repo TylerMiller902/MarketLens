@@ -240,6 +240,23 @@ function transformEtfHoldings(data) {
   return { holdings };
 }
 
+async function yahooEtfHoldings(symbol){
+  const hdrs={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','Accept':'application/json','Referer':'https://finance.yahoo.com/'};
+  try{
+    const url=`https://query1.finance.yahoo.com/v11/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=topHoldings`;
+    const r=await fetch(url,{headers:hdrs});
+    const data=await r.json();
+    const top=data?.quoteSummary?.result?.[0]?.topHoldings;
+    if(!top)return{holdings:[]};
+    const holdings=(top.holdings||[]).map(h=>({
+      symbol:h.symbol||'',
+      name:h.holdingName||h.symbol||'',
+      percent:+(((h.holdingPercent?.raw??0)*100).toFixed(2)),
+    }));
+    return{holdings};
+  }catch(e){console.log('[yahooEtfHoldings]',symbol,e.message);return{holdings:[]};}
+}
+
 // ══════════════════════════════════════════════════════════
 //  ROUTES
 // ══════════════════════════════════════════════════════════
@@ -337,7 +354,11 @@ app.get('/api/stock/:symbol', async (req,res) => {
     const priceTarget = transformPriceTarget(priceTargetRaw);
     const earnings    = transformEarnings(earningsRaw).slice(0, 8);
     const earningsCal = transformEarningsCalendar(earningsCalRaw);
-    const etfHoldings = isETF ? transformEtfHoldings(etfRaw) : null;
+    let etfHoldings = isETF ? transformEtfHoldings(etfRaw) : null;
+    // FMP ETF holdings not on Starter plan — fall back to Yahoo Finance
+    if(isETF && (!etfHoldings?.holdings?.length)){
+      etfHoldings = await yahooEtfHoldings(symbol);
+    }
 
     res.json({ quote, profile, metrics, news, recs, priceTarget, earnings, earningsCal, etfHoldings });
   } catch(e) { res.status(500).json({ error: e.message }); }
