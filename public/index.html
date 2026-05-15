@@ -340,8 +340,8 @@ button,input{font-family:var(--fb)}
 @media(max-width:520px){.shdr,.analyst-grid{flex-direction:column}.sprice{text-align:left}.scontent{padding:.7rem}}
 
 /* ── Portfolio Page ──────────────────────────────────────── */
-#pfpage,#divpage{position:fixed;top:44px;bottom:0;left:0;right:0;background:var(--bg);z-index:50;display:flex;flex-direction:column;overflow:hidden}
-#pfpage.gone,#divpage.gone{display:none}
+#pfpage,#divpage,#newspage{position:fixed;top:44px;bottom:0;left:0;right:0;background:var(--bg);z-index:50;display:flex;flex-direction:column;overflow:hidden}
+#pfpage.gone,#divpage.gone,#newspage.gone{display:none}
 .pf-topbar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:.5rem;padding:.7rem 1rem;border-bottom:1px solid var(--b1);background:var(--bg);flex-shrink:0}
 .pf-topbar>:first-child{justify-self:start}
 .pf-topbar>:last-child{display:flex;justify-content:flex-end}
@@ -426,6 +426,21 @@ button,input{font-family:var(--fb)}
 .pf-bcnl{flex:1;background:none;border:1px solid var(--b2);color:var(--mu);padding:9px;border-radius:8px;cursor:pointer;font-size:13px}
 .pf-badd{flex:2;background:var(--P);border:none;color:#fff;padding:9px;border-radius:8px;cursor:pointer;font-size:13px;font-weight:600}
 .pf-badd:hover{opacity:.9}
+
+.news-pos-card{background:var(--bg3);border:1px solid var(--b1);border-radius:10px;padding:.75rem .9rem;margin:.55rem .7rem;overflow:hidden}
+.news-pos-hdr{display:flex;align-items:center;gap:10px;margin-bottom:.55rem}
+.news-pos-logo{width:30px;height:30px;border-radius:6px;object-fit:contain;background:var(--bg);flex-shrink:0;padding:2px}
+.news-pos-name{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;max-width:160px}
+.news-pos-tick{font-size:10px;color:var(--mu);font-family:var(--fm)}
+.news-pos-pct{margin-left:auto;font-size:10px;color:var(--mu);font-family:var(--fm);flex-shrink:0;text-align:right}
+.news-article-link{display:block;text-decoration:none;padding:.55rem .65rem;background:var(--bg2);border-radius:7px;border:1px solid rgba(255,255,255,.05);transition:border-color .12s}
+.news-article-link:hover{border-color:var(--P)}
+.news-market-item{display:block;text-decoration:none;padding:.75rem 1rem;border-bottom:1px solid rgba(255,255,255,.05);transition:background .12s}
+.news-market-item:last-child{border-bottom:none}
+.news-market-item:hover{background:rgba(255,255,255,.025)}
+.news-article-title{font-size:12px;color:var(--tx);line-height:1.45;margin-bottom:4px;font-weight:500}
+.news-article-meta{font-size:10px;color:var(--mu);font-family:var(--fm)}
+.news-no-article{font-size:11px;color:var(--mu);padding:.4rem .6rem;background:var(--bg2);border-radius:7px;font-family:var(--fm)}
 </style>
 </head>
 <body>
@@ -632,6 +647,28 @@ button,input{font-family:var(--fb)}
     </div>
   </div>
 </div>
+<!-- ══ News Page ════════════════════════════════════════════ -->
+<div id="newspage" class="gone">
+  <div class="pf-topbar">
+    <div style="display:flex;align-items:center;gap:6px;justify-self:start">
+      <button class="backbtn-sm" onclick="closeNewsPage()">&#8592; Back</button>
+      <button class="backbtn-sm" onclick="openPage('portfolio')">Portfolio</button>
+      <button class="backbtn-sm" onclick="openPage('dividends')">Dividends</button>
+    </div>
+    <div class="pf-page-ttl">News</div>
+    <div></div>
+  </div>
+  <div id="news-scroll" style="flex:1;overflow-y:auto;padding:.8rem 1rem">
+    <div class="pf-pos-box" id="news-pos-box">
+      <div class="pf-pos-box-hdr">Position News</div>
+      <div id="news-pos-list"><div style="padding:1.2rem;text-align:center;color:var(--mu);font-size:12px">Loading&hellip;</div></div>
+    </div>
+    <div class="pf-pos-box" id="news-market-box" style="margin-top:.8rem">
+      <div class="pf-pos-box-hdr">Market News</div>
+      <div id="news-market-list"><div style="padding:1.2rem;text-align:center;color:var(--mu);font-size:12px">Loading&hellip;</div></div>
+    </div>
+  </div>
+</div>
 <script>
 const API='https://marketlens-production-031f.up.railway.app';
 const $=id=>document.getElementById(id);
@@ -715,17 +752,99 @@ function savePf(pf){localStorage.setItem('ml_portfolio',JSON.stringify(pf));}
 
 function openPage(page){
   if(menuPanel)menuPanel.style.display='none';
-  // Close any already-open menu pages and destroy their charts
-  ['pfpage','divpage'].forEach(id=>{const e=$(id);if(e&&!e.classList.contains('gone'))e.classList.add('gone');});
+  ['pfpage','divpage','newspage'].forEach(id=>{const e=$(id);if(e&&!e.classList.contains('gone'))e.classList.add('gone');});
   if(PfChart){PfChart.destroy();PfChart=null;}
   if(DivChart){DivChart.destroy();DivChart=null;}
   if(page==='portfolio'){
     $('home').classList.add('gone');$('pfpage').classList.remove('gone');renderPfPage();
   } else if(page==='dividends'){
     $('home').classList.add('gone');$('divpage').classList.remove('gone');renderDivPage();
+  } else if(page==='news'){
+    $('home').classList.add('gone');$('newspage').classList.remove('gone');renderNewsPage();
   } else {
     $('home').classList.remove('gone');
     alert(`${page.charAt(0).toUpperCase()+page.slice(1)} — coming soon!`);
+  }
+}
+function closeNewsPage(){$('newspage').classList.add('gone');$('home').classList.remove('gone');}
+
+// ── News Page ──────────────────────────────────────────────────────────────
+function timeAgo(dateStr){
+  if(!dateStr)return'';const d=new Date(dateStr);const diff=Date.now()-d;
+  const m=Math.floor(diff/60000),h=Math.floor(diff/3600000),dy=Math.floor(diff/86400000);
+  if(m<1)return'just now';if(m<60)return`${m}m ago`;if(h<24)return`${h}h ago`;return`${dy}d ago`;
+}
+
+async function renderNewsPage(){
+  const pos=getPf().positions||[];
+  // Fetch quotes to rank by portfolio %
+  const quotes=pos.length
+    ?await Promise.all(pos.map(p=>apiFetch(`/api/stock/${p.ticker}?etf=1`).catch(()=>null)))
+    :[];
+  let totalVal=0;
+  const enriched=pos.map((p,i)=>{
+    const q=quotes[i]?.quote;const pr=quotes[i]?.profile;
+    const cp=q?.c||q?.pc||p.costBasis;
+    const cv=p.shares*cp;totalVal+=cv;
+    return{...p,name:pr?.name||p.name||p.ticker,logo:pr?.logo||p.logo||'',cv};
+  }).map(p=>({...p,pct:totalVal>0?p.cv/totalVal*100:0})).sort((a,b)=>b.pct-a.pct);
+
+  // Fetch position news + market news in parallel
+  const tickers=enriched.map(p=>p.ticker);
+  const[posNews,mktNews]=await Promise.all([
+    tickers.length?apiFetch(`/api/news/positions?tickers=${tickers.join(',')}`).catch(()=>[]):Promise.resolve([]),
+    apiFetch('/api/news/market').catch(()=>[]),
+  ]);
+
+  // Map: ticker → most recent article
+  const newsMap={};
+  (Array.isArray(posNews)?posNews:[]).forEach(a=>{
+    const sym=a.symbol||a.ticker||'';
+    if(sym&&!newsMap[sym])newsMap[sym]=a;
+  });
+
+  // Position News
+  const posList=$('news-pos-list');
+  if(posList){
+    if(!enriched.length){
+      posList.innerHTML=`<div style="padding:1.2rem;text-align:center;color:var(--mu);font-size:12px">Add stocks to your portfolio to see position news.</div>`;
+    } else {
+      posList.innerHTML=enriched.map(p=>{
+        const a=newsMap[p.ticker];
+        const articleHTML=a
+          ?`<a href="${esc(a.url||'#')}" target="_blank" rel="noopener" class="news-article-link">
+              <div class="news-article-title">${esc(a.title||'')}</div>
+              <div class="news-article-meta">${esc(a.site||a.source||'')} &middot; ${timeAgo(a.publishedDate||a.date)}</div>
+            </a>`
+          :`<div class="news-no-article">No recent news</div>`;
+        return`<div class="news-pos-card">
+          <div class="news-pos-hdr">
+            <img class="news-pos-logo" src="${esc(p.logo)}" onerror="this.style.display='none'"/>
+            <div class="news-pos-info">
+              <div class="news-pos-name">${esc(p.name)}</div>
+              <div class="news-pos-tick">${esc(p.ticker)}</div>
+            </div>
+            <div class="news-pos-pct">${p.pct.toFixed(1)}% of portfolio</div>
+          </div>
+          ${articleHTML}
+        </div>`;
+      }).join('');
+    }
+  }
+
+  // Market News
+  const mktList=$('news-market-list');
+  if(mktList){
+    const articles=Array.isArray(mktNews)?mktNews.slice(0,5):[];
+    if(!articles.length){
+      mktList.innerHTML=`<div style="padding:1.2rem;text-align:center;color:var(--mu);font-size:12px">Could not load market news.</div>`;
+    } else {
+      mktList.innerHTML=articles.map(a=>`
+        <a href="${esc(a.url||'#')}" target="_blank" rel="noopener" class="news-market-item">
+          <div class="news-article-title">${esc(a.title||'')}</div>
+          <div class="news-article-meta">${esc(a.site||a.source||'')} &middot; ${timeAgo(a.publishedDate||a.date)}</div>
+        </a>`).join('');
+    }
   }
 }
 function closeDividendPage(){
