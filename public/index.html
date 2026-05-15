@@ -769,39 +769,31 @@ function openPage(page){
 function closeNewsPage(){$('newspage').classList.add('gone');$('home').classList.remove('gone');}
 
 // ── News Page ──────────────────────────────────────────────────────────────
-function timeAgo(dateStr){
-  if(!dateStr)return'';const d=new Date(dateStr);const diff=Date.now()-d;
-  const m=Math.floor(diff/60000),h=Math.floor(diff/3600000),dy=Math.floor(diff/86400000);
-  if(m<1)return'just now';if(m<60)return`${m}m ago`;if(h<24)return`${h}h ago`;return`${dy}d ago`;
+function timeAgo(ts){
+  // ts can be a unix timestamp (seconds) or a date string
+  const ms=typeof ts==='number'?ts*1000:new Date(ts).getTime();
+  const diff=Date.now()-ms;
+  const m=Math.floor(diff/60000),h=Math.floor(diff/3600000),d=Math.floor(diff/86400000);
+  if(m<1)return'just now';if(m<60)return`${m}m ago`;if(h<24)return`${h}h ago`;return`${d}d ago`;
 }
 
 async function renderNewsPage(){
   const pos=getPf().positions||[];
-  // Fetch quotes to rank by portfolio %
+  // Fetch quotes (includes pre-transformed news) to rank by portfolio %
   const quotes=pos.length
     ?await Promise.all(pos.map(p=>apiFetch(`/api/stock/${p.ticker}?etf=1`).catch(()=>null)))
     :[];
   let totalVal=0;
   const enriched=pos.map((p,i)=>{
     const q=quotes[i]?.quote;const pr=quotes[i]?.profile;
-    const cp=q?.c||q?.pc||p.costBasis;
-    const cv=p.shares*cp;totalVal+=cv;
-    return{...p,name:pr?.name||p.name||p.ticker,logo:pr?.logo||p.logo||'',cv};
+    const cp=q?.c||q?.pc||p.costBasis;const cv=p.shares*cp;totalVal+=cv;
+    // news is already transformed: [{headline,source,url,datetime,image}]
+    const news=quotes[i]?.news||[];
+    return{...p,name:pr?.name||p.name||p.ticker,logo:pr?.logo||p.logo||'',cv,news};
   }).map(p=>({...p,pct:totalVal>0?p.cv/totalVal*100:0})).sort((a,b)=>b.pct-a.pct);
 
-  // Fetch position news + market news in parallel
-  const tickers=enriched.map(p=>p.ticker);
-  const[posNews,mktNews]=await Promise.all([
-    tickers.length?apiFetch(`/api/news/positions?tickers=${tickers.join(',')}`).catch(()=>[]):Promise.resolve([]),
-    apiFetch('/api/news/market').catch(()=>[]),
-  ]);
-
-  // Map: ticker → most recent article
-  const newsMap={};
-  (Array.isArray(posNews)?posNews:[]).forEach(a=>{
-    const sym=a.symbol||a.ticker||'';
-    if(sym&&!newsMap[sym])newsMap[sym]=a;
-  });
+  // Market news (from server endpoint)
+  const mktNews=await apiFetch('/api/news/market').catch(()=>[]);
 
   // Position News
   const posList=$('news-pos-list');
@@ -810,11 +802,11 @@ async function renderNewsPage(){
       posList.innerHTML=`<div style="padding:1.2rem;text-align:center;color:var(--mu);font-size:12px">Add stocks to your portfolio to see position news.</div>`;
     } else {
       posList.innerHTML=enriched.map(p=>{
-        const a=newsMap[p.ticker];
+        const a=p.news[0]; // most recent article (pre-sorted by server)
         const articleHTML=a
           ?`<a href="${esc(a.url||'#')}" target="_blank" rel="noopener" class="news-article-link">
-              <div class="news-article-title">${esc(a.title||'')}</div>
-              <div class="news-article-meta">${esc(a.site||a.source||'')} &middot; ${timeAgo(a.publishedDate||a.date)}</div>
+              <div class="news-article-title">${esc(a.headline||a.title||'')}</div>
+              <div class="news-article-meta">${esc(a.source||a.site||'')} &middot; ${timeAgo(a.datetime||a.publishedDate)}</div>
             </a>`
           :`<div class="news-no-article">No recent news</div>`;
         return`<div class="news-pos-card">
@@ -832,17 +824,17 @@ async function renderNewsPage(){
     }
   }
 
-  // Market News
+  // Market News (transformed: {headline,source,url,datetime})
   const mktList=$('news-market-list');
   if(mktList){
-    const articles=Array.isArray(mktNews)?mktNews.slice(0,5):[];
+    const articles=Array.isArray(mktNews)?mktNews:[];
     if(!articles.length){
       mktList.innerHTML=`<div style="padding:1.2rem;text-align:center;color:var(--mu);font-size:12px">Could not load market news.</div>`;
     } else {
       mktList.innerHTML=articles.map(a=>`
         <a href="${esc(a.url||'#')}" target="_blank" rel="noopener" class="news-market-item">
-          <div class="news-article-title">${esc(a.title||'')}</div>
-          <div class="news-article-meta">${esc(a.site||a.source||'')} &middot; ${timeAgo(a.publishedDate||a.date)}</div>
+          <div class="news-article-title">${esc(a.headline||a.title||'')}</div>
+          <div class="news-article-meta">${esc(a.source||a.site||'')} &middot; ${timeAgo(a.datetime||a.publishedDate)}</div>
         </a>`).join('');
     }
   }
