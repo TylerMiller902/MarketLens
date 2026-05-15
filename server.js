@@ -635,6 +635,27 @@ app.get('/api/fmp/intraday/:symbol', async (req,res) => {
   }catch(e){res.status(500).json({error:e.message});}
 });
 
+// ── News endpoints ─────────────────────────────────────────────────────────
+app.get('/api/news/market', async (req,res) => {
+  const ck='market-news';const hit=gc(ck);if(hit)return res.json(hit);
+  try{
+    const data=await fmpSafe('/stock-news',{limit:8});
+    const result=Array.isArray(data)?data:[];
+    sc(ck,result,TTL.news);res.json(result);
+  }catch(e){res.status(500).json({error:e.message});}
+});
+
+app.get('/api/news/positions', async (req,res) => {
+  const tickers=(req.query.tickers||'').split(',').filter(Boolean).slice(0,20);
+  if(!tickers.length)return res.json([]);
+  const ck=`pos-news:${[...tickers].sort().join(',')}`;const hit=gc(ck);if(hit)return res.json(hit);
+  try{
+    const data=await fmpSafe('/stock-news',{tickers:tickers.join(','),limit:tickers.length*4});
+    const result=Array.isArray(data)?data:[];
+    sc(ck,result,TTL.news);res.json(result);
+  }catch(e){res.status(500).json({error:e.message});}
+});
+
 app.get('/api/fmp/insiders/:symbol', async (req,res) => {
   const { symbol } = req.params; const ck = `fmp-ins:${symbol}`; const hit = gc(ck); if(hit) return res.json(hit);
   try {
