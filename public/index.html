@@ -388,7 +388,7 @@ button,input{font-family:var(--fb)}
 .div-upc-right{text-align:right;flex-shrink:0}
 .div-upc-date{font-size:11px;color:var(--mu);font-family:var(--fm);margin-bottom:2px}
 .div-upc-amt{font-family:var(--fm);font-size:13px;font-weight:600}
-.div-ext-tt{position:absolute;top:10px;right:10px;background:var(--bg2);border:1px solid var(--b2);border-radius:10px;padding:10px 14px;font-family:var(--fm);text-align:center;pointer-events:none;transition:opacity .15s;z-index:5;min-width:110px;box-shadow:0 4px 16px rgba(0,0,0,.45)}
+.div-ext-tt{position:absolute;top:10px;right:10px;background:var(--bg2);border:1px solid var(--b2);border-radius:14px;padding:16px 20px;font-family:var(--fm);text-align:center;pointer-events:none;transition:opacity .15s;z-index:5;min-width:180px;box-shadow:0 6px 24px rgba(0,0,0,.5)}
 .pf-del:hover{color:var(--R)}
 .pf-empty-state{text-align:center;padding:4rem 1rem;color:var(--mu)}
 .pf-add-big{background:var(--P);border:none;color:#fff;padding:14px 32px;border-radius:28px;cursor:pointer;font-size:15px;font-family:var(--fm);font-weight:600;margin-top:1.5rem;letter-spacing:.02em;box-shadow:0 4px 20px rgba(139,92,246,.35);transition:opacity .15s}
@@ -743,51 +743,76 @@ function switchDivChart(type){
 function drawDivChart(enriched,totalAnn){
   if(DivChart){DivChart.destroy();DivChart=null;}
   const canvas=$('div-canvas');if(!canvas)return;
-  if(DivChartType==='bar'){
-    DivChart=new Chart(canvas,{type:'bar',
-      data:{labels:enriched.map(p=>p.ticker),datasets:[{
-        label:'Est. Annual',
-        data:enriched.map(p=>p.annIncome),
-        backgroundColor:enriched.map((_,i)=>DIV_COLORS[i%DIV_COLORS.length]),
-        borderRadius:6,borderSkipped:false}]},
-      options:{responsive:true,maintainAspectRatio:false,
-        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fVal(ctx.raw)}`}}},
-        scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:10}}},
-                y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#7e7e96',callback:v=>fVal(v)}}}}});
-    return;
-  }
-  // Donut
+  // Pre-load logos (shared by both chart types)
   const logoImgs=enriched.map(p=>{const img=new Image();img.crossOrigin='anonymous';img.src=p.logo||`https://images.financialmodelingprep.com/symbol/${p.ticker}.png`;return img;});
-  const centerPlugin={id:'divCenter',beforeDraw(chart){
-    const{ctx,chartArea:{left,right,top,bottom}}=chart;const cx=(left+right)/2,cy=(top+bottom)/2;
-    ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillStyle='#fff';ctx.font=`700 17px sans-serif`;ctx.fillText(fVal(totalAnn),cx,cy-10);
-    ctx.fillStyle='#7e7e96';ctx.font=`10px monospace`;ctx.fillText('est. annual',cx,cy+10);ctx.restore();
-  }};
-  const logoPlugin={id:'divLogos',afterDraw(chart){
-    const{ctx,chartArea:{left,right,top,bottom}}=chart;const cx=(left+right)/2,cy=(top+bottom)/2;
-    chart.getDatasetMeta(0).data.forEach((arc,i)=>{
-      const span=arc.endAngle-arc.startAngle;
-      if(span<0.32)return; // slice too small — skip logo to avoid overlap
-      const angle=(arc.startAngle+arc.endAngle)/2,r=(arc.innerRadius+arc.outerRadius)/2;
-      const x=cx+Math.cos(angle)*r,y=cy+Math.sin(angle)*r;const img=logoImgs[i];
-      const sz=Math.min(22,Math.max(12,Math.floor(span*r*0.55)));
-      ctx.save();ctx.beginPath();ctx.arc(x,y,sz/2+2,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,.45)';ctx.fill();
-      if(img?.complete&&img.naturalWidth>0){ctx.beginPath();ctx.arc(x,y,sz/2,0,Math.PI*2);ctx.clip();ctx.drawImage(img,x-sz/2,y-sz/2,sz,sz);}
-      else{ctx.fillStyle='#fff';ctx.font=`bold ${Math.max(7,sz*0.4)|0}px monospace`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(enriched[i].ticker.slice(0,4),x,y);}
-      ctx.restore();
-    });
-  }};
-  // External tooltip — fixed in top-right corner, never overlaps slices
+
+  // Shared external tooltip — rich box with logo, company name, amount
   const extTooltip=(context)=>{
     const{chart,tooltip}=context;
     let el=chart.canvas.parentNode.querySelector('.div-ext-tt');
     if(!el){el=document.createElement('div');el.className='div-ext-tt';chart.canvas.parentNode.appendChild(el);}
     if(!tooltip.opacity||!tooltip.dataPoints?.length){el.style.opacity='0';return;}
-    const dp=tooltip.dataPoints[0];
+    const dp=tooltip.dataPoints[0];const idx=dp.dataIndex;
+    const p=enriched[idx]||{};
     el.style.opacity='1';
-    el.innerHTML=`<div style="font-weight:700;font-size:12px;margin-bottom:3px">${dp.label}</div><div style="color:var(--P);font-size:15px;font-weight:700">${fVal(dp.raw)}</div><div style="color:var(--mu);font-size:10px;margin-top:2px">${(dp.raw/(window._divTotal||1)*100).toFixed(1)}% of total</div>`;
+    el.innerHTML=`
+      <img src="${p.logo||''}" onerror="this.style.display='none'" style="width:42px;height:42px;border-radius:9px;object-fit:contain;background:var(--bg);margin-bottom:8px;display:block;margin-left:auto;margin-right:auto"/>
+      <div style="font-size:11px;color:var(--mu);margin-bottom:2px">${esc(p.name||p.ticker||'')}</div>
+      <div style="font-weight:700;font-size:15px;margin-bottom:6px">${dp.label}</div>
+      <div style="color:var(--P);font-size:26px;font-weight:700;line-height:1">${fVal(dp.raw)}</div>
+      <div style="color:var(--mu);font-size:11px;margin-top:5px">${(dp.raw/(window._divTotal||1)*100).toFixed(1)}% of total</div>`;
   };
+
+  if(DivChartType==='bar'){
+    // Bar chart logos plugin
+    const barLogoPlugin={id:'barLogos',afterDraw(chart){
+      const{ctx}=chart;
+      chart.getDatasetMeta(0).data.forEach((bar,i)=>{
+        const bh=bar.base-bar.y;const bw=bar.width;
+        const sz=Math.min(40,Math.floor(bw*0.65));
+        if(bh<sz+12||sz<16)return;
+        const img=logoImgs[i];
+        const lx=bar.x,ly=bar.y+sz/2+8;
+        ctx.save();
+        ctx.beginPath();ctx.arc(lx,ly,sz/2+2,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,.4)';ctx.fill();
+        if(img?.complete&&img.naturalWidth>0){ctx.beginPath();ctx.arc(lx,ly,sz/2,0,Math.PI*2);ctx.clip();ctx.drawImage(img,lx-sz/2,ly-sz/2,sz,sz);}
+        else{ctx.fillStyle='#fff';ctx.font=`bold ${Math.max(8,sz*.35)|0}px monospace`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(enriched[i].ticker.slice(0,4),lx,ly);}
+        ctx.restore();
+      });
+    }};
+    DivChart=new Chart(canvas,{type:'bar',
+      data:{labels:enriched.map(p=>p.ticker),datasets:[{label:'Est. Annual',data:enriched.map(p=>p.annIncome),backgroundColor:enriched.map((_,i)=>DIV_COLORS[i%DIV_COLORS.length]),borderRadius:6,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{enabled:false,external:extTooltip}},
+        scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:10}}},y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#7e7e96',callback:v=>fVal(v)}}}},
+      plugins:[barLogoPlugin]});
+    logoImgs.forEach(img=>{img.onload=()=>{if(DivChart)DivChart.draw();};});
+    return;
+  }
+
+  // ── Donut chart ────────────────────────────────────────────
+  const centerPlugin={id:'divCenter',beforeDraw(chart){
+    const{ctx,chartArea:{left,right,top,bottom}}=chart;const cx=(left+right)/2,cy=(top+bottom)/2;
+    ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
+    // 2.5x bigger: ~42px value, ~25px label
+    ctx.fillStyle='#fff';ctx.font=`700 42px sans-serif`;ctx.fillText(fVal(totalAnn),cx,cy-14);
+    ctx.fillStyle='#7e7e96';ctx.font=`500 20px sans-serif`;ctx.fillText('est. annual',cx,cy+30);
+    ctx.restore();
+  }};
+  const logoPlugin={id:'divLogos',afterDraw(chart){
+    const{ctx,chartArea:{left,right,top,bottom}}=chart;const cx=(left+right)/2,cy=(top+bottom)/2;
+    chart.getDatasetMeta(0).data.forEach((arc,i)=>{
+      const span=arc.endAngle-arc.startAngle;
+      if(span<0.45)return; // larger threshold for bigger logos
+      const angle=(arc.startAngle+arc.endAngle)/2,r=(arc.innerRadius+arc.outerRadius)/2;
+      const x=cx+Math.cos(angle)*r,y=cy+Math.sin(angle)*r;const img=logoImgs[i];
+      // 2.5x bigger logos: clamp 30-55px
+      const sz=Math.min(55,Math.max(30,Math.floor(span*r*1.3)));
+      ctx.save();ctx.beginPath();ctx.arc(x,y,sz/2+3,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,.5)';ctx.fill();
+      if(img?.complete&&img.naturalWidth>0){ctx.beginPath();ctx.arc(x,y,sz/2,0,Math.PI*2);ctx.clip();ctx.drawImage(img,x-sz/2,y-sz/2,sz,sz);}
+      else{ctx.fillStyle='#fff';ctx.font=`bold ${Math.max(9,sz*.35)|0}px monospace`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(enriched[i].ticker.slice(0,4),x,y);}
+      ctx.restore();
+    });
+  }};
   DivChart=new Chart(canvas,{type:'doughnut',
     data:{labels:enriched.map(p=>p.ticker),datasets:[{data:enriched.map(p=>p.annIncome),backgroundColor:enriched.map((_,i)=>DIV_COLORS[i%DIV_COLORS.length]),borderWidth:3,borderColor:'rgba(0,0,0,.3)',hoverOffset:6}]},
     options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:{display:false},tooltip:{enabled:false,external:extTooltip}}},
