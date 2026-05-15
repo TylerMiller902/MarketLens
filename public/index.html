@@ -529,12 +529,10 @@ button,input{font-family:var(--fb)}
 <!-- ══ Portfolio Page ══════════════════════════════════════ -->
 <div id="pfpage" class="gone">
   <div class="pf-topbar">
-    <div style="display:flex;align-items:center;gap:8px;justify-self:start">
+    <div style="display:flex;align-items:center;gap:6px;justify-self:start">
       <button class="backbtn-sm" onclick="closePortfolioPage()">&#8592; Back</button>
-      <div class="page-nav-pills">
-        <button class="page-nav-pill" onclick="openPage('dividends')">Dividends</button>
-        <button class="page-nav-pill" onclick="openPage('news')">News</button>
-      </div>
+      <button class="backbtn-sm" onclick="openPage('dividends')">Dividends</button>
+      <button class="backbtn-sm" onclick="openPage('news')">News</button>
     </div>
     <div class="pf-page-ttl">Portfolio</div>
     <div></div>
@@ -602,12 +600,10 @@ button,input{font-family:var(--fb)}
 <!-- ══ Dividends Page ═══════════════════════════════════════ -->
 <div id="divpage" class="gone">
   <div class="pf-topbar">
-    <div style="display:flex;align-items:center;gap:8px;justify-self:start">
+    <div style="display:flex;align-items:center;gap:6px;justify-self:start">
       <button class="backbtn-sm" onclick="closeDividendPage()">&#8592; Back</button>
-      <div class="page-nav-pills">
-        <button class="page-nav-pill" onclick="openPage('portfolio')">Portfolio</button>
-        <button class="page-nav-pill" onclick="openPage('news')">News</button>
-      </div>
+      <button class="backbtn-sm" onclick="openPage('portfolio')">Portfolio</button>
+      <button class="backbtn-sm" onclick="openPage('news')">News</button>
     </div>
     <div class="pf-page-ttl" style="font-size:1.5rem;font-weight:700">Dividends</div>
     <div></div>
