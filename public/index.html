@@ -369,7 +369,7 @@ button,input{font-family:var(--fb)}
 .pf-add-pos-btn{background:var(--P);border:none;color:#fff;padding:6px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-family:var(--fm)}
 .pf-add-pos-btn:hover{opacity:.85}
 /* Position strip */
-.pf-strip{display:grid;grid-template-columns:36px 2fr 1fr 1.3fr 1.1fr 1fr 1fr 44px;align-items:center;gap:0 10px;padding:14px 1rem;border-bottom:1px solid rgba(255,255,255,.05);transition:background .12s;cursor:pointer}
+.pf-strip{display:grid;grid-template-columns:36px 2fr 1fr 1.3fr 1.1fr 1fr 1fr 44px;align-items:center;gap:0 7px;padding:14px .6rem 14px .9rem;border-bottom:1px solid rgba(255,255,255,.05);transition:background .12s;cursor:pointer}
 .pf-strip:hover{background:rgba(255,255,255,.025);border-radius:8px;padding-left:6px;padding-right:6px}
 @media(max-width:520px){.pf-strip{grid-template-columns:32px 1.5fr 1fr 1fr 24px}.pf-col-hold,.pf-col-pl{display:none}}
 .pf-strip-logo img{width:30px;height:30px;border-radius:6px;object-fit:contain;background:var(--bg3);padding:2px}
@@ -752,7 +752,7 @@ async function drawPfChart(r){
 
   let prices=[],dates=[],isIntra=false;
 
-  if(r==='1D'||r==='1W'||r==='1M'||r==='3M'){
+  if(r==='1D'||r==='1W'||r==='1M'||r==='3M'||r==='YTD'){
     // Fetch intraday for each position, aggregate by timestamp
     const intradayArr=await Promise.all(pos.map(p=>apiFetch(`/api/fmp/intraday/${p.ticker}`).catch(()=>null)));
     const tMap={};
