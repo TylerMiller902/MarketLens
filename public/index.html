@@ -1512,7 +1512,7 @@ function renderPage(){
     <div class="stitle-sm">${isETF?'ETF Statistics':'Key Statistics'} <span class="badge live">Live &middot; FMP</span></div>
     <div class="${isETF?'etf-stats-grid':'sgrid'}">${stats.map(s=>`<div class="scard"><div class="scl">${esc(s.l)}</div><div class="scv">${String(s.v)}</div></div>`).join('')}${build52W(q?.c,w52l,w52h)}</div>
     ${isETF&&CurD?.etfHoldings?.holdings?.length>0?`
-    <div class="stitle-sm" style="margin-top:.9rem">Top Holdings <span class="badge live">Live &middot; FMP</span></div>
+    <div class="stitle-sm" style="margin-top:.9rem">Top Holdings <span class="badge live">Live &middot; Yahoo</span></div>
     <div class="etf-holdings">
       ${CurD.etfHoldings.holdings.slice(0,15).map(h=>{
         const pct=+(h.percent||0).toFixed(2);
