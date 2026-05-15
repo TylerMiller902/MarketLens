@@ -639,19 +639,19 @@ app.get('/api/fmp/intraday/:symbol', async (req,res) => {
 app.get('/api/news/market', async (req,res) => {
   const ck='market-news';const hit=gc(ck);if(hit)return res.json(hit);
   try{
-    const data=await fmpSafe('/stock-news',{limit:8});
-    const result=Array.isArray(data)?data:[];
-    sc(ck,result,TTL.news);res.json(result);
-  }catch(e){res.status(500).json({error:e.message});}
-});
-
-app.get('/api/news/positions', async (req,res) => {
-  const tickers=(req.query.tickers||'').split(',').filter(Boolean).slice(0,20);
-  if(!tickers.length)return res.json([]);
-  const ck=`pos-news:${[...tickers].sort().join(',')}`;const hit=gc(ck);if(hit)return res.json(hit);
-  try{
-    const data=await fmpSafe('/stock-news',{tickers:tickers.join(','),limit:tickers.length*4});
-    const result=Array.isArray(data)?data:[];
+    // Fetch from several major tickers individually (avoids comma-encoding issues)
+    const tks=['SPY','QQQ','AAPL','MSFT','NVDA'];
+    const results=await Promise.all(tks.map(t=>fmpSafe('/stock-news',{tickers:t,limit:2})));
+    const raw=results.flatMap(d=>arr(d));
+    // Deduplicate by URL and transform
+    const seen=new Set();
+    const result=raw
+      .filter(n=>{if(!n.url||seen.has(n.url))return false;seen.add(n.url);return true;})
+      .map(n=>({headline:n.title||n.headline,source:n.site||n.source,url:n.url,
+        datetime:n.publishedDate?Math.floor(new Date(n.publishedDate).getTime()/1000):(n.datetime||0),
+        image:n.image}))
+      .sort((a,b)=>b.datetime-a.datetime)
+      .slice(0,5);
     sc(ck,result,TTL.news);res.json(result);
   }catch(e){res.status(500).json({error:e.message});}
 });
