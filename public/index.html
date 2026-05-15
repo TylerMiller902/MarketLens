@@ -340,8 +340,8 @@ button,input{font-family:var(--fb)}
 @media(max-width:520px){.shdr,.analyst-grid{flex-direction:column}.sprice{text-align:left}.scontent{padding:.7rem}}
 
 /* ── Portfolio Page ──────────────────────────────────────── */
-#pfpage{position:fixed;top:44px;bottom:0;left:0;right:0;background:var(--bg);z-index:50;display:flex;flex-direction:column;overflow:hidden}
-#pfpage.gone{display:none}
+#pfpage,#divpage{position:fixed;top:44px;bottom:0;left:0;right:0;background:var(--bg);z-index:50;display:flex;flex-direction:column;overflow:hidden}
+#pfpage.gone,#divpage.gone{display:none}
 .pf-topbar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:.5rem;padding:.7rem 1rem;border-bottom:1px solid var(--b1);background:var(--bg);flex-shrink:0}
 .pf-topbar>:first-child{justify-self:start}
 .pf-topbar>:last-child{display:flex;justify-content:flex-end}
@@ -580,6 +580,35 @@ button,input{font-family:var(--fb)}
   </div>
 </div>
 
+<!-- ══ Dividends Page ═══════════════════════════════════════ -->
+<div id="divpage" class="gone">
+  <div class="pf-topbar">
+    <button class="backbtn-sm" onclick="closeDividendPage()">&#8592; Back</button>
+    <div class="pf-page-ttl" style="font-size:1.5rem;font-weight:700">Dividends</div>
+    <div></div>
+  </div>
+  <div id="div-scroll" style="flex:1;overflow-y:auto;padding:.8rem 1.4rem">
+    <!-- Stats bar -->
+    <div class="pf-chart-card" id="div-chart-card" style="display:none">
+      <div class="pf-stats-bar" id="div-stats"></div>
+      <!-- Donut chart -->
+      <div style="position:relative;height:300px;padding:.5rem">
+        <canvas id="div-canvas"></canvas>
+      </div>
+    </div>
+    <!-- Dividend positions -->
+    <div class="pf-pos-box" id="div-pos-box" style="display:none">
+      <div class="pf-pos-box-hdr">Positions</div>
+      <div id="div-list"></div>
+    </div>
+    <!-- Empty state -->
+    <div class="pf-empty-state" id="div-empty" style="display:none">
+      <div style="font-size:2.5rem;margin-bottom:.75rem">💰</div>
+      <div style="font-size:15px;font-weight:600;color:var(--tx);margin-bottom:.4rem">No dividend stocks</div>
+      <div style="font-size:12px">Add dividend-paying stocks to your portfolio to track income.</div>
+    </div>
+  </div>
+</div>
 <script>
 const API='https://marketlens-production-031f.up.railway.app';
 const $=id=>document.getElementById(id);
@@ -664,12 +693,88 @@ function savePf(pf){localStorage.setItem('ml_portfolio',JSON.stringify(pf));}
 function openPage(page){
   if(menuPanel)menuPanel.style.display='none';
   if(page==='portfolio'){
-    $('home').classList.add('gone');
-    $('pfpage').classList.remove('gone');
-    renderPfPage();
+    $('home').classList.add('gone');$('pfpage').classList.remove('gone');renderPfPage();
+  } else if(page==='dividends'){
+    $('home').classList.add('gone');$('divpage').classList.remove('gone');renderDivPage();
   } else {
     alert(`${page.charAt(0).toUpperCase()+page.slice(1)} — coming soon!`);
   }
+}
+function closeDividendPage(){
+  $('divpage').classList.add('gone');$('home').classList.remove('gone');
+  if(DivChart){DivChart.destroy();DivChart=null;}
+}
+
+// ── Dividends Page ─────────────────────────────────────────────────────────
+let DivChart=null;
+const DIV_COLORS=['#8b5cf6','#3b82f6','#10b981','#f59e0b','#ef4444','#6366f1','#ec4899','#14b8a6','#f97316','#a855f7'];
+
+async function renderDivPage(){
+  const pos=getPf().positions||[];
+  $('div-empty').style.display='none';$('div-chart-card').style.display='none';$('div-pos-box').style.display='none';
+  if(!pos.length){$('div-empty').style.display='block';return;}
+  const[divHistArr,quoteArr]=await Promise.all([
+    Promise.all(pos.map(p=>apiFetch(`/api/fmp/dividend-history/${p.ticker}`).catch(()=>null))),
+    Promise.all(pos.map(p=>apiFetch(`/api/stock/${p.ticker}?etf=1`).catch(()=>null))),
+  ]);
+  const curYr=new Date().getFullYear().toString();
+  const enriched=pos.map((p,i)=>{
+    const dh=divHistArr[i];const q=quoteArr[i]?.quote;const pr=quoteArr[i]?.profile;
+    const cp=q?.c||q?.pc||p.costBasis;
+    let annDPS=0,divGrowth=null;
+    if(dh?.years?.length){
+      let ri=dh.years.length-1;
+      if(dh.years[ri]===curYr&&ri>0)ri--;
+      annDPS=dh.dividends[ri]||0;
+      if(ri>0&&dh.dividends[ri-1]>0)divGrowth=(annDPS-dh.dividends[ri-1])/dh.dividends[ri-1]*100;
+    }
+    const annIncome=p.shares*annDPS,yld=cp>0&&annDPS>0?annDPS/cp*100:0;
+    return{...p,name:pr?.name||p.name||p.ticker,logo:pr?.logo||p.logo||'',cp,annDPS,annIncome,yld,divGrowth};
+  }).filter(p=>p.annIncome>0).sort((a,b)=>b.annIncome-a.annIncome);
+  if(!enriched.length){$('div-empty').style.display='block';return;}
+  const totalAnn=enriched.reduce((s,p)=>s+p.annIncome,0);
+  $('div-stats').innerHTML=`
+    <div class="pf-sbi"><div class="pf-sbl">Est. Annual</div><div class="pf-sbv">${fVal(totalAnn)}</div></div>
+    <div class="pf-sbi"><div class="pf-sbl">Monthly Est.</div><div class="pf-sbv">${fVal(totalAnn/12)}</div></div>
+    <div class="pf-sbi"><div class="pf-sbl">Quarterly Est.</div><div class="pf-sbv">${fVal(totalAnn/4)}</div></div>
+    <div class="pf-sbi"><div class="pf-sbl">Positions</div><div class="pf-sbv">${enriched.length}</div></div>`;
+  const logoImgs=enriched.map(p=>{const img=new Image();img.crossOrigin='anonymous';img.src=p.logo||`https://images.financialmodelingprep.com/symbol/${p.ticker}.png`;return img;});
+  const centerPlugin={id:'divCenter',beforeDraw(chart){
+    const{ctx,chartArea:{left,right,top,bottom}}=chart;const cx=(left+right)/2,cy=(top+bottom)/2;
+    ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle='#fff';ctx.font=`700 17px sans-serif`;ctx.fillText(fVal(totalAnn),cx,cy-10);
+    ctx.fillStyle='#7e7e96';ctx.font=`10px monospace`;ctx.fillText('est. annual',cx,cy+10);ctx.restore();
+  }};
+  const logoPlugin={id:'divLogos',afterDraw(chart){
+    const{ctx,chartArea:{left,right,top,bottom}}=chart;const cx=(left+right)/2,cy=(top+bottom)/2;
+    chart.getDatasetMeta(0).data.forEach((arc,i)=>{
+      const angle=(arc.startAngle+arc.endAngle)/2,r=(arc.innerRadius+arc.outerRadius)/2;
+      const x=cx+Math.cos(angle)*r,y=cy+Math.sin(angle)*r;
+      const img=logoImgs[i];const sz=22;
+      ctx.save();
+      ctx.beginPath();ctx.arc(x,y,sz/2+2,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,.45)';ctx.fill();
+      if(img?.complete&&img.naturalWidth>0){ctx.beginPath();ctx.arc(x,y,sz/2,0,Math.PI*2);ctx.clip();ctx.drawImage(img,x-sz/2,y-sz/2,sz,sz);}
+      else{ctx.fillStyle='#fff';ctx.font='bold 8px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(enriched[i].ticker.slice(0,4),x,y);}
+      ctx.restore();
+    });
+  }};
+  if(DivChart){DivChart.destroy();DivChart=null;}
+  DivChart=new Chart($('div-canvas'),{type:'doughnut',
+    data:{labels:enriched.map(p=>p.ticker),datasets:[{data:enriched.map(p=>p.annIncome),backgroundColor:enriched.map((_,i)=>DIV_COLORS[i%DIV_COLORS.length]),borderWidth:3,borderColor:'rgba(0,0,0,.3)',hoverOffset:6}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${fVal(ctx.raw)} (${(ctx.raw/totalAnn*100).toFixed(1)}%)`}}}},
+    plugins:[centerPlugin,logoPlugin]});
+  logoImgs.forEach(img=>{img.onload=()=>{if(DivChart)DivChart.draw();};});
+  $('div-list').innerHTML=enriched.map(p=>{
+    const up=(p.divGrowth??0)>=0;
+    return`<div class="pf-strip" style="grid-template-columns:36px 1fr 1fr 1fr 1fr;gap:8px;padding:12px 1rem" onclick="navigatePfToStock('${esc(p.ticker)}')">
+      <div class="pf-strip-logo"><img src="${esc(p.logo)}" onerror="this.style.display='none'"/></div>
+      <div><div class="pf-sname">${esc(p.name)}</div><div class="pf-stick">${esc(p.ticker)}</div></div>
+      <div class="pf-col"><div class="pv">${fVal(p.annIncome)}</div><div class="pl">Est. Annual</div></div>
+      <div class="pf-col"><div class="pv">${p.yld.toFixed(2)}%</div><div class="pl">Yield</div></div>
+      <div class="pf-col"><div class="pv" style="color:${p.divGrowth!=null?(up?'var(--G)':'var(--R)'):'var(--mu)'}">${p.divGrowth!=null?(up?'+':'')+p.divGrowth.toFixed(2)+'%':'—'}</div><div class="pl">Div Growth</div></div>
+    </div>`;
+  }).join('');
+  $('div-chart-card').style.display='block';$('div-pos-box').style.display='block';
 }
 function navigatePfToStock(ticker){
   CameFromPortfolio=true;
