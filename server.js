@@ -528,9 +528,7 @@ app.get('/api/fmp/prices/:symbol', async (req,res) => {
 app.get('/api/fmp/dividend-history/:symbol', async (req,res) => {
   const { symbol } = req.params; const ck=`divhist:${symbol}`; const hit=gc(ck); if(hit)return res.json(hit);
   try{
-    // FMP stable: /dividends?symbol=AAPL returns array of {date,adjDividend,dividend,...}
     const data = await fmpSafe('/dividends', {symbol});
-    // Handle both array response and {historical:[...]} response
     const hist = Array.isArray(data) ? data : (data?.historical||[]);
     const byYear={};
     hist.forEach(d=>{
@@ -540,7 +538,13 @@ app.get('/api/fmp/dividend-history/:symbol', async (req,res) => {
       if(amt>0)byYear[yr]=(byYear[yr]||0)+amt;
     });
     const years=Object.keys(byYear).sort();
-    const result={years,dividends:years.map(y=>+byYear[y].toFixed(4))};
+    // Return last 8 raw payments so client can predict next payout date
+    const recent=hist
+      .filter(d=>d.date&&(d.adjDividend??d.dividend??0)>0)
+      .sort((a,b)=>b.date.localeCompare(a.date))
+      .slice(0,8)
+      .map(d=>({date:d.date,paymentDate:d.paymentDate||d.date,amount:+(d.adjDividend??d.dividend??0).toFixed(4)}));
+    const result={years,dividends:years.map(y=>+byYear[y].toFixed(4)),recent};
     sc(ck,result,TTL.fmpFin);
     res.json(result);
   }catch(e){res.status(500).json({error:e.message});}
