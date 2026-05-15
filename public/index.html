@@ -345,6 +345,9 @@ button,input{font-family:var(--fb)}
 .pf-topbar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:.5rem;padding:.7rem 1rem;border-bottom:1px solid var(--b1);background:var(--bg);flex-shrink:0}
 .pf-topbar>:first-child{justify-self:start}
 .pf-topbar>:last-child{display:flex;justify-content:flex-end}
+.page-nav-pills{display:flex;flex-direction:column;gap:3px;flex-shrink:0}
+.page-nav-pill{background:var(--bg3);border:1px solid var(--b2);color:var(--mu);padding:3px 10px;border-radius:6px;cursor:pointer;font-size:10px;font-family:var(--fm);font-weight:600;text-align:left;transition:border-color .12s,color .12s;white-space:nowrap;width:100%}
+.page-nav-pill:hover{border-color:var(--P);color:var(--P)}
 .pf-page-ttl{font-family:var(--fd);font-size:2rem;font-weight:800;flex:1;text-align:center;text-transform:uppercase;letter-spacing:.1em;color:#fff}
 .backbtn-sm{background:none;border:1px solid var(--b2);color:var(--tx);padding:5px 10px;border-radius:8px;cursor:pointer;font-size:12px;font-family:var(--fm)}
 .backbtn-sm:hover{border-color:var(--P);color:var(--P)}
@@ -526,7 +529,13 @@ button,input{font-family:var(--fb)}
 <!-- ══ Portfolio Page ══════════════════════════════════════ -->
 <div id="pfpage" class="gone">
   <div class="pf-topbar">
-    <button class="backbtn-sm" onclick="closePortfolioPage()">&#8592; Back</button>
+    <div style="display:flex;align-items:center;gap:8px;justify-self:start">
+      <button class="backbtn-sm" onclick="closePortfolioPage()">&#8592; Back</button>
+      <div class="page-nav-pills">
+        <button class="page-nav-pill" onclick="openPage('dividends')">Dividends</button>
+        <button class="page-nav-pill" onclick="openPage('news')">News</button>
+      </div>
+    </div>
     <div class="pf-page-ttl">Portfolio</div>
     <div></div>
   </div>
@@ -593,7 +602,13 @@ button,input{font-family:var(--fb)}
 <!-- ══ Dividends Page ═══════════════════════════════════════ -->
 <div id="divpage" class="gone">
   <div class="pf-topbar">
-    <button class="backbtn-sm" onclick="closeDividendPage()">&#8592; Back</button>
+    <div style="display:flex;align-items:center;gap:8px;justify-self:start">
+      <button class="backbtn-sm" onclick="closeDividendPage()">&#8592; Back</button>
+      <div class="page-nav-pills">
+        <button class="page-nav-pill" onclick="openPage('portfolio')">Portfolio</button>
+        <button class="page-nav-pill" onclick="openPage('news')">News</button>
+      </div>
+    </div>
     <div class="pf-page-ttl" style="font-size:1.5rem;font-weight:700">Dividends</div>
     <div></div>
   </div>
@@ -704,11 +719,16 @@ function savePf(pf){localStorage.setItem('ml_portfolio',JSON.stringify(pf));}
 
 function openPage(page){
   if(menuPanel)menuPanel.style.display='none';
+  // Close any already-open menu pages and destroy their charts
+  ['pfpage','divpage'].forEach(id=>{const e=$(id);if(e&&!e.classList.contains('gone'))e.classList.add('gone');});
+  if(PfChart){PfChart.destroy();PfChart=null;}
+  if(DivChart){DivChart.destroy();DivChart=null;}
   if(page==='portfolio'){
     $('home').classList.add('gone');$('pfpage').classList.remove('gone');renderPfPage();
   } else if(page==='dividends'){
     $('home').classList.add('gone');$('divpage').classList.remove('gone');renderDivPage();
   } else {
+    $('home').classList.remove('gone');
     alert(`${page.charAt(0).toUpperCase()+page.slice(1)} — coming soon!`);
   }
 }
