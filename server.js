@@ -240,6 +240,18 @@ function transformEtfHoldings(data) {
   return { holdings };
 }
 
+// Hardcoded top holdings for popular ETFs (Yahoo Finance blocks Railway IPs for quoteSummary)
+const ETF_HOLDINGS_CACHE={
+  'SPY':[{symbol:'NVDA',name:'NVIDIA Corp',percent:6.51},{symbol:'AAPL',name:'Apple Inc',percent:6.33},{symbol:'MSFT',name:'Microsoft Corp',percent:5.62},{symbol:'AMZN',name:'Amazon.com Inc',percent:3.96},{symbol:'META',name:'Meta Platforms',percent:2.72},{symbol:'GOOGL',name:'Alphabet Inc A',percent:2.04},{symbol:'TSLA',name:'Tesla Inc',percent:1.97},{symbol:'BRK-B',name:'Berkshire Hathaway B',percent:1.84},{symbol:'AVGO',name:'Broadcom Inc',percent:1.72},{symbol:'GOOG',name:'Alphabet Inc C',percent:1.60},{symbol:'JPM',name:'JPMorgan Chase',percent:1.37},{symbol:'LLY',name:'Eli Lilly',percent:1.33},{symbol:'UNH',name:'UnitedHealth Group',percent:1.24},{symbol:'V',name:'Visa Inc',percent:1.16},{symbol:'XOM',name:'Exxon Mobil',percent:1.14}],
+  'VOO':[{symbol:'NVDA',name:'NVIDIA Corp',percent:6.51},{symbol:'AAPL',name:'Apple Inc',percent:6.33},{symbol:'MSFT',name:'Microsoft Corp',percent:5.62},{symbol:'AMZN',name:'Amazon.com Inc',percent:3.96},{symbol:'META',name:'Meta Platforms',percent:2.72},{symbol:'GOOGL',name:'Alphabet Inc A',percent:2.04},{symbol:'TSLA',name:'Tesla Inc',percent:1.97},{symbol:'BRK-B',name:'Berkshire Hathaway B',percent:1.84},{symbol:'AVGO',name:'Broadcom Inc',percent:1.72},{symbol:'GOOG',name:'Alphabet Inc C',percent:1.60},{symbol:'JPM',name:'JPMorgan Chase',percent:1.37},{symbol:'LLY',name:'Eli Lilly',percent:1.33},{symbol:'UNH',name:'UnitedHealth Group',percent:1.24},{symbol:'V',name:'Visa Inc',percent:1.16},{symbol:'XOM',name:'Exxon Mobil',percent:1.14}],
+  'QQQ':[{symbol:'NVDA',name:'NVIDIA Corp',percent:8.91},{symbol:'AAPL',name:'Apple Inc',percent:7.89},{symbol:'MSFT',name:'Microsoft Corp',percent:7.42},{symbol:'AMZN',name:'Amazon.com Inc',percent:5.38},{symbol:'META',name:'Meta Platforms',percent:4.14},{symbol:'TSLA',name:'Tesla Inc',percent:3.54},{symbol:'GOOGL',name:'Alphabet Inc A',percent:3.01},{symbol:'COST',name:'Costco Wholesale',percent:2.55},{symbol:'GOOG',name:'Alphabet Inc C',percent:2.83},{symbol:'AVGO',name:'Broadcom Inc',percent:2.43},{symbol:'NFLX',name:'Netflix Inc',percent:2.31},{symbol:'AMGN',name:'Amgen Inc',percent:1.71},{symbol:'AMD',name:'Advanced Micro Devices',percent:1.44},{symbol:'INTC',name:'Intel Corp',percent:1.10},{symbol:'ADBE',name:'Adobe Inc',percent:1.08}],
+  'DIA':[{symbol:'UNH',name:'UnitedHealth Group',percent:10.12},{symbol:'GS',name:'Goldman Sachs',percent:8.53},{symbol:'MSFT',name:'Microsoft Corp',percent:7.31},{symbol:'HD',name:'Home Depot',percent:6.09},{symbol:'CAT',name:'Caterpillar Inc',percent:5.52},{symbol:'SHW',name:'Sherwin-Williams',percent:5.31},{symbol:'MCD',name:'McDonald\'s Corp',percent:5.02},{symbol:'CRM',name:'Salesforce Inc',percent:4.51},{symbol:'AMGN',name:'Amgen Inc',percent:4.44},{symbol:'AAPL',name:'Apple Inc',percent:3.91},{symbol:'V',name:'Visa Inc',percent:3.87},{symbol:'IBM',name:'IBM Corp',percent:3.61},{symbol:'HON',name:'Honeywell',percent:3.45},{symbol:'TRV',name:'Travelers Companies',percent:3.39},{symbol:'JPM',name:'JPMorgan Chase',percent:3.28}],
+  'IWM':[{symbol:'FTAI',name:'FTAI Aviation',percent:0.56},{symbol:'IRDM',name:'Iridium Communications',percent:0.43},{symbol:'FN',name:'Fabrinet',percent:0.42},{symbol:'CSWI',name:'CSW Industrials',percent:0.41},{symbol:'TRNO',name:'Terreno Realty',percent:0.40},{symbol:'MSTR',name:'MicroStrategy',percent:0.39},{symbol:'BXMT',name:'Blackstone Mortgage',percent:0.38},{symbol:'SPSC',name:'SPS Commerce',percent:0.37},{symbol:'SKYW',name:'SkyWest Inc',percent:0.36},{symbol:'MGEE',name:'MGE Energy',percent:0.35}],
+  'VTI':[{symbol:'NVDA',name:'NVIDIA Corp',percent:5.91},{symbol:'AAPL',name:'Apple Inc',percent:5.74},{symbol:'MSFT',name:'Microsoft Corp',percent:5.11},{symbol:'AMZN',name:'Amazon.com Inc',percent:3.60},{symbol:'META',name:'Meta Platforms',percent:2.47},{symbol:'GOOGL',name:'Alphabet Inc A',percent:1.85},{symbol:'TSLA',name:'Tesla Inc',percent:1.79},{symbol:'BRK-B',name:'Berkshire Hathaway B',percent:1.67},{symbol:'AVGO',name:'Broadcom Inc',percent:1.56},{symbol:'GOOG',name:'Alphabet Inc C',percent:1.45},{symbol:'JPM',name:'JPMorgan Chase',percent:1.24},{symbol:'LLY',name:'Eli Lilly',percent:1.21},{symbol:'UNH',name:'UnitedHealth Group',percent:1.13},{symbol:'V',name:'Visa Inc',percent:1.05},{symbol:'XOM',name:'Exxon Mobil',percent:1.03}],
+  'GLD':[{symbol:'GOLD',name:'Gold Bullion (Physical)',percent:100}],
+  'TLT':[{symbol:'T-BONDS',name:'US Treasury 20+ Year Bonds',percent:100}],
+};
+
 async function yahooEtfHoldings(symbol){
   const hdrs={'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36','Accept':'application/json','Accept-Language':'en-US,en;q=0.9','Referer':'https://finance.yahoo.com/'};
   const hosts=['query1','query2'];
@@ -368,9 +380,12 @@ app.get('/api/stock/:symbol', async (req,res) => {
     const earnings    = transformEarnings(earningsRaw).slice(0, 8);
     const earningsCal = transformEarningsCalendar(earningsCalRaw);
     let etfHoldings = isETF ? transformEtfHoldings(etfRaw) : null;
-    // FMP ETF holdings not on Starter plan — fall back to Yahoo Finance
     if(isETF && (!etfHoldings?.holdings?.length)){
+      // Try Yahoo Finance first, fall back to hardcoded cache
       etfHoldings = await yahooEtfHoldings(symbol);
+      if(!etfHoldings?.holdings?.length && ETF_HOLDINGS_CACHE[symbol.toUpperCase()]){
+        etfHoldings = {holdings: ETF_HOLDINGS_CACHE[symbol.toUpperCase()], cached:true};
+      }
     }
 
     res.json({ quote, profile, metrics, news, recs, priceTarget, earnings, earningsCal, etfHoldings });
