@@ -388,6 +388,7 @@ button,input{font-family:var(--fb)}
 .div-upc-right{text-align:right;flex-shrink:0}
 .div-upc-date{font-size:11px;color:var(--mu);font-family:var(--fm);margin-bottom:2px}
 .div-upc-amt{font-family:var(--fm);font-size:13px;font-weight:600}
+.div-ext-tt{position:absolute;top:10px;right:10px;background:var(--bg2);border:1px solid var(--b2);border-radius:10px;padding:10px 14px;font-family:var(--fm);text-align:center;pointer-events:none;transition:opacity .15s;z-index:5;min-width:110px;box-shadow:0 4px 16px rgba(0,0,0,.45)}
 .pf-del:hover{color:var(--R)}
 .pf-empty-state{text-align:center;padding:4rem 1rem;color:var(--mu)}
 .pf-add-big{background:var(--P);border:none;color:#fff;padding:14px 32px;border-radius:28px;cursor:pointer;font-size:15px;font-family:var(--fm);font-weight:600;margin-top:1.5rem;letter-spacing:.02em;box-shadow:0 4px 20px rgba(139,92,246,.35);transition:opacity .15s}
@@ -601,7 +602,7 @@ button,input{font-family:var(--fb)}
     <div class="pf-chart-card" id="div-chart-card" style="display:none">
       <div class="pf-stats-bar" id="div-stats"></div>
       <!-- Donut chart -->
-      <div style="position:relative;height:480px;padding:.5rem">
+      <div style="position:relative;height:480px;padding:.5rem;overflow:visible">
         <canvas id="div-canvas"></canvas>
       </div>
     </div>
@@ -766,17 +767,30 @@ function drawDivChart(enriched,totalAnn){
   const logoPlugin={id:'divLogos',afterDraw(chart){
     const{ctx,chartArea:{left,right,top,bottom}}=chart;const cx=(left+right)/2,cy=(top+bottom)/2;
     chart.getDatasetMeta(0).data.forEach((arc,i)=>{
+      const span=arc.endAngle-arc.startAngle;
+      if(span<0.32)return; // slice too small — skip logo to avoid overlap
       const angle=(arc.startAngle+arc.endAngle)/2,r=(arc.innerRadius+arc.outerRadius)/2;
-      const x=cx+Math.cos(angle)*r,y=cy+Math.sin(angle)*r;const img=logoImgs[i];const sz=22;
+      const x=cx+Math.cos(angle)*r,y=cy+Math.sin(angle)*r;const img=logoImgs[i];
+      const sz=Math.min(22,Math.max(12,Math.floor(span*r*0.55)));
       ctx.save();ctx.beginPath();ctx.arc(x,y,sz/2+2,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,.45)';ctx.fill();
       if(img?.complete&&img.naturalWidth>0){ctx.beginPath();ctx.arc(x,y,sz/2,0,Math.PI*2);ctx.clip();ctx.drawImage(img,x-sz/2,y-sz/2,sz,sz);}
-      else{ctx.fillStyle='#fff';ctx.font='bold 8px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(enriched[i].ticker.slice(0,4),x,y);}
+      else{ctx.fillStyle='#fff';ctx.font=`bold ${Math.max(7,sz*0.4)|0}px monospace`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(enriched[i].ticker.slice(0,4),x,y);}
       ctx.restore();
     });
   }};
+  // External tooltip — fixed in top-right corner, never overlaps slices
+  const extTooltip=(context)=>{
+    const{chart,tooltip}=context;
+    let el=chart.canvas.parentNode.querySelector('.div-ext-tt');
+    if(!el){el=document.createElement('div');el.className='div-ext-tt';chart.canvas.parentNode.appendChild(el);}
+    if(!tooltip.opacity||!tooltip.dataPoints?.length){el.style.opacity='0';return;}
+    const dp=tooltip.dataPoints[0];
+    el.style.opacity='1';
+    el.innerHTML=`<div style="font-weight:700;font-size:12px;margin-bottom:3px">${dp.label}</div><div style="color:var(--P);font-size:15px;font-weight:700">${fVal(dp.raw)}</div><div style="color:var(--mu);font-size:10px;margin-top:2px">${(dp.raw/(window._divTotal||1)*100).toFixed(1)}% of total</div>`;
+  };
   DivChart=new Chart(canvas,{type:'doughnut',
     data:{labels:enriched.map(p=>p.ticker),datasets:[{data:enriched.map(p=>p.annIncome),backgroundColor:enriched.map((_,i)=>DIV_COLORS[i%DIV_COLORS.length]),borderWidth:3,borderColor:'rgba(0,0,0,.3)',hoverOffset:6}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${fVal(ctx.raw)} (${(ctx.raw/totalAnn*100).toFixed(1)}%)`}}}},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:{display:false},tooltip:{enabled:false,external:extTooltip}}},
     plugins:[centerPlugin,logoPlugin]});
   logoImgs.forEach(img=>{img.onload=()=>{if(DivChart)DivChart.draw();};});
 }
@@ -1476,7 +1490,7 @@ function drawPrice(r){
   if(r==='1D'&&intra?.['1D']?.prices?.length>1){
     // Intraday 5-min bars for 1D
     prices=intra['1D'].prices;rawDates=intra['1D'].times;isIntra=true;
-  } else if((r==='1W'||r==='1M'||r==='3M')&&intra?.[r]?.prices?.length>1){
+  } else if((r==='1W'||r==='1M'||r==='3M'||r==='YTD'||r==='1Y')&&intra?.[r]?.prices?.length>1){
     // Intraday hourly for 1M/3M
     prices=intra[r].prices;rawDates=intra[r].times;isIntra=true;
   } else {
@@ -1670,7 +1684,7 @@ function renderFSPriceChart(range){
   const intra=CurIntraday;
   if(range==='1D'&&intra?.['1D']?.prices?.length>1){
     prices=intra['1D'].prices;rawDates=intra['1D'].times;isIntra=true;
-  } else if((range==='1W'||range==='1M'||range==='3M')&&intra?.[range]?.prices?.length>1){
+  } else if((range==='1W'||range==='1M'||range==='3M'||range==='YTD'||range==='1Y')&&intra?.[range]?.prices?.length>1){
     prices=intra[range].prices;rawDates=intra[range].times;isIntra=true;
   } else {
     const slices={'1D':5,'1W':10,'1M':22,'3M':63};
