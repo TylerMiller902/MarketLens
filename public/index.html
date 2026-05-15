@@ -792,10 +792,25 @@ function drawDivChart(enriched,totalAnn){
   // ── Donut chart ────────────────────────────────────────────
   const centerPlugin={id:'divCenter',beforeDraw(chart){
     const{ctx,chartArea:{left,right,top,bottom}}=chart;const cx=(left+right)/2,cy=(top+bottom)/2;
-    ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
-    // 2.5x bigger: ~42px value, ~25px label
-    ctx.fillStyle='#fff';ctx.font=`700 42px sans-serif`;ctx.fillText(fVal(totalAnn),cx,cy-14);
-    ctx.fillStyle='#7e7e96';ctx.font=`500 20px sans-serif`;ctx.fillText('est. annual',cx,cy+30);
+    ctx.save();
+    // Box: similar style to the hover tooltip
+    const bw=162,bh=82,bx=cx-bw/2,by=cy-42;
+    ctx.beginPath();
+    if(ctx.roundRect){ctx.roundRect(bx,by,bw,bh,14);}
+    else{
+      const r=14;
+      ctx.moveTo(bx+r,by);ctx.lineTo(bx+bw-r,by);ctx.quadraticCurveTo(bx+bw,by,bx+bw,by+r);
+      ctx.lineTo(bx+bw,by+bh-r);ctx.quadraticCurveTo(bx+bw,by+bh,bx+bw-r,by+bh);
+      ctx.lineTo(bx+r,by+bh);ctx.quadraticCurveTo(bx,by+bh,bx,by+bh-r);
+      ctx.lineTo(bx,by+r);ctx.quadraticCurveTo(bx,by,bx+r,by);ctx.closePath();
+    }
+    ctx.fillStyle='rgba(14,14,22,0.9)';ctx.fill();
+    ctx.strokeStyle='rgba(139,92,246,0.55)';ctx.lineWidth=1.5;ctx.stroke();
+    // Value text — 42px × 0.8 = 34px
+    ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle='#fff';ctx.font=`700 34px sans-serif`;ctx.fillText(fVal(totalAnn),cx,cy-12);
+    // Label — 20px × 0.8 = 16px, ALL CAPS
+    ctx.fillStyle='#7e7e96';ctx.font=`600 16px sans-serif`;ctx.fillText('EST. ANNUAL',cx,cy+24);
     ctx.restore();
   }};
   const logoPlugin={id:'divLogos',afterDraw(chart){
@@ -806,7 +821,7 @@ function drawDivChart(enriched,totalAnn){
       const angle=(arc.startAngle+arc.endAngle)/2,r=(arc.innerRadius+arc.outerRadius)/2;
       const x=cx+Math.cos(angle)*r,y=cy+Math.sin(angle)*r;const img=logoImgs[i];
       // 2.5x bigger logos: clamp 30-55px
-      const sz=Math.min(55,Math.max(30,Math.floor(span*r*1.3)));
+      const sz=Math.min(44,Math.max(24,Math.floor(span*r*1.04)));
       ctx.save();ctx.beginPath();ctx.arc(x,y,sz/2+3,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,.5)';ctx.fill();
       if(img?.complete&&img.naturalWidth>0){ctx.beginPath();ctx.arc(x,y,sz/2,0,Math.PI*2);ctx.clip();ctx.drawImage(img,x-sz/2,y-sz/2,sz,sz);}
       else{ctx.fillStyle='#fff';ctx.font=`bold ${Math.max(9,sz*.35)|0}px monospace`;ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(enriched[i].ticker.slice(0,4),x,y);}
