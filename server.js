@@ -241,21 +241,34 @@ function transformEtfHoldings(data) {
 }
 
 async function yahooEtfHoldings(symbol){
-  const hdrs={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','Accept':'application/json','Referer':'https://finance.yahoo.com/'};
-  try{
-    const url=`https://query1.finance.yahoo.com/v11/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=topHoldings`;
-    const r=await fetch(url,{headers:hdrs});
-    const data=await r.json();
-    const top=data?.quoteSummary?.result?.[0]?.topHoldings;
-    if(!top)return{holdings:[]};
-    const holdings=(top.holdings||[]).map(h=>({
-      symbol:h.symbol||'',
-      name:h.holdingName||h.symbol||'',
-      percent:+(((h.holdingPercent?.raw??0)*100).toFixed(2)),
-    }));
-    return{holdings};
-  }catch(e){console.log('[yahooEtfHoldings]',symbol,e.message);return{holdings:[]};}
+  const hdrs={'User-Agent':'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36','Accept':'application/json','Accept-Language':'en-US,en;q=0.9','Referer':'https://finance.yahoo.com/'};
+  const hosts=['query1','query2'];
+  for(const host of hosts){
+    try{
+      const url=`https://${host}.finance.yahoo.com/v11/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=topHoldings&corsDomain=finance.yahoo.com`;
+      const r=await fetch(url,{headers:hdrs});
+      if(!r.ok){console.log(`[yahooETF] ${host} status ${r.status}`);continue;}
+      const data=await r.json();
+      const top=data?.quoteSummary?.result?.[0]?.topHoldings;
+      if(!top||!top.holdings?.length){console.log(`[yahooETF] ${host} no holdings`);continue;}
+      const holdings=top.holdings.map(h=>({
+        symbol:h.symbol||'',
+        name:h.holdingName||h.symbol||'',
+        percent:+(((h.holdingPercent?.raw??0)*100).toFixed(2)),
+      }));
+      console.log(`[yahooETF] ${symbol} got ${holdings.length} holdings from ${host}`);
+      return{holdings};
+    }catch(e){console.log(`[yahooETF] ${host} error:`,e.message);}
+  }
+  return{holdings:[]};
 }
+
+// Debug ETF holdings
+app.get('/api/debug-etf/:symbol', async(req,res)=>{
+  const{symbol}=req.params;
+  const result=await yahooEtfHoldings(symbol);
+  res.json({symbol,holdings:result.holdings.slice(0,3),total:result.holdings.length});
+});
 
 // ══════════════════════════════════════════════════════════
 //  ROUTES
