@@ -1546,7 +1546,7 @@ function renderPage(){
     ${newsItems.length?`<div class="stitle-sm">Recent News <span class="badge live">Live &middot; FMP</span></div>${newsItems.map(n=>{const dt=new Date((n.datetime||0)*1000),ts=isNaN(dt)?'':dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});return`<a class="ncard" href="${esc(n.url||'#')}" target="_blank"><div class="nhl">${esc(n.headline||'')}</div><div class="nmeta"><span class="nsrc">${esc(n.source||'')}</span><span class="ntime">${ts}</span></div></a>`;}).join('')}`:''}
 
     ${isETF?`
-    <div class="stitle-sm" style="margin-top:.2rem">Holdings <span class="badge live">Live &middot; Yahoo</span></div>
+    <div class="stitle-sm" style="margin-top:.2rem">Holdings <span class="badge ${CurD?.etfHoldings?.cached?'est':'live'}">${CurD?.etfHoldings?.cached?'Approx &middot; Cached':'Live &middot; Yahoo'}</span></div>
     ${CurD?.etfHoldings?.holdings?.length>0?`
     <div class="etf-holdings-full">
       ${CurD.etfHoldings.holdings.slice(0,25).map((h,i)=>{
