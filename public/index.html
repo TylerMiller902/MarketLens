@@ -1520,20 +1520,6 @@ function renderPage(){
 
     <div class="stitle-sm">${isETF?'ETF Statistics':'Key Statistics'} <span class="badge live">Live &middot; FMP</span></div>
     <div class="${isETF?'etf-stats-grid':'sgrid'}">${stats.map(s=>`<div class="scard"><div class="scl">${esc(s.l)}</div><div class="scv">${String(s.v)}</div></div>`).join('')}${build52W(q?.c,w52l,w52h)}</div>
-    ${isETF&&CurD?.etfHoldings?.holdings?.length>0?`
-    <div class="stitle-sm" style="margin-top:.9rem">Top Holdings <span class="badge live">Live &middot; Yahoo</span></div>
-    <div class="etf-holdings">
-      ${CurD.etfHoldings.holdings.slice(0,15).map(h=>{
-        const pct=+(h.percent||0).toFixed(2);
-        return `<div class="etf-h-row">
-          <div class="etf-h-sym" onclick="go('${esc(h.symbol||'')}')" style="cursor:pointer;color:var(--B)">${esc(h.symbol||'—')}</div>
-          <div class="etf-h-name">${esc(h.name||h.symbol||'—')}</div>
-          <div class="etf-h-bar"><div class="etf-h-fill" style="width:${Math.min(100,pct*5)}%"></div></div>
-          <div class="etf-h-pct">${pct}%</div>
-        </div>`;
-      }).join('')}
-    </div>`:''}
-
     <div class="stitle-sm">${isETF?'Similar ETFs':'Competitors'} <span class="badge live">Live &middot; FMP</span></div>
     <div class="${isETF?'peers-grid-etf':'peers-grid'}" id="peers-row"><span style="font-size:12px;color:var(--mu);font-family:var(--fm)">Loading&hellip;</span></div>
 
