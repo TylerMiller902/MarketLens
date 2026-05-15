@@ -636,6 +636,18 @@ app.get('/api/fmp/intraday/:symbol', async (req,res) => {
 });
 
 // ── News endpoints ─────────────────────────────────────────────────────────
+// Debug news — check what FMP returns
+app.get('/api/debug-news', async (req,res) => {
+  try{
+    const[spy,mkt]=await Promise.all([
+      fmpSafe('/stock-news',{tickers:'SPY',limit:2}),
+      fmpSafe('/stock-news',{limit:2}),
+    ]);
+    res.json({spyNews:{type:typeof spy,isArray:Array.isArray(spy),length:Array.isArray(spy)?spy.length:null,sample:Array.isArray(spy)?spy[0]:spy},
+              noTickerNews:{type:typeof mkt,isArray:Array.isArray(mkt),length:Array.isArray(mkt)?mkt.length:null,sample:Array.isArray(mkt)?mkt[0]:mkt}});
+  }catch(e){res.json({error:e.message});}
+});
+
 app.get('/api/news/market', async (req,res) => {
   const ck='market-news';const hit=gc(ck);if(hit)return res.json(hit);
   try{
