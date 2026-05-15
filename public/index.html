@@ -369,7 +369,7 @@ button,input{font-family:var(--fb)}
 .pf-add-pos-btn{background:var(--P);border:none;color:#fff;padding:6px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-family:var(--fm)}
 .pf-add-pos-btn:hover{opacity:.85}
 /* Position strip */
-.pf-strip{display:grid;grid-template-columns:36px 2fr 1fr 1.3fr 1fr 1fr 44px;align-items:center;gap:0 10px;padding:14px 1rem;border-bottom:1px solid rgba(255,255,255,.05);transition:background .12s;cursor:pointer}
+.pf-strip{display:grid;grid-template-columns:36px 2fr 1fr 1.3fr 1.1fr 1fr 1fr 44px;align-items:center;gap:0 10px;padding:14px 1rem;border-bottom:1px solid rgba(255,255,255,.05);transition:background .12s;cursor:pointer}
 .pf-strip:hover{background:rgba(255,255,255,.025);border-radius:8px;padding-left:6px;padding-right:6px}
 @media(max-width:520px){.pf-strip{grid-template-columns:32px 1.5fr 1fr 1fr 24px}.pf-col-hold,.pf-col-pl{display:none}}
 .pf-strip-logo img{width:30px;height:30px;border-radius:6px;object-fit:contain;background:var(--bg3);padding:2px}
@@ -709,8 +709,10 @@ async function renderPfPage(){
     const q=quotes[i]?.quote;const pr=quotes[i]?.profile;
     const cp=q?.c||q?.pc||p.costBasis;
     const cv=p.shares*cp,cb=p.shares*p.costBasis,pl=cv-cb,plp=cb>0?pl/cb*100:0;
+    const todayRet=(q?.pc&&q.pc>0)?(cp-q.pc)*p.shares:0;
+    const todayPct=(q?.pc&&q.pc>0)?(cp-q.pc)/q.pc*100:0;
     totalVal+=cv;totalCost+=cb;
-    return{...p,name:pr?.name||p.name||p.ticker,logo:pr?.logo||p.logo||'',cp,cv,cb,pl,plp};
+    return{...p,name:pr?.name||p.name||p.ticker,logo:pr?.logo||p.logo||'',cp,cv,cb,pl,plp,todayRet,todayPct};
   });
   const tpl=totalVal-totalCost,tplp=totalCost>0?tpl/totalCost*100:0;
 
@@ -731,6 +733,7 @@ async function renderPfPage(){
       <div><div class="pf-sname">${esc(p.name)}</div><div class="pf-stick">${esc(p.ticker)}</div></div>
       <div class="pf-col"><div class="pv">${pp.toFixed(1)}%</div><div class="pl">of portfolio</div></div>
       <div class="pf-col pf-col-hold"><div class="pv">${fVal(p.cv)}</div><div class="pl">${p.shares} Shares</div></div>
+      <div class="pf-col"><div class="pv" style="color:${p.todayRet>=0?'var(--G)':'var(--R)'}">${p.todayRet>=0?'+':''}${fVal(Math.abs(p.todayRet))}</div><div class="pl">Today ${p.todayRet>=0?'+':''}${p.todayPct.toFixed(2)}%</div></div>
       <div class="pf-col pf-col-pl"><div class="pv" style="color:${up?'var(--G)':'var(--R)'}">${up?'+':''}${fVal(Math.abs(p.pl))}</div><div class="pl">P/L</div></div>
       <div class="pf-col"><div class="pv" style="color:${up?'var(--G)':'var(--R)'}">${up?'▲':'▼'} ${Math.abs(p.plp).toFixed(2)}%</div><div class="pl">gain/loss</div></div>
       <button class="pf-del" title="Remove" onclick="event.stopPropagation();removePfPos(${i},'${esc(p.ticker)}')">✕</button>
@@ -749,7 +752,7 @@ async function drawPfChart(r){
 
   let prices=[],dates=[],isIntra=false;
 
-  if(r==='1D'||r==='1W'){
+  if(r==='1D'||r==='1W'||r==='1M'||r==='3M'){
     // Fetch intraday for each position, aggregate by timestamp
     const intradayArr=await Promise.all(pos.map(p=>apiFetch(`/api/fmp/intraday/${p.ticker}`).catch(()=>null)));
     const tMap={};
