@@ -379,6 +379,15 @@ button,input{font-family:var(--fb)}
 .pf-col .pv{font-size:13px;font-family:var(--fm);font-weight:600}
 .pf-col .pl{font-size:10px;color:var(--mu);margin-top:2px}
 .pf-del{background:none;border:none;color:var(--mu);cursor:pointer;font-size:14px;padding:4px 8px;border-radius:4px;margin-left:4px}
+.div-upcoming-row{display:flex;justify-content:space-between;align-items:center;padding:11px 1rem;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;transition:background .12s;gap:8px}
+.div-upcoming-row:hover{background:rgba(255,255,255,.03)}
+.div-upcoming-row:last-child{border-bottom:none}
+.div-upcoming-top{background:rgba(139,92,246,.08);border-left:3px solid var(--P);padding-left:calc(1rem - 3px)}
+.div-upc-left{display:flex;align-items:center;gap:10px;min-width:0}
+.div-upc-logo{width:28px;height:28px;border-radius:6px;object-fit:contain;background:var(--bg3);flex-shrink:0}
+.div-upc-right{text-align:right;flex-shrink:0}
+.div-upc-date{font-size:11px;color:var(--mu);font-family:var(--fm);margin-bottom:2px}
+.div-upc-amt{font-family:var(--fm);font-size:13px;font-weight:600}
 .pf-del:hover{color:var(--R)}
 .pf-empty-state{text-align:center;padding:4rem 1rem;color:var(--mu)}
 .pf-add-big{background:var(--P);border:none;color:#fff;padding:14px 32px;border-radius:28px;cursor:pointer;font-size:15px;font-family:var(--fm);font-weight:600;margin-top:1.5rem;letter-spacing:.02em;box-shadow:0 4px 20px rgba(139,92,246,.35);transition:opacity .15s}
@@ -601,6 +610,8 @@ button,input{font-family:var(--fb)}
       <div class="pf-pos-box-hdr">Positions</div>
       <div id="div-list"></div>
     </div>
+    <!-- Upcoming dividends -->
+    <div class="pf-pos-box" id="div-upcoming-box" style="display:none;margin-top:.8rem"></div>
     <!-- Empty state -->
     <div class="pf-empty-state" id="div-empty" style="display:none">
       <div style="font-size:2.5rem;margin-bottom:.75rem">💰</div>
@@ -709,9 +720,70 @@ function closeDividendPage(){
 let DivChart=null;
 const DIV_COLORS=['#8b5cf6','#3b82f6','#10b981','#f59e0b','#ef4444','#6366f1','#ec4899','#14b8a6','#f97316','#a855f7'];
 
+// Estimate next dividend date & amount from recent payment history
+function estimateNextDiv(recent,shares){
+  if(!recent||recent.length<2)return null;
+  const dates=recent.map(r=>new Date(r.date)).sort((a,b)=>b-a);
+  const intervals=[];
+  for(let i=0;i<dates.length-1;i++)intervals.push((dates[i]-dates[i+1])/(864e5));
+  const avgDays=Math.round(intervals.reduce((s,x)=>s+x,0)/intervals.length);
+  const nextDate=new Date(dates[0].getTime()+avgDays*864e5);
+  const avgAmt=recent.slice(0,4).reduce((s,p)=>s+p.amount,0)/Math.min(4,recent.length);
+  return{date:nextDate,amount:+avgAmt.toFixed(4),income:+(avgAmt*shares).toFixed(4),interval:avgDays};
+}
+
+let DivChartType='doughnut';
+function switchDivChart(type){
+  DivChartType=type;
+  document.querySelectorAll('.div-chart-btn').forEach(b=>b.classList.toggle('on',b.dataset.t===type));
+  if(window._divEnriched)drawDivChart(window._divEnriched,window._divTotal);
+}
+
+function drawDivChart(enriched,totalAnn){
+  if(DivChart){DivChart.destroy();DivChart=null;}
+  const canvas=$('div-canvas');if(!canvas)return;
+  if(DivChartType==='bar'){
+    DivChart=new Chart(canvas,{type:'bar',
+      data:{labels:enriched.map(p=>p.ticker),datasets:[{
+        label:'Est. Annual',
+        data:enriched.map(p=>p.annIncome),
+        backgroundColor:enriched.map((_,i)=>DIV_COLORS[i%DIV_COLORS.length]),
+        borderRadius:6,borderSkipped:false}]},
+      options:{responsive:true,maintainAspectRatio:false,
+        plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${fVal(ctx.raw)}`}}},
+        scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:10}}},
+                y:{grid:{color:'rgba(255,255,255,.04)'},ticks:{color:'#7e7e96',callback:v=>fVal(v)}}}}});
+    return;
+  }
+  // Donut
+  const logoImgs=enriched.map(p=>{const img=new Image();img.crossOrigin='anonymous';img.src=p.logo||`https://images.financialmodelingprep.com/symbol/${p.ticker}.png`;return img;});
+  const centerPlugin={id:'divCenter',beforeDraw(chart){
+    const{ctx,chartArea:{left,right,top,bottom}}=chart;const cx=(left+right)/2,cy=(top+bottom)/2;
+    ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
+    ctx.fillStyle='#fff';ctx.font=`700 17px sans-serif`;ctx.fillText(fVal(totalAnn),cx,cy-10);
+    ctx.fillStyle='#7e7e96';ctx.font=`10px monospace`;ctx.fillText('est. annual',cx,cy+10);ctx.restore();
+  }};
+  const logoPlugin={id:'divLogos',afterDraw(chart){
+    const{ctx,chartArea:{left,right,top,bottom}}=chart;const cx=(left+right)/2,cy=(top+bottom)/2;
+    chart.getDatasetMeta(0).data.forEach((arc,i)=>{
+      const angle=(arc.startAngle+arc.endAngle)/2,r=(arc.innerRadius+arc.outerRadius)/2;
+      const x=cx+Math.cos(angle)*r,y=cy+Math.sin(angle)*r;const img=logoImgs[i];const sz=22;
+      ctx.save();ctx.beginPath();ctx.arc(x,y,sz/2+2,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,.45)';ctx.fill();
+      if(img?.complete&&img.naturalWidth>0){ctx.beginPath();ctx.arc(x,y,sz/2,0,Math.PI*2);ctx.clip();ctx.drawImage(img,x-sz/2,y-sz/2,sz,sz);}
+      else{ctx.fillStyle='#fff';ctx.font='bold 8px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(enriched[i].ticker.slice(0,4),x,y);}
+      ctx.restore();
+    });
+  }};
+  DivChart=new Chart(canvas,{type:'doughnut',
+    data:{labels:enriched.map(p=>p.ticker),datasets:[{data:enriched.map(p=>p.annIncome),backgroundColor:enriched.map((_,i)=>DIV_COLORS[i%DIV_COLORS.length]),borderWidth:3,borderColor:'rgba(0,0,0,.3)',hoverOffset:6}]},
+    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${fVal(ctx.raw)} (${(ctx.raw/totalAnn*100).toFixed(1)}%)`}}}},
+    plugins:[centerPlugin,logoPlugin]});
+  logoImgs.forEach(img=>{img.onload=()=>{if(DivChart)DivChart.draw();};});
+}
+
 async function renderDivPage(){
   const pos=getPf().positions||[];
-  $('div-empty').style.display='none';$('div-chart-card').style.display='none';$('div-pos-box').style.display='none';
+  ['div-empty','div-chart-card','div-pos-box','div-upcoming-box'].forEach(id=>{const e=$(id);if(e)e.style.display='none';});
   if(!pos.length){$('div-empty').style.display='block';return;}
   const[divHistArr,quoteArr]=await Promise.all([
     Promise.all(pos.map(p=>apiFetch(`/api/fmp/dividend-history/${p.ticker}`).catch(()=>null))),
@@ -729,52 +801,67 @@ async function renderDivPage(){
       if(ri>0&&dh.dividends[ri-1]>0)divGrowth=(annDPS-dh.dividends[ri-1])/dh.dividends[ri-1]*100;
     }
     const annIncome=p.shares*annDPS,yld=cp>0&&annDPS>0?annDPS/cp*100:0;
-    return{...p,name:pr?.name||p.name||p.ticker,logo:pr?.logo||p.logo||'',cp,annDPS,annIncome,yld,divGrowth};
+    const next=estimateNextDiv(dh?.recent,p.shares);
+    return{...p,name:pr?.name||p.name||p.ticker,logo:pr?.logo||p.logo||'',cp,annDPS,annIncome,yld,divGrowth,next};
   }).filter(p=>p.annIncome>0).sort((a,b)=>b.annIncome-a.annIncome);
   if(!enriched.length){$('div-empty').style.display='block';return;}
   const totalAnn=enriched.reduce((s,p)=>s+p.annIncome,0);
+  window._divEnriched=enriched;window._divTotal=totalAnn;
+
+  // Stats bar (swapped: quarterly before monthly)
   $('div-stats').innerHTML=`
     <div class="pf-sbi"><div class="pf-sbl">Est. Annual</div><div class="pf-sbv">${fVal(totalAnn)}</div></div>
-    <div class="pf-sbi"><div class="pf-sbl">Monthly Est.</div><div class="pf-sbv">${fVal(totalAnn/12)}</div></div>
     <div class="pf-sbi"><div class="pf-sbl">Quarterly Est.</div><div class="pf-sbv">${fVal(totalAnn/4)}</div></div>
+    <div class="pf-sbi"><div class="pf-sbl">Monthly Est.</div><div class="pf-sbv">${fVal(totalAnn/12)}</div></div>
     <div class="pf-sbi"><div class="pf-sbl">Positions</div><div class="pf-sbv">${enriched.length}</div></div>`;
-  const logoImgs=enriched.map(p=>{const img=new Image();img.crossOrigin='anonymous';img.src=p.logo||`https://images.financialmodelingprep.com/symbol/${p.ticker}.png`;return img;});
-  const centerPlugin={id:'divCenter',beforeDraw(chart){
-    const{ctx,chartArea:{left,right,top,bottom}}=chart;const cx=(left+right)/2,cy=(top+bottom)/2;
-    ctx.save();ctx.textAlign='center';ctx.textBaseline='middle';
-    ctx.fillStyle='#fff';ctx.font=`700 17px sans-serif`;ctx.fillText(fVal(totalAnn),cx,cy-10);
-    ctx.fillStyle='#7e7e96';ctx.font=`10px monospace`;ctx.fillText('est. annual',cx,cy+10);ctx.restore();
-  }};
-  const logoPlugin={id:'divLogos',afterDraw(chart){
-    const{ctx,chartArea:{left,right,top,bottom}}=chart;const cx=(left+right)/2,cy=(top+bottom)/2;
-    chart.getDatasetMeta(0).data.forEach((arc,i)=>{
-      const angle=(arc.startAngle+arc.endAngle)/2,r=(arc.innerRadius+arc.outerRadius)/2;
-      const x=cx+Math.cos(angle)*r,y=cy+Math.sin(angle)*r;
-      const img=logoImgs[i];const sz=22;
-      ctx.save();
-      ctx.beginPath();ctx.arc(x,y,sz/2+2,0,Math.PI*2);ctx.fillStyle='rgba(0,0,0,.45)';ctx.fill();
-      if(img?.complete&&img.naturalWidth>0){ctx.beginPath();ctx.arc(x,y,sz/2,0,Math.PI*2);ctx.clip();ctx.drawImage(img,x-sz/2,y-sz/2,sz,sz);}
-      else{ctx.fillStyle='#fff';ctx.font='bold 8px monospace';ctx.textAlign='center';ctx.textBaseline='middle';ctx.fillText(enriched[i].ticker.slice(0,4),x,y);}
-      ctx.restore();
-    });
-  }};
-  if(DivChart){DivChart.destroy();DivChart=null;}
-  DivChart=new Chart($('div-canvas'),{type:'doughnut',
-    data:{labels:enriched.map(p=>p.ticker),datasets:[{data:enriched.map(p=>p.annIncome),backgroundColor:enriched.map((_,i)=>DIV_COLORS[i%DIV_COLORS.length]),borderWidth:3,borderColor:'rgba(0,0,0,.3)',hoverOffset:6}]},
-    options:{responsive:true,maintainAspectRatio:false,cutout:'58%',plugins:{legend:{display:false},tooltip:{callbacks:{label:ctx=>`${ctx.label}: ${fVal(ctx.raw)} (${(ctx.raw/totalAnn*100).toFixed(1)}%)`}}}},
-    plugins:[centerPlugin,logoPlugin]});
-  logoImgs.forEach(img=>{img.onload=()=>{if(DivChart)DivChart.draw();};});
+
+  // Chart toggle buttons
+  const chartCard=$('div-chart-card');
+  if(!$('div-chart-btns')){
+    const btns=document.createElement('div');btns.id='div-chart-btns';btns.className='pf-range-row';btns.style.padding='.4rem .8rem .1rem';
+    btns.innerHTML=`<button class="div-chart-btn pf-rb on" data-t="doughnut" onclick="switchDivChart('doughnut')">Pie</button><button class="div-chart-btn pf-rb" data-t="bar" onclick="switchDivChart('bar')">Bar</button>`;
+    chartCard.insertBefore(btns,$('div-stats').nextSibling);
+  }
+  drawDivChart(enriched,totalAnn);
+
+  // Positions box
   $('div-list').innerHTML=enriched.map(p=>{
     const up=(p.divGrowth??0)>=0;
-    return`<div class="pf-strip" style="grid-template-columns:36px 1fr 1fr 1fr 1fr;gap:8px;padding:12px 1rem" onclick="navigatePfToStock('${esc(p.ticker)}')">
+    return`<div class="pf-strip" style="grid-template-columns:36px 1.4fr 1fr 0.9fr 1fr;gap:6px;padding:11px .9rem" onclick="navigatePfToStock('${esc(p.ticker)}')">
       <div class="pf-strip-logo"><img src="${esc(p.logo)}" onerror="this.style.display='none'"/></div>
       <div><div class="pf-sname">${esc(p.name)}</div><div class="pf-stick">${esc(p.ticker)}</div></div>
       <div class="pf-col"><div class="pv">${fVal(p.annIncome)}</div><div class="pl">Est. Annual</div></div>
       <div class="pf-col"><div class="pv">${p.yld.toFixed(2)}%</div><div class="pl">Yield</div></div>
-      <div class="pf-col"><div class="pv" style="color:${p.divGrowth!=null?(up?'var(--G)':'var(--R)'):'var(--mu)'}">${p.divGrowth!=null?(up?'+':'')+p.divGrowth.toFixed(2)+'%':'—'}</div><div class="pl">Div Growth</div></div>
+      <div class="pf-col"><div class="pv" style="color:${p.divGrowth!=null?(up?'var(--G)':'var(--R)'):'var(--mu)'}">${p.divGrowth!=null?(up?'+':'')+p.divGrowth.toFixed(2)+'%':'—'}</div><div class="pl">Div Growth YoY</div></div>
     </div>`;
   }).join('');
-  $('div-chart-card').style.display='block';$('div-pos-box').style.display='block';
+
+  // Upcoming dividends box
+  const upcoming=enriched.filter(p=>p.next).sort((a,b)=>a.next.date-b.next.date);
+  const upBox=$('div-upcoming-box');
+  if(upBox&&upcoming.length){
+    const fmtDate=d=>d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    upBox.innerHTML=`<div class="pf-pos-box-hdr">Upcoming Dividends</div>`+
+      upcoming.map((p,i)=>{
+        const isSoon=i===0;
+        return`<div class="div-upcoming-row${isSoon?' div-upcoming-top':''}" onclick="navigatePfToStock('${esc(p.ticker)}')">
+          <div class="div-upc-left">
+            <img class="div-upc-logo" src="${esc(p.logo)}" onerror="this.style.display='none'"/>
+            <div>
+              <div class="pf-sname">${esc(p.name)}</div>
+              <div class="pf-stick">${esc(p.ticker)}</div>
+            </div>
+          </div>
+          <div class="div-upc-right">
+            <div class="div-upc-date">${fmtDate(p.next.date)}</div>
+            <div class="div-upc-amt">${fVal(p.next.income)} <span style="color:var(--mu);font-weight:400;font-size:10px">($${p.next.amount.toFixed(4)}/sh)</span></div>
+          </div>
+        </div>`;
+      }).join('');
+    upBox.style.display='block';
+  }
+
+  chartCard.style.display='block';$('div-pos-box').style.display='block';
 }
 function navigatePfToStock(ticker){
   CameFromPortfolio=true;
