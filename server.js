@@ -636,6 +636,46 @@ app.get('/api/fmp/intraday/:symbol', async (req,res) => {
 });
 
 // ── News endpoints ─────────────────────────────────────────────────────────
+// ── Yahoo Finance news helper ──────────────────────────────────────────────
+async function yahooNews(symbol, count=5){
+  const hdrs={'User-Agent':'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36','Accept':'application/json','Referer':'https://finance.yahoo.com/'};
+  try{
+    const url=`https://query1.finance.yahoo.com/v1/finance/search?q=${encodeURIComponent(symbol)}&quotesCount=0&newsCount=${count}&enableFuzzyQuery=false&enableCeDer=true`;
+    const r=await fetch(url,{headers:hdrs});
+    const data=await r.json();
+    return(data?.news||[]).map(n=>({
+      headline:n.title||'',
+      source:n.publisher||'',
+      url:n.link||'',
+      datetime:n.providerPublishTime||0,
+    }));
+  }catch(e){console.log(`[yahooNews] ${symbol}:`,e.message);return[];}
+}
+
+// Stock news — Yahoo Finance (single ticker, no plan limits)
+app.get('/api/news/stock/:symbol', async (req,res) => {
+  const{symbol}=req.params;const ck=`ynews:${symbol}`;const hit=gc(ck);if(hit)return res.json(hit);
+  try{
+    const result=await yahooNews(symbol,5);
+    sc(ck,result,TTL.news);res.json(result);
+  }catch(e){res.status(500).json({error:e.message});}
+});
+
+// Market news — aggregate Yahoo Finance news for major market movers
+app.get('/api/news/market', async (req,res) => {
+  const ck='market-news-y';const hit=gc(ck);if(hit)return res.json(hit);
+  try{
+    const tks=['SPY','QQQ','NVDA','AAPL','MSFT'];
+    const results=await Promise.all(tks.map(t=>yahooNews(t,2)));
+    const seen=new Set();
+    const result=results.flat()
+      .filter(n=>{if(!n.url||seen.has(n.url))return false;seen.add(n.url);return true;})
+      .sort((a,b)=>b.datetime-a.datetime)
+      .slice(0,5);
+    sc(ck,result,TTL.news);res.json(result);
+  }catch(e){res.status(500).json({error:e.message});}
+});
+
 // Debug news — check what FMP returns
 app.get('/api/debug-news', async (req,res) => {
   try{
@@ -648,7 +688,7 @@ app.get('/api/debug-news', async (req,res) => {
   }catch(e){res.json({error:e.message});}
 });
 
-app.get('/api/news/market', async (req,res) => {
+app.get('/api/fmp/insiders/:symbol', async (req,res) => {
   const ck='market-news';const hit=gc(ck);if(hit)return res.json(hit);
   try{
     // Fetch from several major tickers individually (avoids comma-encoding issues)
