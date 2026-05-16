@@ -54,7 +54,8 @@ button,input{font-family:var(--fb)}
 .headline{font-family:var(--fd);font-size:clamp(3rem,8vw,5.5rem);font-weight:800;line-height:1;letter-spacing:-.04em;margin-bottom:1rem;}
 .headline em{color:var(--P2);font-style:normal;display:block}
 .home-sub{color:var(--mu);font-size:1rem;margin-bottom:2.5rem;font-weight:300;letter-spacing:.02em}
-.movers-wrap{position:absolute;top:1.2rem;right:1.2rem;z-index:10;text-align:right}
+.top-right-col{position:absolute;top:1.2rem;right:1.2rem;z-index:10;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.movers-wrap{text-align:right}
 .movers-bubble{background:var(--bg3);border:1px solid var(--b2);color:var(--tx);padding:8px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-family:var(--fm);display:flex;align-items:center;gap:6px;transition:border-color .15s,background .15s;white-space:nowrap;}
 .movers-bubble:hover{border-color:var(--P);background:var(--Pbg)}
 .movers-bubble .dot{width:6px;height:6px;border-radius:50%;background:var(--G);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
@@ -451,7 +452,7 @@ button,input{font-family:var(--fb)}
 .etf-h-visual{width:140px}
 @media(max-width:480px){.etf-h-row-full{grid-template-columns:18px 24px 1fr 50px}.etf-h-visual{display:none}}
 
-.auth-btn-wrap{position:absolute;top:1rem;right:1rem;z-index:20}
+.auth-btn-wrap{text-align:right}
 .auth-signin-btn{background:var(--bg3);border:1px solid var(--b2);color:var(--tx);font-size:12px;font-weight:600;padding:6px 14px;border-radius:20px;cursor:pointer;transition:border-color .12s}
 .auth-signin-btn:hover{border-color:var(--P)}
 .auth-avatar{width:34px;height:34px;border-radius:50%;cursor:pointer;border:2px solid var(--P);transition:transform .12s}
@@ -516,15 +517,17 @@ button,input{font-family:var(--fb)}
   </div>
 
   <!-- Auth button — top right -->
-  <div id="auth-btn" class="auth-btn-wrap"></div>
-
-  <div class="movers-wrap" id="movers-wrap">
-    <button class="movers-bubble" id="movers-btn">
-      <span class="dot"></span> Biggest Daily Movers &#x25BE;
-    </button>
-    <div class="movers-panel" id="movers-panel" style="display:none">
-      <div class="movers-header"><span>&#x1F7E2; Top Gainers</span><span>&#x1F534; Top Losers</span></div>
-      <div id="movers-list"></div>
+  <!-- Right side: Sign in (levelled with Menu) + Movers below -->
+  <div class="top-right-col">
+    <div id="auth-btn" class="auth-btn-wrap"></div>
+    <div class="movers-wrap" id="movers-wrap">
+      <button class="movers-bubble" id="movers-btn">
+        <span class="dot"></span> Biggest Daily Movers &#x25BE;
+      </button>
+      <div class="movers-panel" id="movers-panel" style="display:none">
+        <div class="movers-header"><span>&#x1F7E2; Top Gainers</span><span>&#x1F534; Top Losers</span></div>
+        <div id="movers-list"></div>
+      </div>
     </div>
   </div>
 
