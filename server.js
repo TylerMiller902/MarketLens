@@ -132,16 +132,21 @@ app.get('/auth/google', (req, res, next) => {
   if(!GOOGLE_CLIENT_ID) return res.redirect('/?auth=fail');
   passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
 });
-app.get('/auth/google/callback', (req, res, next) => {
-  if(!GOOGLE_CLIENT_ID) return res.redirect('/?auth=fail');
-  passport.authenticate('google', { failureRedirect: '/?auth=fail' })(req, res, () => {
-    // Explicitly save session before redirect so cookie is set before page reloads
+app.get('/auth/google/callback',
+  (req, res, next) => {
+    if(!GOOGLE_CLIENT_ID) return res.redirect('/?auth=fail');
+    next();
+  },
+  passport.authenticate('google', { failureRedirect: '/?auth=fail' }),
+  (req, res) => {
+    // passport.authenticate as middleware calls req.logIn automatically
     req.session.save(err => {
-      if(err){ console.error('[auth callback] session save error:', err); return res.redirect('/?auth=fail'); }
+      if(err){ console.error('[callback] session save error:', err); return res.redirect('/?auth=fail'); }
+      console.log('[callback] session saved, user:', req.user?.id, req.isAuthenticated());
       res.redirect('/?auth=success');
     });
-  });
-});
+  }
+);
 app.get('/api/auth/debug', (req, res) => {
   res.json({
     googleConfigured: !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET),
