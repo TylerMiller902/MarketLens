@@ -450,6 +450,20 @@ button,input{font-family:var(--fb)}
 .etf-h-info{min-width:0}
 .etf-h-visual{width:140px}
 @media(max-width:480px){.etf-h-row-full{grid-template-columns:18px 24px 1fr 50px}.etf-h-visual{display:none}}
+
+.auth-btn-wrap{position:absolute;top:1rem;right:1rem;z-index:20}
+.auth-signin-btn{background:var(--bg3);border:1px solid var(--b2);color:var(--tx);font-size:12px;font-weight:600;padding:6px 14px;border-radius:20px;cursor:pointer;transition:border-color .12s}
+.auth-signin-btn:hover{border-color:var(--P)}
+.auth-avatar{width:34px;height:34px;border-radius:50%;cursor:pointer;border:2px solid var(--P);transition:transform .12s}
+.auth-avatar:hover{transform:scale(1.07)}
+.user-menu{position:fixed;top:54px;right:1rem;background:var(--bg2);border:1px solid var(--b2);border-radius:12px;padding:.8rem 1rem;z-index:200;min-width:180px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
+.um-name{font-weight:700;font-size:13px;margin-bottom:2px}
+.um-email{font-size:11px;color:var(--mu);margin-bottom:.3rem}
+.um-btn{background:none;border:1px solid var(--b2);color:var(--mu);width:100%;padding:6px;border-radius:7px;cursor:pointer;font-size:12px;transition:border-color .12s}
+.um-btn:hover{border-color:var(--R);color:var(--R)}
+.ss-toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg2);border:1px solid var(--b2);color:var(--tx);padding:10px 20px;border-radius:10px;font-size:13px;opacity:0;transition:opacity .25s,transform .25s;z-index:300;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.4)}
+.ss-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
+.ss-toast.err{border-color:var(--R);color:var(--R)}
 </style>
 </head>
 <body>
@@ -500,6 +514,9 @@ button,input{font-family:var(--fb)}
       </div>
     </div>
   </div>
+
+  <!-- Auth button — top right -->
+  <div id="auth-btn" class="auth-btn-wrap"></div>
 
   <div class="movers-wrap" id="movers-wrap">
     <button class="movers-bubble" id="movers-btn">
@@ -698,6 +715,7 @@ const ETFS=['SPY','QQQ','IVV','VOO','VTI','EFA','AGG','GLD','VNQ','ARKK','VGT','
 Chart.defaults.color='#7e7e96';Chart.defaults.borderColor='rgba(255,255,255,0.05)';Chart.defaults.font.family='DM Mono';Chart.defaults.font.size=10;
 let PriceChart=null,RSIChart=null,EarnLineChart=null,EarnBarChart=null,FSChart=null,Charts={};
 let CurD=null,CurPH=null,CurDates=null,CurIntraday=null,CurDivHistory=null,CurFMP=null,CurInsiders=null,CurPR='1Y',CurGP=10;
+let AuthUser=null; // set by checkAuth()
 let searchTimer=null,holdTimers={};
 
 // ── RSI Calculation ─────────────────────────────────────
@@ -751,13 +769,58 @@ $('chip-inp').addEventListener('input',()=>{
 });
 document.addEventListener('click',e=>{const s=$('chip-sugg');if(s&&!$('chip-inp').contains(e.target)&&!s.contains(e.target))s.classList.remove('open');});
 renderChips();
+checkAuth(); // load auth state + sync portfolio
 
 // ── Movers ──────────────────────────────────────────────
 // ── Portfolio ───────────────────────────────────────────────
 let PfChart=null,PfRangeActive='1Y',CameFromPortfolio=false;
 const fVal=n=>{if(n==null||isNaN(n))return'—';const x=+n;if(x>=1e9)return`$${(x/1e9).toFixed(2)}B`;if(x>=1e6)return`$${(x/1e6).toFixed(2)}M`;return x.toLocaleString('en-US',{style:'currency',currency:'USD',maximumFractionDigits:2});};
 function getPf(){try{return JSON.parse(localStorage.getItem('ml_portfolio')||'{"positions":[]}')}catch{return{positions:[]};}}
-function savePf(pf){localStorage.setItem('ml_portfolio',JSON.stringify(pf));}
+function savePf(pf){
+  localStorage.setItem('ml_portfolio',JSON.stringify(pf));
+  if(AuthUser){fetch('/api/portfolio',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({positions:pf.positions||[]}),credentials:'include'}).catch(()=>{});}
+}
+// ── Auth ────────────────────────────────────────────────────────────────────
+async function checkAuth(){
+  try{
+    const u=await fetch('/api/auth/me',{credentials:'include'}).then(r=>r.json());
+    AuthUser=u;
+    if(u){
+      const sp=await fetch('/api/portfolio',{credentials:'include'}).then(r=>r.json()).catch(()=>null);
+      if(sp?.positions?.length){localStorage.setItem('ml_portfolio',JSON.stringify(sp));}
+      else{const loc=getPf();if(loc.positions?.length){fetch('/api/portfolio',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({positions:loc.positions}),credentials:'include'}).catch(()=>{});}}
+    }
+    renderAuthUI();
+    if(window.location.search.includes('auth=success')){history.replaceState(null,'','/');showToast('Signed in ✓');}
+    if(window.location.search.includes('auth=fail')){history.replaceState(null,'','/');showToast('Sign-in failed — try again','err');}
+  }catch(e){AuthUser=null;}
+}
+function renderAuthUI(){
+  const btn=$('auth-btn');if(!btn)return;
+  if(AuthUser){
+    btn.innerHTML=`<img src="${AuthUser.avatar||''}" onerror="this.style.display='none'" class="auth-avatar" onclick="toggleUserMenu(event)" title="${AuthUser.name||AuthUser.email}"/>`;
+  } else {
+    btn.innerHTML=`<button class="auth-signin-btn" onclick="window.location='/auth/google'">Sign in</button>`;
+  }
+}
+function toggleUserMenu(e){
+  e.stopPropagation();
+  let m=document.getElementById('user-menu');if(m){m.remove();return;}
+  m=document.createElement('div');m.id='user-menu';m.className='user-menu';
+  m.innerHTML=`<div class="um-name">${AuthUser?.name||'User'}</div><div class="um-email">${AuthUser?.email||''}</div><hr style="border-color:var(--b2);margin:.5rem 0"/><button class="um-btn" onclick="signOut()">Sign out</button>`;
+  document.body.appendChild(m);
+  setTimeout(()=>document.addEventListener('click',()=>{const el=document.getElementById('user-menu');if(el)el.remove();},{once:true}),50);
+}
+async function signOut(){
+  await fetch('/auth/logout',{method:'POST',credentials:'include'});
+  AuthUser=null;renderAuthUI();showToast('Signed out');
+}
+function showToast(msg,type='ok'){
+  let t=document.getElementById('ss-toast');if(t)t.remove();
+  t=document.createElement('div');t.id='ss-toast';t.className=`ss-toast ${type}`;t.textContent=msg;
+  document.body.appendChild(t);requestAnimationFrame(()=>t.classList.add('show'));
+  setTimeout(()=>{t.classList.remove('show');setTimeout(()=>t.remove(),300);},3000);
+}
 
 function openPage(page){
   if(menuPanel)menuPanel.style.display='none';
