@@ -786,7 +786,9 @@ function savePf(pf){
 // ── Auth ────────────────────────────────────────────────────────────────────
 async function checkAuth(){
   try{
-    const u=await fetch('/api/auth/me',{credentials:'include'}).then(r=>r.json());
+    const r=await fetch('/api/auth/me',{credentials:'include'});
+    const u=await r.json();
+    console.log('[checkAuth] status:',r.status,'user:',u);
     AuthUser=u;
     if(u){
       const sp=await fetch('/api/portfolio',{credentials:'include'}).then(r=>r.json()).catch(()=>null);
@@ -795,8 +797,8 @@ async function checkAuth(){
     }
     if(window.location.search.includes('auth=success')){history.replaceState(null,'','/');showToast('Signed in ✓');}
     if(window.location.search.includes('auth=fail')){history.replaceState(null,'','/');showToast('Sign-in failed — try again','err');}
-  }catch(e){AuthUser=null;}
-  finally{renderAuthUI();} // always render the button regardless of outcome
+  }catch(e){console.error('[checkAuth] error:',e);AuthUser=null;}
+  finally{renderAuthUI();}
 }
 function renderAuthUI(){
   const btn=$('auth-btn');if(!btn)return;
