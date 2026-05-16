@@ -134,7 +134,13 @@ app.get('/auth/google', (req, res, next) => {
 });
 app.get('/auth/google/callback', (req, res, next) => {
   if(!GOOGLE_CLIENT_ID) return res.redirect('/?auth=fail');
-  passport.authenticate('google', { failureRedirect: '/?auth=fail' })(req, res, () => res.redirect('/?auth=success'));
+  passport.authenticate('google', { failureRedirect: '/?auth=fail' })(req, res, () => {
+    // Explicitly save session before redirect so cookie is set before page reloads
+    req.session.save(err => {
+      if(err){ console.error('[auth callback] session save error:', err); return res.redirect('/?auth=fail'); }
+      res.redirect('/?auth=success');
+    });
+  });
 });
 app.get('/api/auth/debug', (req, res) => {
   res.json({
