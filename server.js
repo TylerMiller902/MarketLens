@@ -108,7 +108,8 @@ process.on('uncaughtException', (err) => {
   console.error('[uncaughtException]', err);
 });
 
-app.use(cors({ origin: BASE_URL, credentials: true }));
+app.set('trust proxy', 1); // Required for Railway — sits behind a reverse proxy
+app.use(cors({ origin: true, credentials: true })); // allow all origins with credentials
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
@@ -117,7 +118,7 @@ const sessionConfig = {
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
-  cookie: { maxAge: 30 * 24 * 60 * 60 * 1000, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' },
+  cookie: { maxAge: 30 * 24 * 60 * 60 * 1000, secure: true, sameSite: 'lax' },
 };
 if(db){
   sessionConfig.store = new pgSession({ pool: db, tableName: 'sessions', createTableIfMissing: true });
@@ -135,6 +136,17 @@ app.get('/auth/google/callback', (req, res, next) => {
   if(!GOOGLE_CLIENT_ID) return res.redirect('/?auth=fail');
   passport.authenticate('google', { failureRedirect: '/?auth=fail' })(req, res, () => res.redirect('/?auth=success'));
 });
+app.get('/api/auth/debug', (req, res) => {
+  res.json({
+    googleConfigured: !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET),
+    clientIdPrefix: GOOGLE_CLIENT_ID ? GOOGLE_CLIENT_ID.slice(0,8)+'...' : 'NOT SET',
+    baseUrl: BASE_URL,
+    dbConnected: !!db,
+    sessionActive: !!req.session,
+    user: req.user ? { name: req.user.name, email: req.user.email } : null,
+  });
+});
+
 app.post('/auth/logout', (req, res) => {
   req.logout(err => { if(err) return res.status(500).json({error:'logout failed'}); res.json({ok:true}); });
 });
