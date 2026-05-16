@@ -3,12 +3,83 @@
  * FMP-only — all data from Financial Modeling Prep stable API
  */
 
-const express = require('express');
-const cors    = require('cors');
-const path    = require('path');
+const express  = require('express');
+const cors     = require('cors');
+const path     = require('path');
+const session  = require('express-session');
+const passport = require('passport');
+const { Strategy: GoogleStrategy } = require('passport-google-oauth20');
+const { Pool }  = require('pg');
+const pgSession = require('connect-pg-simple')(session);
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
+
+// ── Postgres pool (Railway injects DATABASE_URL automatically) ────────────────
+const db = process.env.DATABASE_URL
+  ? new Pool({ connectionString: process.env.DATABASE_URL, ssl: { rejectUnauthorized: false } })
+  : null;
+
+async function initDB(){
+  if(!db){ console.log('[DB] No DATABASE_URL — skipping DB init (local mode)'); return; }
+  await db.query(`
+    CREATE TABLE IF NOT EXISTS sessions (
+      sid   TEXT PRIMARY KEY,
+      sess  JSONB NOT NULL,
+      expire TIMESTAMPTZ NOT NULL
+    );
+    CREATE INDEX IF NOT EXISTS sessions_expire_idx ON sessions(expire);
+
+    CREATE TABLE IF NOT EXISTS users (
+      id         SERIAL PRIMARY KEY,
+      google_id  TEXT UNIQUE NOT NULL,
+      email      TEXT,
+      name       TEXT,
+      avatar     TEXT,
+      created_at TIMESTAMPTZ DEFAULT NOW()
+    );
+
+    CREATE TABLE IF NOT EXISTS portfolios (
+      user_id    INTEGER PRIMARY KEY REFERENCES users(id) ON DELETE CASCADE,
+      positions  JSONB NOT NULL DEFAULT '[]',
+      updated_at TIMESTAMPTZ DEFAULT NOW()
+    );
+  `);
+  console.log('[DB] Tables ready');
+}
+
+// ── Auth config ───────────────────────────────────────────────────────────────
+const GOOGLE_CLIENT_ID     = process.env.GOOGLE_CLIENT_ID     || '';
+const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
+const SESSION_SECRET       = process.env.SESSION_SECRET       || 'stockscope-change-me-in-prod';
+const BASE_URL             = process.env.BASE_URL             || 'http://localhost:3000';
+
+passport.use(new GoogleStrategy({
+  clientID:     GOOGLE_CLIENT_ID,
+  clientSecret: GOOGLE_CLIENT_SECRET,
+  callbackURL:  `${BASE_URL}/auth/google/callback`,
+}, async (accessToken, refreshToken, profile, done) => {
+  if(!db) return done(null, { id: 0, googleId: profile.id, name: profile.displayName, email: profile.emails?.[0]?.value, avatar: profile.photos?.[0]?.value });
+  try {
+    const { rows } = await db.query(
+      `INSERT INTO users (google_id, email, name, avatar)
+       VALUES ($1,$2,$3,$4)
+       ON CONFLICT (google_id) DO UPDATE SET email=$2, name=$3, avatar=$4
+       RETURNING *`,
+      [profile.id, profile.emails?.[0]?.value||null, profile.displayName||null, profile.photos?.[0]?.value||null]
+    );
+    done(null, rows[0]);
+  } catch(e){ done(e); }
+}));
+
+passport.serializeUser((user, done) => done(null, user.id));
+passport.deserializeUser(async (id, done) => {
+  if(!db) return done(null, null);
+  try {
+    const { rows } = await db.query('SELECT * FROM users WHERE id=$1', [id]);
+    done(null, rows[0] || null);
+  } catch(e){ done(e); }
+});
 
 const FMP_KEY  = process.env.FMP_KEY || 'PASTE_FMP_KEY_HERE';
 const FMP_BASE = 'https://financialmodelingprep.com/stable';
@@ -32,9 +103,58 @@ process.on('uncaughtException', (err) => {
   console.error('[uncaughtException]', err);
 });
 
-app.use(cors());
+app.use(cors({ origin: BASE_URL, credentials: true }));
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
+
+// ── Session ───────────────────────────────────────────────────────────────────
+app.use(session({
+  store: db ? new pgSession({ pool: db, tableName: 'sessions', createTableIfMissing: false }) : undefined,
+  secret: SESSION_SECRET,
+  resave: false,
+  saveUninitialized: false,
+  cookie: { maxAge: 30 * 24 * 60 * 60 * 1000, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' },
+}));
+app.use(passport.initialize());
+app.use(passport.session());
+
+// ── Auth routes ───────────────────────────────────────────────────────────────
+app.get('/auth/google',
+  passport.authenticate('google', { scope: ['profile', 'email'] })
+);
+app.get('/auth/google/callback',
+  passport.authenticate('google', { failureRedirect: '/?auth=fail' }),
+  (req, res) => res.redirect('/?auth=success')
+);
+app.post('/auth/logout', (req, res) => {
+  req.logout(err => { if(err) return res.status(500).json({error:'logout failed'}); res.json({ok:true}); });
+});
+app.get('/api/auth/me', (req, res) => {
+  if(!req.user) return res.json(null);
+  const { id, google_id, email, name, avatar } = req.user;
+  res.json({ id, googleId: google_id, email, name, avatar });
+});
+
+// ── Portfolio API (server-persisted when logged in) ───────────────────────────
+app.get('/api/portfolio', async (req, res) => {
+  if(!req.user) return res.status(401).json({ error: 'not logged in' });
+  if(!db)       return res.json({ positions: [] });
+  const { rows } = await db.query('SELECT positions FROM portfolios WHERE user_id=$1', [req.user.id]);
+  res.json({ positions: rows[0]?.positions || [] });
+});
+
+app.post('/api/portfolio', async (req, res) => {
+  if(!req.user) return res.status(401).json({ error: 'not logged in' });
+  if(!db)       return res.json({ ok: true });
+  const positions = req.body.positions || [];
+  await db.query(
+    `INSERT INTO portfolios (user_id, positions, updated_at)
+     VALUES ($1,$2,NOW())
+     ON CONFLICT (user_id) DO UPDATE SET positions=$2, updated_at=NOW()`,
+    [req.user.id, JSON.stringify(positions)]
+  );
+  res.json({ ok: true });
+});
 
 // ── Cache ─────────────────────────────────────────────────
 const cache = new Map();
@@ -864,13 +984,15 @@ app.get('/api/etf-sectors/:symbol',          (req,res) => res.json([]));
 app.get('/health', (req,res) => res.json({ status: 'ok', version: '3.0', provider: 'FMP only', cached: cache.size, uptime: process.uptime() }));
 
 // ── SPA fallback ──────────────────────────────────────────
-module.exports = app;
 if (require.main === module) {
-  app.get('*', (req,res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
-  app.listen(PORT, '0.0.0.0', () => {
-    console.log(`✅ StockScope v4.1 (Yahoo intraday) listening on port ${PORT}`);
-    console.log(`   Test intraday: http://localhost:${PORT}/api/test-intraday/AAPL`);
-  });
+  initDB().then(() => {
+    app.get('*', (req,res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
+    app.listen(PORT, '0.0.0.0', () => {
+      console.log(`✅ StockScope v4.2 (Accounts) listening on port ${PORT}`);
+      console.log(`   Auth: ${GOOGLE_CLIENT_ID ? 'Google OAuth enabled' : 'No Google credentials — auth disabled'}`);
+      console.log(`   DB:   ${db ? 'Postgres connected' : 'No DB — local mode'}`);
+    });
+  }).catch(e => { console.error('[startup]', e); process.exit(1); });
 } else {
   app.get('*', (req,res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 }
