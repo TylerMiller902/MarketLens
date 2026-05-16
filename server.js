@@ -54,23 +54,28 @@ const GOOGLE_CLIENT_SECRET = process.env.GOOGLE_CLIENT_SECRET || '';
 const SESSION_SECRET       = process.env.SESSION_SECRET       || 'stockscope-change-me-in-prod';
 const BASE_URL             = process.env.BASE_URL             || 'http://localhost:3000';
 
-passport.use(new GoogleStrategy({
-  clientID:     GOOGLE_CLIENT_ID,
-  clientSecret: GOOGLE_CLIENT_SECRET,
-  callbackURL:  `${BASE_URL}/auth/google/callback`,
-}, async (accessToken, refreshToken, profile, done) => {
-  if(!db) return done(null, { id: 0, googleId: profile.id, name: profile.displayName, email: profile.emails?.[0]?.value, avatar: profile.photos?.[0]?.value });
-  try {
-    const { rows } = await db.query(
-      `INSERT INTO users (google_id, email, name, avatar)
-       VALUES ($1,$2,$3,$4)
-       ON CONFLICT (google_id) DO UPDATE SET email=$2, name=$3, avatar=$4
-       RETURNING *`,
-      [profile.id, profile.emails?.[0]?.value||null, profile.displayName||null, profile.photos?.[0]?.value||null]
-    );
-    done(null, rows[0]);
-  } catch(e){ done(e); }
-}));
+// Only register Google strategy if credentials are configured
+if(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET){
+  passport.use(new GoogleStrategy({
+    clientID:     GOOGLE_CLIENT_ID,
+    clientSecret: GOOGLE_CLIENT_SECRET,
+    callbackURL:  `${BASE_URL}/auth/google/callback`,
+  }, async (accessToken, refreshToken, profile, done) => {
+    if(!db) return done(null, { id: 0, google_id: profile.id, name: profile.displayName, email: profile.emails?.[0]?.value, avatar: profile.photos?.[0]?.value });
+    try {
+      const { rows } = await db.query(
+        `INSERT INTO users (google_id, email, name, avatar)
+         VALUES ($1,$2,$3,$4)
+         ON CONFLICT (google_id) DO UPDATE SET email=$2, name=$3, avatar=$4
+         RETURNING *`,
+        [profile.id, profile.emails?.[0]?.value||null, profile.displayName||null, profile.photos?.[0]?.value||null]
+      );
+      done(null, rows[0]);
+    } catch(e){ done(e); }
+  }));
+} else {
+  console.log('[Auth] Google OAuth credentials not set — auth disabled');
+}
 
 passport.serializeUser((user, done) => done(null, user.id));
 passport.deserializeUser(async (id, done) => {
@@ -108,24 +113,28 @@ app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Session ───────────────────────────────────────────────────────────────────
-app.use(session({
-  store: db ? new pgSession({ pool: db, tableName: 'sessions', createTableIfMissing: false }) : undefined,
+const sessionConfig = {
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
   cookie: { maxAge: 30 * 24 * 60 * 60 * 1000, secure: process.env.NODE_ENV === 'production', sameSite: 'lax' },
-}));
+};
+if(db){
+  sessionConfig.store = new pgSession({ pool: db, tableName: 'sessions', createTableIfMissing: true });
+}
+app.use(session(sessionConfig));
 app.use(passport.initialize());
 app.use(passport.session());
 
 // ── Auth routes ───────────────────────────────────────────────────────────────
-app.get('/auth/google',
-  passport.authenticate('google', { scope: ['profile', 'email'] })
-);
-app.get('/auth/google/callback',
-  passport.authenticate('google', { failureRedirect: '/?auth=fail' }),
-  (req, res) => res.redirect('/?auth=success')
-);
+app.get('/auth/google', (req, res, next) => {
+  if(!GOOGLE_CLIENT_ID) return res.redirect('/?auth=fail');
+  passport.authenticate('google', { scope: ['profile', 'email'] })(req, res, next);
+});
+app.get('/auth/google/callback', (req, res, next) => {
+  if(!GOOGLE_CLIENT_ID) return res.redirect('/?auth=fail');
+  passport.authenticate('google', { failureRedirect: '/?auth=fail' })(req, res, () => res.redirect('/?auth=success'));
+});
 app.post('/auth/logout', (req, res) => {
   req.logout(err => { if(err) return res.status(500).json({error:'logout failed'}); res.json({ok:true}); });
 });
