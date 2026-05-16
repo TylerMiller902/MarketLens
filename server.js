@@ -363,7 +363,7 @@ app.get('/api/stock/:symbol', async (req,res) => {
       fmpSafe('/price-target-consensus',         { symbol }),
       fmpSafe('/earnings-surprises',             { symbol }),
       fmpSafe('/earnings-calendar',              { from: today(), to: dFwd(90), symbol }),
-      isETF ? fmpSafe('/etf-holdings',           { symbol }) : Promise.resolve(null),
+      isETF ? Promise.resolve(null) : Promise.resolve(null),
     ]);
 
     const quoteData   = arr(quoteRaw)[0]   || null;
@@ -379,14 +379,7 @@ app.get('/api/stock/:symbol', async (req,res) => {
     const priceTarget = transformPriceTarget(priceTargetRaw);
     const earnings    = transformEarnings(earningsRaw).slice(0, 8);
     const earningsCal = transformEarningsCalendar(earningsCalRaw);
-    let etfHoldings = isETF ? transformEtfHoldings(etfRaw) : null;
-    if(isETF && (!etfHoldings?.holdings?.length)){
-      // Try Yahoo Finance first, fall back to hardcoded cache
-      etfHoldings = await yahooEtfHoldings(symbol);
-      if(!etfHoldings?.holdings?.length && ETF_HOLDINGS_CACHE[symbol.toUpperCase()]){
-        etfHoldings = {holdings: ETF_HOLDINGS_CACHE[symbol.toUpperCase()], cached:true};
-      }
-    }
+    const etfHoldings = null; // fetched client-side via /api/etf/holdings/:symbol
 
     res.json({ quote, profile, metrics, news, recs, priceTarget, earnings, earningsCal, etfHoldings });
   } catch(e) { res.status(500).json({ error: e.message }); }
@@ -848,6 +841,21 @@ app.get('/api/voo-movers', async (req,res) => {
 });
 
 // ETF holdings/info not available on FMP Starter — return empty gracefully
+// Dedicated ETF holdings endpoint — own cache, not tied to stock response cache
+app.get('/api/etf/holdings/:symbol', async (req,res) => {
+  const sym = req.params.symbol.toUpperCase();
+  const ck = `etfh:${sym}`; const hit = gc(ck); if(hit) return res.json(hit);
+  try{
+    // Try Yahoo Finance live
+    let result = await yahooEtfHoldings(sym);
+    if(!result?.holdings?.length && ETF_HOLDINGS_CACHE[sym]){
+      result = {holdings: ETF_HOLDINGS_CACHE[sym], cached: true};
+    }
+    sc(ck, result, 60*60_000); // cache 1 hour
+    res.json(result);
+  }catch(e){ res.status(500).json({error:e.message}); }
+});
+
 app.get('/api/etf-holdings-returns/:symbol', (req,res) => res.json([]));
 app.get('/api/etf-info/:symbol',             (req,res) => res.json({}));
 app.get('/api/etf-sectors/:symbol',          (req,res) => res.json([]));
