@@ -21,7 +21,14 @@ const db = process.env.DATABASE_URL
   : null;
 
 async function initDB(){
-  if(!db){ console.log('[DB] No DATABASE_URL — skipping DB init (local mode)'); return; }
+  if(!db){ console.log('[DB] No DATABASE_URL — running without database'); return; }
+  try{
+    await db.query('SELECT 1'); // test connection
+    console.log('[DB] Connected successfully');
+  }catch(e){
+    console.error('[DB] Connection failed:', e.message);
+    return;
+  }
   await db.query(`
     CREATE TABLE IF NOT EXISTS sessions (
       sid   TEXT PRIMARY KEY,
@@ -77,11 +84,20 @@ if(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET){
   console.log('[Auth] Google OAuth credentials not set — auth disabled');
 }
 
-passport.serializeUser((user, done) => done(null, user.id));
-passport.deserializeUser(async (id, done) => {
-  if(!db) return done(null, null);
-  try {
-    const { rows } = await db.query('SELECT * FROM users WHERE id=$1', [id]);
+// When no DB: store full user object in session. When DB: store just the ID.
+passport.serializeUser((user, done) => {
+  if(!db) return done(null, JSON.stringify({id:user.id||0,google_id:user.google_id,name:user.name,email:user.email,avatar:user.avatar}));
+  done(null, user.id);
+});
+
+passport.deserializeUser(async (data, done) => {
+  if(!db){
+    try{ done(null, typeof data==='string' ? JSON.parse(data) : data); }
+    catch(e){ done(null, null); }
+    return;
+  }
+  try{
+    const { rows } = await db.query('SELECT * FROM users WHERE id=$1', [data]);
     done(null, rows[0] || null);
   } catch(e){ done(e); }
 });
