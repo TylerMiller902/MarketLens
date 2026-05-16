@@ -157,6 +157,7 @@ app.post('/auth/logout', (req, res) => {
   req.logout(err => { if(err) return res.status(500).json({error:'logout failed'}); res.json({ok:true}); });
 });
 app.get('/api/auth/me', (req, res) => {
+  console.log('[auth/me] sessionID:', req.sessionID?.slice(0,8), 'user:', req.user?.id || null, 'isAuthenticated:', req.isAuthenticated?.());
   if(!req.user) return res.json(null);
   const { id, google_id, email, name, avatar } = req.user;
   res.json({ id, googleId: google_id, email, name, avatar });
