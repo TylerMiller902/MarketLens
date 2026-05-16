@@ -854,6 +854,20 @@ function closeDividendPage(){
 }
 
 // ── Dividends Page ─────────────────────────────────────────────────────────
+function buildEtfHoldings(h){
+  if(!h?.holdings?.length)return'<p style="color:var(--mu);font-size:12px;padding:.4rem 0">Holdings data unavailable.</p>';
+  const maxPct=h.holdings[0]?.percent||1;
+  return h.holdings.slice(0,25).map((hh,i)=>{
+    const pct=+(hh.percent||0).toFixed(2);
+    return`<div class="etf-h-row-full" onclick="go('${esc(hh.symbol||'')}')">
+      <div class="etf-h-rank">${i+1}</div>
+      <img class="etf-h-logo" src="https://images.financialmodelingprep.com/symbol/${esc(hh.symbol||'')}.png" onerror="this.style.display='none'"/>
+      <div class="etf-h-info"><div class="etf-h-sym">${esc(hh.symbol||'—')}</div><div class="etf-h-name">${esc(hh.name||'—')}</div></div>
+      <div class="etf-h-visual"><div class="etf-h-bar"><div class="etf-h-fill" style="width:${Math.min(100,(pct/maxPct)*100).toFixed(1)}%"></div></div></div>
+      <div class="etf-h-pct">${pct}%</div>
+    </div>`;
+  }).join('');
+}
 let DivChart=null;
 const DIV_COLORS=['#8b5cf6','#6d28d9','#a78bfa','#4f46e5','#7c3aed','#3b82f6','#60a5fa','#2563eb','#818cf8','#9333ea'];
 
@@ -1454,6 +1468,20 @@ async function loadStock(ticker){
     if(hasFMPPrices){CurPH={};CurDates={};for(const r of['1M','3M','YTD','1Y','5Y','10Y','All']){CurPH[r]=fmpPrices[r]?.prices||[];CurDates[r]=fmpPrices[r]?.dates||[];}CurD.priceDataSource='live';}
     else{const gen=generatePriceHistory(price,m['52WeekHigh'],m['52WeekLow'],m.beta);CurPH=gen.prices;CurDates=gen.dates;CurD.priceDataSource='estimated';}
     renderPage();loadPeers(ticker);
+    // For ETFs fetch holdings separately so they have their own cache and badge updates live
+    if(isETF){
+      apiFetch(`/api/etf/holdings/${ticker}`).then(h=>{
+        if(!h?.holdings?.length)return;
+        CurD.etfHoldings=h;
+        const wrap=document.getElementById('etf-holdings-wrap');
+        const badge=document.getElementById('etf-h-badge');
+        if(wrap)wrap.innerHTML=buildEtfHoldings(h);
+        if(badge){badge.textContent=h.cached?'Approx · Cached':'Live · Yahoo';badge.className=`badge ${h.cached?'est':'live'}`;}
+      }).catch(()=>{
+        const badge=document.getElementById('etf-h-badge');
+        if(badge){badge.textContent='Unavailable';badge.className='badge est';}
+      });
+    }
   }catch(e){
     $('scontent').innerHTML=`
       <div class="not-found" style="padding:5rem 2rem">
@@ -1532,21 +1560,8 @@ function renderPage(){
     ${newsItems.length?`<div class="stitle-sm">Recent News <span class="badge live">Live &middot; FMP</span></div>${newsItems.map(n=>{const dt=new Date((n.datetime||0)*1000),ts=isNaN(dt)?'':dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});return`<a class="ncard" href="${esc(n.url||'#')}" target="_blank"><div class="nhl">${esc(n.headline||'')}</div><div class="nmeta"><span class="nsrc">${esc(n.source||'')}</span><span class="ntime">${ts}</span></div></a>`;}).join('')}`:''}
 
     ${isETF?`
-    <div class="stitle-sm" style="margin-top:.2rem">Holdings <span class="badge ${CurD?.etfHoldings?.cached?'est':'live'}">${CurD?.etfHoldings?.cached?'Approx &middot; Cached':'Live &middot; Yahoo'}</span></div>
-    ${CurD?.etfHoldings?.holdings?.length>0?`
-    <div class="etf-holdings-full">
-      ${CurD.etfHoldings.holdings.slice(0,25).map((h,i)=>{
-        const pct=+(h.percent||0).toFixed(2);
-        const maxPct=CurD.etfHoldings.holdings[0]?.percent||1;
-        return `<div class="etf-h-row-full" onclick="go('${esc(h.symbol||'')}')">
-          <div class="etf-h-rank">${i+1}</div>
-          <img class="etf-h-logo" src="https://images.financialmodelingprep.com/symbol/${esc(h.symbol||'')}.png" onerror="this.style.display='none'"/>
-          <div class="etf-h-info"><div class="etf-h-sym">${esc(h.symbol||'—')}</div><div class="etf-h-name">${esc(h.name||'—')}</div></div>
-          <div class="etf-h-visual"><div class="etf-h-bar"><div class="etf-h-fill" style="width:${Math.min(100,(pct/maxPct)*100).toFixed(1)}%"></div></div></div>
-          <div class="etf-h-pct">${pct}%</div>
-        </div>`;
-      }).join('')}
-    </div>`:'<p style="color:var(--mu);font-size:12px;padding:.4rem 0">Holdings data unavailable.</p>'}
+    <div class="stitle-sm" style="margin-top:.2rem">Holdings <span id="etf-h-badge" class="badge est">Loading&hellip;</span></div>
+    <div class="etf-holdings-full" id="etf-holdings-wrap"><div style="padding:.8rem;color:var(--mu);font-size:12px;font-family:var(--fm)">Fetching holdings&hellip;</div></div>
     `:`
     <div class="stitle-sm" style="margin-top:.2rem">Financials <span class="badge ${hasFMP?'live':'est'}">${hasFMP?'Live &middot; FMP':'No data'}</span></div>
     ${hasFMP?`<div class="ftabs"><button class="ftab on" data-tab="inc">Income</button><button class="ftab" data-tab="bal">Balance Sheet</button><button class="ftab" data-tab="cf">Cash Flow</button></div><div id="fin-inc" class="ftbl-wrap">${buildFinTable(CurFMP.tableIncome,CurFMP.tableYears)}</div><div id="fin-bal" class="ftbl-wrap" style="display:none">${buildFinTable(CurFMP.tableBalance,CurFMP.tableYears)}</div><div id="fin-cf" class="ftbl-wrap" style="display:none">${buildFinTable(CurFMP.tableCF,CurFMP.tableYears)}</div>`:'<p style="color:var(--mu);font-size:12px;padding:.4rem 0 .9rem">Financial statement data not available.</p>'}
