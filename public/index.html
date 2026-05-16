@@ -793,17 +793,17 @@ async function checkAuth(){
       if(sp?.positions?.length){localStorage.setItem('ml_portfolio',JSON.stringify(sp));}
       else{const loc=getPf();if(loc.positions?.length){fetch('/api/portfolio',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({positions:loc.positions}),credentials:'include'}).catch(()=>{});}}
     }
-    renderAuthUI();
     if(window.location.search.includes('auth=success')){history.replaceState(null,'','/');showToast('Signed in ✓');}
     if(window.location.search.includes('auth=fail')){history.replaceState(null,'','/');showToast('Sign-in failed — try again','err');}
   }catch(e){AuthUser=null;}
+  finally{renderAuthUI();} // always render the button regardless of outcome
 }
 function renderAuthUI(){
   const btn=$('auth-btn');if(!btn)return;
   if(AuthUser){
     btn.innerHTML=`<img src="${AuthUser.avatar||''}" onerror="this.style.display='none'" class="auth-avatar" onclick="toggleUserMenu(event)" title="${AuthUser.name||AuthUser.email}"/>`;
   } else {
-    btn.innerHTML=`<button class="auth-signin-btn" onclick="window.location='/auth/google'">Sign in</button>`;
+    btn.innerHTML=`<button class="auth-signin-btn" onclick="window.location.href='/auth/google'">Sign in</button>`;
   }
 }
 function toggleUserMenu(e){
