@@ -1033,6 +1033,10 @@ app.get('/api/etf-sectors/:symbol',          (req,res) => res.json([]));
 app.get('/health', (req,res) => res.json({ status: 'ok', version: '3.0', provider: 'FMP only', cached: cache.size, uptime: process.uptime() }));
 
 // ── SPA fallback ──────────────────────────────────────────
+// Legal pages (placeholder — will flesh out separately)
+app.get('/privacy', (req,res) => res.redirect('/#privacy'));
+app.get('/terms',   (req,res) => res.redirect('/#terms'));
+
 if (require.main === module) {
   initDB().then(() => {
     app.get('*', (req,res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
