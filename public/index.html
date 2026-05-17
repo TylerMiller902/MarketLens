@@ -465,6 +465,56 @@ button,input{font-family:var(--fb)}
 .ss-toast{position:fixed;bottom:1.5rem;left:50%;transform:translateX(-50%) translateY(20px);background:var(--bg2);border:1px solid var(--b2);color:var(--tx);padding:10px 20px;border-radius:10px;font-size:13px;opacity:0;transition:opacity .25s,transform .25s;z-index:300;pointer-events:none;box-shadow:0 4px 16px rgba(0,0,0,.4)}
 .ss-toast.show{opacity:1;transform:translateX(-50%) translateY(0)}
 .ss-toast.err{border-color:var(--R);color:var(--R)}
+
+/* ── Landing Page ─────────────────────────────────────── */
+@import url('https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&display=swap');
+
+#landing{position:fixed;inset:0;background:#08080f;z-index:500;overflow-y:auto;display:flex;flex-direction:column;}
+#landing.gone{display:none}
+
+/* Noise texture overlay */
+#landing::before{content:'';position:fixed;inset:0;background-image:url("data:image/svg+xml,%3Csvg viewBox='0 0 256 256' xmlns='http://www.w3.org/2000/svg'%3E%3Cfilter id='noise'%3E%3CfeTurbulence type='fractalNoise' baseFrequency='0.9' numOctaves='4' stitchTiles='stitch'/%3E%3C/filter%3E%3Crect width='100%25' height='100%25' filter='url(%23noise)' opacity='0.04'/%3E%3C/svg%3E");pointer-events:none;z-index:0}
+
+.ld-hero{position:relative;min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:2rem 1.5rem;text-align:center;z-index:1;overflow:hidden}
+
+/* Radial glow behind hero */
+.ld-hero::after{content:'';position:absolute;width:700px;height:700px;border-radius:50%;background:radial-gradient(ellipse, rgba(99,68,210,.18) 0%, transparent 70%);top:50%;left:50%;transform:translate(-50%,-58%);pointer-events:none}
+
+.ld-wordmark{font-family:'DM Serif Display',serif;font-size:clamp(2.8rem,8vw,5.5rem);color:#fff;letter-spacing:-.02em;line-height:1;margin-bottom:.5rem;animation:ldFadeUp .7s ease both}
+.ld-wordmark span{color:#7c5cfc}
+.ld-tag{font-family:'DM Serif Display',serif;font-style:italic;font-size:clamp(1rem,3vw,1.4rem);color:rgba(255,255,255,.38);margin-bottom:2.2rem;animation:ldFadeUp .7s .1s ease both}
+.ld-sub{font-size:clamp(.85rem,2.2vw,1rem);color:rgba(255,255,255,.5);max-width:480px;line-height:1.7;margin-bottom:2.6rem;font-family:'DM Mono',monospace;animation:ldFadeUp .7s .2s ease both}
+
+.ld-ctas{display:flex;gap:.8rem;flex-wrap:wrap;justify-content:center;animation:ldFadeUp .7s .3s ease both}
+.ld-btn-primary{display:flex;align-items:center;gap:.6rem;background:#fff;color:#08080f;font-weight:700;font-size:.85rem;padding:.75rem 1.5rem;border-radius:100px;cursor:pointer;border:none;transition:transform .15s,box-shadow .15s;letter-spacing:.01em}
+.ld-btn-primary:hover{transform:translateY(-2px);box-shadow:0 8px 28px rgba(255,255,255,.15)}
+.ld-btn-primary svg{width:18px;height:18px;flex-shrink:0}
+.ld-btn-secondary{background:transparent;color:rgba(255,255,255,.6);font-size:.85rem;padding:.75rem 1.5rem;border-radius:100px;cursor:pointer;border:1px solid rgba(255,255,255,.12);transition:border-color .15s,color .15s;letter-spacing:.01em}
+.ld-btn-secondary:hover{border-color:rgba(255,255,255,.35);color:#fff}
+
+/* Scroll indicator */
+.ld-scroll-hint{position:absolute;bottom:2rem;left:50%;transform:translateX(-50%);display:flex;flex-direction:column;align-items:center;gap:.4rem;color:rgba(255,255,255,.2);font-size:.65rem;font-family:'DM Mono',monospace;letter-spacing:.12em;animation:ldFadeUp .7s .6s ease both}
+.ld-scroll-line{width:1px;height:36px;background:linear-gradient(to bottom,rgba(255,255,255,.2),transparent)}
+
+/* Features grid */
+.ld-features{position:relative;z-index:1;padding:5rem 1.5rem 4rem;max-width:900px;margin:0 auto;width:100%}
+.ld-features-lbl{font-family:'DM Mono',monospace;font-size:.65rem;letter-spacing:.18em;color:rgba(255,255,255,.2);text-transform:uppercase;margin-bottom:2.5rem;text-align:center}
+.ld-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:1px;background:rgba(255,255,255,.06);border-radius:16px;overflow:hidden}
+.ld-card{background:#0d0d17;padding:1.8rem 1.6rem;transition:background .18s;cursor:default}
+.ld-card:hover{background:#111124}
+.ld-card-icon{font-size:1.5rem;margin-bottom:1rem}
+.ld-card-title{font-family:'DM Serif Display',serif;font-size:1.1rem;color:#fff;margin-bottom:.5rem}
+.ld-card-desc{font-size:.8rem;color:rgba(255,255,255,.38);line-height:1.65;font-family:'DM Mono',monospace}
+
+/* Footer */
+.ld-footer{position:relative;z-index:1;padding:2rem 1.5rem;text-align:center;border-top:1px solid rgba(255,255,255,.06);margin-top:auto}
+.ld-footer-links{display:flex;justify-content:center;gap:1.5rem;margin-bottom:.8rem}
+.ld-footer-links a{font-size:.72rem;color:rgba(255,255,255,.25);text-decoration:none;font-family:'DM Mono',monospace;letter-spacing:.04em;transition:color .12s}
+.ld-footer-links a:hover{color:rgba(255,255,255,.6)}
+.ld-copy{font-size:.68rem;color:rgba(255,255,255,.12);font-family:'DM Mono',monospace}
+
+@keyframes ldFadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+@keyframes ldFadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
 </style>
 </head>
 <body>
@@ -497,6 +547,61 @@ button,input{font-family:var(--fb)}
   <span class="brand"><span class="brand-market">Stock</span>Scope</span>
   <div class="nav-live"><span class="nav-dot"></span><span id="live-label">Connecting&hellip;</span></div>
   <div class="nav-pills" id="nav-pills"></div>
+</div>
+
+
+<!-- ══ Landing Page ══════════════════════════════════════════════════════ -->
+<div id="landing" class="gone">
+  <section class="ld-hero">
+    <div class="ld-wordmark">Stock<span>Scope</span></div>
+    <div class="ld-tag">Markets, Decoded.</div>
+    <p class="ld-sub">Real-time stock analysis, portfolio tracking, dividend income, and market news — all in one clean interface.</p>
+    <div class="ld-ctas">
+      <button class="ld-btn-primary" onclick="window.location.href='/auth/google'">
+        <svg viewBox="0 0 24 24" fill="none"><path d="M22.56 12.25c0-.78-.07-1.53-.2-2.25H12v4.26h5.92c-.26 1.37-1.04 2.53-2.21 3.31v2.77h3.57c2.08-1.92 3.28-4.74 3.28-8.09z" fill="#4285F4"/><path d="M12 23c2.97 0 5.46-.98 7.28-2.66l-3.57-2.77c-.98.66-2.23 1.06-3.71 1.06-2.86 0-5.29-1.93-6.16-4.53H2.18v2.84C3.99 20.53 7.7 23 12 23z" fill="#34A853"/><path d="M5.84 14.09c-.22-.66-.35-1.36-.35-2.09s.13-1.43.35-2.09V7.07H2.18C1.43 8.55 1 10.22 1 12s.43 3.45 1.18 4.93l3.66-2.84z" fill="#FBBC05"/><path d="M12 5.38c1.62 0 3.06.56 4.21 1.64l3.15-3.15C17.45 2.09 14.97 1 12 1 7.7 1 3.99 3.47 2.18 7.07l3.66 2.84c.87-2.6 3.3-4.53 6.16-4.53z" fill="#EA4335"/></svg>
+        Sign in with Google
+      </button>
+      <button class="ld-btn-secondary" onclick="enterApp()">Explore free &rarr;</button>
+    </div>
+    <div class="ld-scroll-hint">
+      <div class="ld-scroll-line"></div>
+      SCROLL
+    </div>
+  </section>
+
+  <section class="ld-features">
+    <div class="ld-features-lbl">Everything you need</div>
+    <div class="ld-grid">
+      <div class="ld-card">
+        <div class="ld-card-icon">📈</div>
+        <div class="ld-card-title">Real-time Quotes</div>
+        <div class="ld-card-desc">Live prices, interactive charts, key metrics, and analyst ratings for any stock or ETF.</div>
+      </div>
+      <div class="ld-card">
+        <div class="ld-card-icon">💼</div>
+        <div class="ld-card-title">Portfolio Tracking</div>
+        <div class="ld-card-desc">Track your holdings, monitor P&amp;L, and see your total portfolio performance across all ranges.</div>
+      </div>
+      <div class="ld-card">
+        <div class="ld-card-icon">💰</div>
+        <div class="ld-card-title">Dividend Income</div>
+        <div class="ld-card-desc">Estimate annual dividend income, track yield and growth, and see upcoming payout dates.</div>
+      </div>
+      <div class="ld-card">
+        <div class="ld-card-icon">📰</div>
+        <div class="ld-card-title">Market News</div>
+        <div class="ld-card-desc">Position-specific and market-wide news curated for your portfolio, updated throughout the day.</div>
+      </div>
+    </div>
+  </section>
+
+  <footer class="ld-footer">
+    <div class="ld-footer-links">
+      <a href="/privacy">Privacy Policy</a>
+      <a href="/terms">Terms of Service</a>
+    </div>
+    <div class="ld-copy">&copy; 2026 StockScope. Not financial advice.</div>
+  </footer>
 </div>
 
 <div id="home">
@@ -784,20 +889,28 @@ function savePf(pf){
   if(AuthUser){fetch('/api/portfolio',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({positions:pf.positions||[]}),credentials:'include'}).catch(()=>{});}
 }
 // ── Auth ────────────────────────────────────────────────────────────────────
+function enterApp(){
+  localStorage.setItem('ss_visited','1');
+  const ld=$('landing');if(ld)ld.classList.add('gone');
+}
 async function checkAuth(){
   try{
     const r=await fetch('/api/auth/me',{credentials:'include'});
     const u=await r.json();
-    console.log('[checkAuth] status:',r.status,'user:',u);
     AuthUser=u;
     if(u){
+      enterApp();
       const sp=await fetch('/api/portfolio',{credentials:'include'}).then(r=>r.json()).catch(()=>null);
       if(sp?.positions?.length){localStorage.setItem('ml_portfolio',JSON.stringify(sp));}
       else{const loc=getPf();if(loc.positions?.length){fetch('/api/portfolio',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({positions:loc.positions}),credentials:'include'}).catch(()=>{});}}
+    } else {
+      if(!localStorage.getItem('ss_visited')){
+        const ld=$('landing');if(ld)ld.classList.remove('gone');
+      }
     }
     if(window.location.search.includes('auth=success')){history.replaceState(null,'','/');showToast('Signed in ✓');}
     if(window.location.search.includes('auth=fail')){history.replaceState(null,'','/');showToast('Sign-in failed — try again','err');}
-  }catch(e){console.error('[checkAuth] error:',e);AuthUser=null;}
+  }catch(e){AuthUser=null;}
   finally{renderAuthUI();}
 }
 function renderAuthUI(){
