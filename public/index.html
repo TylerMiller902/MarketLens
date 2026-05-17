@@ -819,7 +819,7 @@ const DCOLS=[P,G,B,R,'#a78bfa','#4ade80','#60a5fa'];
 const last=a=>a?.length?a[a.length-1]:null;
 const pctG=a=>a.map((v,i)=>i===0?null:a[i-1]&&Math.abs(a[i-1])>.0001?+((v-a[i-1])/Math.abs(a[i-1])*100).toFixed(2):null);
 const today=()=>new Date().toISOString().slice(0,10);
-const ETFS=['SPY','QQQ','IVV','VOO','VTI','EFA','AGG','GLD','VNQ','ARKK','VGT','XLF','XLE','VWO','DIA','IWM','BND','TLT','GDX','SLV'];
+const ETFS=['SPY','QQQ','IVV','VOO','VTI','EFA','AGG','GLD','VNQ','ARKK','VGT','XLF','XLE','VWO','DIA','IWM','BND','TLT','GDX','SLV','SOXQ','FTEC','SMH','SOXX','XLK','XLRE','XLV','XLI','XLY','XLP','XLU','XLB','SCHD','JEPI','JEPQ','QYLD','RYLD','XYLD','VYM','VIG','VXUS','BIL','SHY','LQD','HYG','IEMG','VEA','VWO','IEFA','IAU','SLV','PDBC','VNQ','SCHB','ITOT','SPDW','SPEM','SPAB','SPTI','SPSB','SPTS','BNDX','BNDW','VCIT','VCSH','BSV','BIV','BLV','GOVT','TIPS','VTIP','SCHF','SCHE','SCHM','SCHA','SCHG','SCHV','SCHO','SCHR','SCHZ','SOXL','TQQQ','SPXL','UPRO','UDOW','TECL','FNGU','LABU'];
 Chart.defaults.color='#7e7e96';Chart.defaults.borderColor='rgba(255,255,255,0.05)';Chart.defaults.font.family='DM Mono';Chart.defaults.font.size=10;
 let PriceChart=null,RSIChart=null,EarnLineChart=null,EarnBarChart=null,FSChart=null,Charts={};
 let CurD=null,CurPH=null,CurDates=null,CurIntraday=null,CurDivHistory=null,CurFMP=null,CurInsiders=null,CurPR='1Y',CurGP=10;
@@ -843,7 +843,7 @@ function calcRSI(prices,period=14){
 }
 
 // ── Chips ───────────────────────────────────────────────
-const DEFAULT_CHIPS=[{t:'AAPL',l:'Apple'},{t:'MSFT',l:'Microsoft'},{t:'NVDA',l:'Nvidia'},{t:'TSLA',l:'Tesla'},{t:'GOOGL',l:'Alphabet'},{t:'AMZN',l:'Amazon'},{t:'META',l:'Meta'},{t:'SPY',l:'S&P 500 ETF'},{t:'QQQ',l:'Nasdaq ETF'},{t:'BRK.B',l:'Berkshire'},{t:'KO',l:'Coca-Cola'},{t:'JNJ',l:'J&J'}];
+const DEFAULT_CHIPS=[{t:'AAPL',l:'Apple'},{t:'MSFT',l:'Microsoft'},{t:'NVDA',l:'Nvidia'},{t:'GOOGL',l:'Alphabet'},{t:'AMZN',l:'Amazon'},{t:'META',l:'Meta'},{t:'SPY',l:'S&P 500 ETF'},{t:'QQQ',l:'Nasdaq ETF'}];
 function loadChips(){try{const s=localStorage.getItem('ml-chips');return s?JSON.parse(s):DEFAULT_CHIPS;}catch{return DEFAULT_CHIPS;}}
 function saveChips(c){try{localStorage.setItem('ml-chips',JSON.stringify(c));}catch{}}
 function renderChips(){
@@ -1614,17 +1614,18 @@ function generatePriceHistory(price,w52h,w52l,beta){
 }
 
 async function loadStock(ticker){
+  const enc=encodeURIComponent(ticker);
   $('scontent').innerHTML=`<div class="loading-wrap"><div class="loading-ring"></div><div class="loading-txt">Loading ${esc(ticker)}&hellip;</div></div>`;
   try{
     const [stock,fmpPrices,fmpFin,insiders,divHistory,intraday]=await Promise.all([
-      apiFetch(`/api/stock/${ticker}?etf=1`),
-      apiFetch(`/api/fmp/prices/${ticker}`).catch(()=>({})),
-      apiFetch(`/api/fmp/financials/${ticker}`).catch(()=>null),
-      apiFetch(`/api/fmp/insiders/${ticker}`).catch(()=>null),
-      apiFetch(`/api/fmp/dividend-history/${ticker}`).catch(()=>null),
-      apiFetch(`/api/fmp/intraday/${ticker}`).catch(()=>null),
+      apiFetch(`/api/stock/${enc}?etf=1`),
+      apiFetch(`/api/fmp/prices/${enc}`).catch(()=>({})),
+      apiFetch(`/api/fmp/financials/${enc}`).catch(()=>null),
+      apiFetch(`/api/fmp/insiders/${enc}`).catch(()=>null),
+      apiFetch(`/api/fmp/dividend-history/${enc}`).catch(()=>null),
+      apiFetch(`/api/fmp/intraday/${enc}`).catch(()=>null),
     ]);
-    const isETF=stock?.profile?.isEtf===true||ETFS.includes(ticker);
+    const isETF=stock?.profile?.isEtf===true||stock?.profile?.isEtf==='true'||ETFS.includes(ticker)||/\b(ETF|Fund|Trust|Index)\b/i.test(stock?.profile?.name||'');
     // Validate — if FMP returned no price and no company name, ticker doesn't exist
     // Require a real price (current or previous close) to confirm this is a tradeable security
     const hasData = (stock?.quote?.c > 0) || (stock?.quote?.pc > 0) || (stock?.quote?.o > 0);
