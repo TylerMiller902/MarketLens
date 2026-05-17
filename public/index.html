@@ -895,8 +895,7 @@ function enterApp(){
 }
 async function checkAuth(){
   try{
-    const r=await fetch('/api/auth/me',{credentials:'include'});
-    const u=await r.json();
+    const u=await fetch('/api/auth/me',{credentials:'include'}).then(r=>r.json());
     AuthUser=u;
     if(u){
       enterApp();
@@ -1424,7 +1423,7 @@ $('pf-ticker-inp').addEventListener('input',()=>{
       if(!fmp.length)return;
       const localSyms=new Set(local.map(r=>r.symbol));
       showPfDrop([...local,...fmp.filter(r=>!localSyms.has(r.symbol))].slice(0,6));
-    }catch(e){console.warn('[pf-search]',e.message);}
+    }catch(e){}
   },300);
 });
 async function pfPickStock(sym,name){
@@ -1641,9 +1640,6 @@ async function loadStock(ticker){
     }
     CurD={...stock,ticker,isETF};CurFMP=fmpFin;CurInsiders=insiders;
     CurIntraday=intraday;CurDivHistory=divHistory;
-    console.log('[loadStock] intraday:', intraday
-      ? `1D=${intraday['1D']?.prices?.length||0}pts 1M=${intraday['1M']?.prices?.length||0}pts 3M=${intraday['3M']?.prices?.length||0}pts`
-      : 'null (fetch failed)');
     const m=stock?.metrics?.metric||{},price=stock?.quote?.c;
     const hasFMPPrices=fmpPrices&&Object.values(fmpPrices).some(r=>r?.prices?.length>2);
     if(hasFMPPrices){CurPH={};CurDates={};for(const r of['1M','3M','YTD','1Y','5Y','10Y','All']){CurPH[r]=fmpPrices[r]?.prices||[];CurDates[r]=fmpPrices[r]?.dates||[];}CurD.priceDataSource='live';}
@@ -1884,7 +1880,6 @@ function drawPrice(r){
     return;
   }
 
-  console.log(`[drawPrice] r=${r} isIntra=${isIntra} pts=${prices.length} sample=${rawDates[0]||'none'}`);
   const labels=buildLabels(rawDates,r,isIntra);
   const tension={'1D':0,'1W':0,'1M':isIntra?0.1:0.1,'3M':isIntra?0.15:0.2,'YTD':0.3,'1Y':0.35,'5Y':0.4,'10Y':0.4,'All':0.4}[r]??0.3;
   const isUp=prices[prices.length-1]>=prices[0],color=isUp?G:R;
