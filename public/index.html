@@ -1402,7 +1402,7 @@ function closePfModal(){$('pf-modal-bg').style.display='none';}
 function showPfDrop(results){
   const drop=$('pf-sdrop');if(!drop)return;
   if(!results.length){drop.style.display='none';return;}
-  drop.innerHTML=results.map(r=>`<div class="pf-sitem" onclick="pfPickStock('${esc(r.symbol)}','${esc((r.description||'').replace(/'/g,"\\'"))}')"><img class="pf-sitem-logo" src="https://images.financialmodelingprep.com/symbol/${esc(r.symbol)}.png" onerror="this.style.display='none'"/><span class="pf-ssym">${esc(r.symbol)}</span><span class="pf-sname-sm">${esc(r.description||'')}</span></div>`).join('');
+  drop.innerHTML=results.map(r=>`<div class="pf-sitem" data-sym="${esc(r.symbol)}" data-name="${esc(r.description||r.symbol)}" onclick="pfPickStock('${esc(r.symbol)}','${esc((r.description||'').replace(/'/g,"\\'"))}')"><img class="pf-sitem-logo" src="https://images.financialmodelingprep.com/symbol/${esc(r.symbol)}.png" onerror="this.style.display='none'"/><span class="pf-ssym">${esc(r.symbol)}</span><span class="pf-sname-sm">${esc(r.description||'')}</span></div>`).join('');
   drop.style.display='block';
 }
 $('pf-ticker-inp').addEventListener('focus',()=>{
@@ -1419,12 +1419,27 @@ $('pf-ticker-inp').addEventListener('input',()=>{
   pfSearchTmr=setTimeout(async()=>{
     try{
       const d=await apiFetch(`/api/search?q=${encodeURIComponent(q)}`);
-      const fmp=(d?.result||[]).filter(r=>r.symbol&&!r.symbol.match(/\.[A-Z]{2,}$/)).slice(0,6);
+      // Filter out foreign-exchange suffixes (.TO, .L, .PA) but keep US tickers including dots like BRK.B
+      const fmp=(d?.result||[]).filter(r=>r.symbol&&!r.symbol.match(/\.[A-Z]{2,}$/)&&r.symbol.length<=8).slice(0,6);
       if(!fmp.length)return;
       const localSyms=new Set(local.map(r=>r.symbol));
       showPfDrop([...local,...fmp.filter(r=>!localSyms.has(r.symbol))].slice(0,6));
     }catch(e){}
   },300);
+});
+// Enter key in portfolio search — pick top result or use typed ticker directly
+$('pf-ticker-inp').addEventListener('keydown',e=>{
+  if(e.key==='Enter'){
+    e.preventDefault();
+    const q=$('pf-ticker-inp').value.trim().toUpperCase();
+    if(!q)return;
+    // If a drop result is visible, pick the first one
+    const firstDrop=$('pf-sdrop')?.querySelector('[data-sym]');
+    if(firstDrop){pfPickStock(firstDrop.dataset.sym,firstDrop.dataset.name||firstDrop.dataset.sym);return;}
+    // Otherwise try the typed ticker directly
+    pfPickStock(q,q);
+  }
+  if(e.key==='Escape'){$('pf-sdrop').style.display='none';}
 });
 async function pfPickStock(sym,name){
   pfSel={ticker:sym,name};
@@ -1549,6 +1564,41 @@ const LOCAL_STOCKS=[
   ['IBIT','iShares Bitcoin Trust ETF'],['FBTC','Fidelity Bitcoin ETF'],
   ['AGG','iShares Core Bond ETF'],['SLV','iShares Silver ETF'],
   ['VTV','Vanguard Value ETF'],['VIG','Vanguard Dividend Appreciation ETF'],
+  // Sector & thematic ETFs
+  ['SMH','VanEck Semiconductor ETF'],['SOXX','iShares Semiconductor ETF'],
+  ['SOXQ','Invesco PHLX Semiconductor ETF'],['SOXL','Direxion Semiconductor Bull 3x ETF'],
+  ['FTEC','Fidelity MSCI Info Tech ETF'],['FSELX','Fidelity Select Semiconductors'],
+  ['FDIS','Fidelity MSCI Consumer Discretionary ETF'],['FHLC','Fidelity MSCI Health Care ETF'],
+  ['FNCL','Fidelity MSCI Financials ETF'],['FENY','Fidelity MSCI Energy ETF'],
+  ['FUTY','Fidelity MSCI Utilities ETF'],['FMAT','Fidelity MSCI Materials ETF'],
+  ['FIDU','Fidelity MSCI Industrials ETF'],['FCYC','Fidelity Consumer Cyclical ETF'],
+  ['FDVV','Fidelity High Dividend ETF'],['FNDX','Schwab Fundamental US Large ETF'],
+  ['TQQQ','ProShares UltraPro QQQ ETF'],['UPRO','ProShares UltraPro S&P 500 ETF'],
+  ['SPXL','Direxion S&P 500 Bull 3x ETF'],['TECL','Direxion Technology Bull 3x ETF'],
+  ['LABU','Direxion Biotech Bull 3x ETF'],['UDOW','ProShares UltraPro Dow30 ETF'],
+  ['QYLD','Global X NASDAQ-100 Covered Call ETF'],['RYLD','Global X Russell 2000 Covered Call ETF'],
+  ['XYLD','Global X S&P 500 Covered Call ETF'],['PDBC','Invesco Optimum Yield Diversified Commodity ETF'],
+  ['SCHB','Schwab US Broad Market ETF'],['SCHG','Schwab US Large-Cap Growth ETF'],
+  ['SCHV','Schwab US Large-Cap Value ETF'],['SCHA','Schwab US Small-Cap ETF'],
+  ['SCHF','Schwab International Equity ETF'],['SCHE','Schwab Emerging Markets ETF'],
+  ['SCHM','Schwab US Mid-Cap ETF'],['ITOT','iShares Core S&P Total US Market ETF'],
+  ['IJR','iShares Core S&P Small-Cap ETF'],['IJH','iShares Core S&P Mid-Cap ETF'],
+  ['IEFA','iShares Core MSCI EAFE ETF'],['IEMG','iShares Core MSCI EM ETF'],
+  ['VEA','Vanguard FTSE Developed Markets ETF'],['VXUS','Vanguard Total Intl Stock ETF'],
+  ['BIL','SPDR Bloomberg 1-3 Month T-Bill ETF'],['SHY','iShares 1-3 Year Treasury Bond ETF'],
+  ['IEF','iShares 7-10 Year Treasury Bond ETF'],['LQD','iShares iBoxx Investment Grade ETF'],
+  ['HYG','iShares iBoxx High Yield Corporate Bond ETF'],['VCIT','Vanguard Intermediate-Term Corp Bond ETF'],
+  ['VCSH','Vanguard Short-Term Corp Bond ETF'],['BNDX','Vanguard Total Intl Bond ETF'],
+  ['GOVT','iShares US Treasury Bond ETF'],['TIPS','iShares TIPS Bond ETF'],
+  ['XLU','Utilities Select Sector SPDR'],['XLRE','Real Estate Select Sector SPDR'],
+  ['XLB','Materials Select Sector SPDR'],['GDX','VanEck Gold Miners ETF'],
+  ['GDXJ','VanEck Junior Gold Miners ETF'],['USO','United States Oil ETF'],
+  ['UNG','United States Natural Gas ETF'],['ARKW','ARK Next Generation Internet ETF'],
+  ['ARKG','ARK Genomic Revolution ETF'],['ARKF','ARK Fintech Innovation ETF'],
+  ['IAU','iShares Gold Trust'],['GLDM','SPDR Gold MiniShares ETF'],
+  ['VBR','Vanguard Small-Cap Value ETF'],['VBK','Vanguard Small-Cap Growth ETF'],
+  ['VO','Vanguard Mid-Cap ETF'],['VOE','Vanguard Mid-Cap Value ETF'],
+  ['MGK','Vanguard Mega Cap Growth ETF'],['MGV','Vanguard Mega Cap Value ETF'],
 ];
 function localSearch(q){const ql=q.toLowerCase();return LOCAL_STOCKS.filter(([s,n])=>s.toLowerCase().startsWith(ql)||n.toLowerCase().startsWith(ql)||n.toLowerCase().includes(ql)).slice(0,5).map(([s,n])=>({symbol:s,description:n}));}
 function showSuggestions(items,sugg){
