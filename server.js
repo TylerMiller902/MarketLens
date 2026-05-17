@@ -459,7 +459,7 @@ async function yahooEtfHoldings(symbol){
 }
 
 // Debug ETF holdings
-app.get('/api/debug-etf/:symbol', async(req,res)=>{
+app.get('/api/debug-etf/:symbol([A-Z0-9.\\-^]+)', async(req,res)=>{
   const{symbol}=req.params;
   const result=await yahooEtfHoldings(symbol);
   res.json({symbol,holdings:result.holdings.slice(0,3),total:result.holdings.length});
@@ -496,7 +496,7 @@ app.get('/api/search', async (req,res) => {
 });
 
 // Real-time quote
-app.get('/api/quote/:symbol', async (req,res) => {
+app.get('/api/quote/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
   const { symbol } = req.params; const ck = `quote:${symbol}`; const hit = gc(ck); if(hit) return res.json(hit);
   try {
     const data = await fmp('/quote', { symbol });
@@ -527,7 +527,7 @@ app.get('/api/market-overview', async (req,res) => {
 });
 
 // ── Main stock batch endpoint ─────────────────────────────
-app.get('/api/stock/:symbol', async (req,res) => {
+app.get('/api/stock/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
   const { symbol } = req.params;
   const isETF = req.query.etf === '1';
   try {
@@ -569,7 +569,7 @@ app.get('/api/stock/:symbol', async (req,res) => {
 });
 
 // ── Peers / Competitors ───────────────────────────────────
-app.get('/api/peers/:symbol', async (req,res) => {
+app.get('/api/peers/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
   const { symbol } = req.params;
   const ck = `peers:${symbol}`; const hit = gc(ck); if(hit) return res.json(hit);
   try {
@@ -636,7 +636,7 @@ app.get('/api/peers/:symbol', async (req,res) => {
 // ══════════════════════════════════════════════════════════
 
 // Financial statements + key metrics
-app.get('/api/fmp/financials/:symbol', async (req,res) => {
+app.get('/api/fmp/financials/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
   const { symbol } = req.params; const ck = `fmp-fin:${symbol}`; const hit = gc(ck); if(hit) return res.json(hit);
   try {
     const [income, balance, cashflow, keyMetrics] = await Promise.all([
@@ -719,7 +719,7 @@ app.get('/api/fmp/financials/:symbol', async (req,res) => {
 });
 
 // Price history — full history + YTD, 1M, 3M, 6M, 1Y, 5Y, 10Y, All
-app.get('/api/fmp/prices/:symbol', async (req,res) => {
+app.get('/api/fmp/prices/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
   const { symbol } = req.params; const ck = `fmp-prices:${symbol}`; const hit = gc(ck); if(hit) return res.json(hit);
   try {
     // fetch=all by using from=1990 and a high limit — upgraded plan gives full history
@@ -750,7 +750,7 @@ app.get('/api/fmp/prices/:symbol', async (req,res) => {
 
 // Insider transactions
 // Historical dividend payments → annual yield history
-app.get('/api/fmp/dividend-history/:symbol', async (req,res) => {
+app.get('/api/fmp/dividend-history/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
   const { symbol } = req.params; const ck=`divhist:${symbol}`; const hit=gc(ck); if(hit)return res.json(hit);
   try{
     const data = await fmpSafe('/dividends', {symbol});
@@ -850,7 +850,7 @@ app.get('/api/test-intraday/:symbol', async (req,res) => {
   }catch(e){res.json({status:'❌ Fetch failed',error:e.message});}
 });
 
-app.get('/api/fmp/intraday/:symbol', async (req,res) => {
+app.get('/api/fmp/intraday/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
   const{symbol}=req.params;const ck=`intraday:${symbol}`;const hit=gc(ck);if(hit)return res.json(hit);
   try{
     const result=await yahooIntraday(symbol);
@@ -877,7 +877,7 @@ async function yahooNews(symbol, count=5){
 }
 
 // Stock news — Yahoo Finance (single ticker, no plan limits)
-app.get('/api/news/stock/:symbol', async (req,res) => {
+app.get('/api/news/stock/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
   const{symbol}=req.params;const ck=`ynews:${symbol}`;const hit=gc(ck);if(hit)return res.json(hit);
   try{
     const result=await yahooNews(symbol,5);
@@ -912,7 +912,7 @@ app.get('/api/debug-news', async (req,res) => {
   }catch(e){res.json({error:e.message});}
 });
 
-app.get('/api/fmp/insiders/:symbol', async (req,res) => {
+app.get('/api/fmp/insiders/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
   const ck='market-news';const hit=gc(ck);if(hit)return res.json(hit);
   try{
     // Fetch from several major tickers individually (avoids comma-encoding issues)
@@ -1024,7 +1024,7 @@ app.get('/api/voo-movers', async (req,res) => {
 
 // ETF holdings/info not available on FMP Starter — return empty gracefully
 // Dedicated ETF holdings endpoint — own cache, not tied to stock response cache
-app.get('/api/etf/holdings/:symbol', async (req,res) => {
+app.get('/api/etf/holdings/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
   const sym = req.params.symbol.toUpperCase();
   const ck = `etfh:${sym}`; const hit = gc(ck); if(hit) return res.json(hit);
   try{
