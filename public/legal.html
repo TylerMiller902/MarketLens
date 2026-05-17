@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width,initial-scale=1"/>
+<title>Legal — StockScope</title>
+<link rel="preconnect" href="https://fonts.googleapis.com"/>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@300;400;500&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box}
+:root{--bg:#08080f;--bg2:#0d0d17;--tx:#e8e8f0;--mu:rgba(255,255,255,.35);--b1:rgba(255,255,255,.07);--P:#7c5cfc}
+html{font-size:16px;-webkit-font-smoothing:antialiased}
+body{background:var(--bg);color:var(--tx);font-family:'DM Mono',monospace;min-height:100vh;line-height:1.7}
+
+/* Nav */
+.top-nav{display:flex;align-items:center;justify-content:space-between;padding:1.2rem 2rem;border-bottom:1px solid var(--b1);position:sticky;top:0;background:rgba(8,8,15,.92);backdrop-filter:blur(12px);z-index:10}
+.nav-logo{font-family:'DM Serif Display',serif;font-size:1.3rem;color:#fff;text-decoration:none}
+.nav-logo span{color:var(--P)}
+.nav-tabs{display:flex;gap:.5rem}
+.nav-tab{background:none;border:1px solid transparent;color:var(--mu);font-family:'DM Mono',monospace;font-size:.75rem;padding:.45rem 1rem;border-radius:100px;cursor:pointer;transition:all .15s;letter-spacing:.03em}
+.nav-tab.active{border-color:var(--P);color:#fff;background:rgba(124,92,252,.1)}
+.nav-tab:hover:not(.active){border-color:var(--b1);color:var(--tx)}
+.nav-back{font-size:.72rem;color:var(--mu);text-decoration:none;letter-spacing:.04em;transition:color .12s}
+.nav-back:hover{color:#fff}
+
+/* Layout */
+.page{display:none;max-width:720px;margin:0 auto;padding:4rem 2rem 6rem}
+.page.active{display:block}
+
+/* Typography */
+.legal-eyebrow{font-size:.65rem;letter-spacing:.18em;color:var(--P);text-transform:uppercase;margin-bottom:1rem}
+.legal-title{font-family:'DM Serif Display',serif;font-size:clamp(2rem,5vw,2.8rem);color:#fff;line-height:1.1;margin-bottom:.75rem}
+.legal-date{font-size:.72rem;color:var(--mu);margin-bottom:3rem;padding-bottom:2rem;border-bottom:1px solid var(--b1)}
+
+h2{font-family:'DM Serif Display',serif;font-size:1.3rem;color:#fff;margin:2.5rem 0 .75rem;font-weight:400}
+h3{font-size:.8rem;color:var(--tx);margin:1.5rem 0 .4rem;letter-spacing:.06em;text-transform:uppercase}
+p{font-size:.85rem;color:rgba(255,255,255,.55);margin-bottom:1rem;line-height:1.8}
+ul{font-size:.85rem;color:rgba(255,255,255,.55);margin:.5rem 0 1rem 1.2rem;line-height:1.8}
+ul li{margin-bottom:.3rem}
+a{color:var(--P);text-decoration:none}
+a:hover{text-decoration:underline}
+
+.callout{background:rgba(124,92,252,.08);border:1px solid rgba(124,92,252,.25);border-radius:10px;padding:1.2rem 1.4rem;margin:1.5rem 0}
+.callout p{color:rgba(255,255,255,.7);margin:0;font-size:.84rem}
+.callout strong{color:#fff}
+
+.section-divider{border:none;border-top:1px solid var(--b1);margin:2rem 0}
+
+/* Footer */
+.legal-footer{text-align:center;padding:2rem;border-top:1px solid var(--b1);font-size:.7rem;color:var(--mu)}
+.legal-footer a{color:var(--mu);margin:0 .5rem}
+.legal-footer a:hover{color:#fff}
+</style>
+</head>
+<body>
+
+<nav class="top-nav">
+  <a class="nav-logo" href="/">Stock<span>Scope</span></a>
+  <div class="nav-tabs">
+    <button class="nav-tab" data-page="privacy" onclick="show('privacy')">Privacy Policy</button>
+    <button class="nav-tab" data-page="terms" onclick="show('terms')">Terms of Service</button>
+  </div>
+  <a class="nav-back" href="/">&larr; Back to app</a>
+</nav>
+
+<!-- ── Privacy Policy ─────────────────────────────────────────────── -->
+<div class="page" id="page-privacy">
+  <div style="padding:4rem 2rem 6rem;max-width:720px;margin:0 auto">
+    <div class="legal-eyebrow">Legal</div>
+    <h1 class="legal-title">Privacy Policy</h1>
+    <div class="legal-date">Effective date: May 2026 &nbsp;·&nbsp; Last updated: May 2026</div>
+
+    <div class="callout">
+      <p><strong>The short version:</strong> We collect your Google account info (name, email, profile picture) when you sign in, and we store your portfolio data in our database. We don't sell your data. Ever.</p>
+    </div>
+
+    <h2>1. Information We Collect</h2>
+    <h3>Account Information</h3>
+    <p>When you sign in with Google, we receive from Google:</p>
+    <ul>
+      <li>Your full name</li>
+      <li>Your email address</li>
+      <li>Your Google profile picture URL</li>
+      <li>A unique Google account identifier</li>
+    </ul>
+    <p>We do not receive or store your Google password.</p>
+
+    <h3>Portfolio Data</h3>
+    <p>If you add positions to your portfolio, we store:</p>
+    <ul>
+      <li>Stock ticker symbols and company names</li>
+      <li>Number of shares held</li>
+      <li>Cost basis per share</li>
+      <li>Date positions were added</li>
+    </ul>
+
+    <h3>Usage Data</h3>
+    <p>We do not currently collect analytics, page views, or behavioral tracking data. We may log server errors for debugging purposes.</p>
+
+    <h3>Cookies and Sessions</h3>
+    <p>We use a single session cookie to keep you logged in. This cookie contains a session identifier (not your personal data) and expires after 30 days. You can delete it at any time by signing out or clearing your browser cookies.</p>
+
+    <hr class="section-divider"/>
+
+    <h2>2. How We Use Your Information</h2>
+    <p>We use the information we collect to:</p>
+    <ul>
+      <li>Authenticate you and maintain your logged-in session</li>
+      <li>Display your name and profile picture within the app</li>
+      <li>Store and sync your portfolio across devices</li>
+      <li>Improve the stability and performance of the service</li>
+    </ul>
+    <p>We do not use your information for advertising, profiling, or any purpose beyond operating the service.</p>
+
+    <hr class="section-divider"/>
+
+    <h2>3. Data Storage and Security</h2>
+    <p>Your data is stored in a PostgreSQL database hosted on <a href="https://railway.app" target="_blank">Railway</a>, a cloud platform based in the United States. Data is transmitted over HTTPS and stored with encryption at rest.</p>
+    <p>While we take reasonable steps to protect your data, no method of transmission or storage is 100% secure. We cannot guarantee absolute security.</p>
+
+    <hr class="section-divider"/>
+
+    <h2>4. Third-Party Services</h2>
+    <p>StockScope uses the following third-party services to provide market data:</p>
+    <ul>
+      <li><strong>Financial Modeling Prep (FMP)</strong> — stock quotes, financials, and company data. <a href="https://financialmodelingprep.com/privacy" target="_blank">Privacy Policy</a></li>
+      <li><strong>Yahoo Finance</strong> — intraday price data and news. <a href="https://legal.yahoo.com/us/en/yahoo/privacy/index.html" target="_blank">Privacy Policy</a></li>
+      <li><strong>Google OAuth</strong> — authentication. <a href="https://policies.google.com/privacy" target="_blank">Privacy Policy</a></li>
+    </ul>
+    <p>We do not share your personal information with these services. They provide market data that we display in the app.</p>
+
+    <hr class="section-divider"/>
+
+    <h2>5. Data Retention and Deletion</h2>
+    <p>We retain your account and portfolio data for as long as your account is active. You can request deletion of your account and all associated data at any time by emailing us at the address below. We will delete your data within 30 days of a verified request.</p>
+
+    <hr class="section-divider"/>
+
+    <h2>6. Children's Privacy</h2>
+    <p>StockScope is not directed at children under 13. We do not knowingly collect personal information from children under 13. If you believe we have collected information from a child under 13, please contact us and we will delete it promptly.</p>
+
+    <hr class="section-divider"/>
+
+    <h2>7. Changes to This Policy</h2>
+    <p>We may update this Privacy Policy from time to time. We will notify you of significant changes by updating the date at the top of this page. Continued use of the service after changes constitutes acceptance of the updated policy.</p>
+
+    <hr class="section-divider"/>
+
+    <h2>8. Contact</h2>
+    <p>If you have questions about this Privacy Policy or want to request data deletion, contact us at:</p>
+    <p><strong style="color:#fff">privacy@stockscope.app</strong></p>
+  </div>
+</div>
+
+<!-- ── Terms of Service ───────────────────────────────────────────── -->
+<div class="page" id="page-terms">
+  <div style="padding:4rem 2rem 6rem;max-width:720px;margin:0 auto">
+    <div class="legal-eyebrow">Legal</div>
+    <h1 class="legal-title">Terms of Service</h1>
+    <div class="legal-date">Effective date: May 2026 &nbsp;·&nbsp; Last updated: May 2026</div>
+
+    <div class="callout">
+      <p><strong>Important:</strong> StockScope provides financial data for <strong>informational purposes only</strong>. Nothing on this platform constitutes financial advice, investment advice, or a recommendation to buy or sell any security. Always consult a qualified financial advisor before making investment decisions.</p>
+    </div>
+
+    <h2>1. Acceptance of Terms</h2>
+    <p>By accessing or using StockScope ("the Service"), you agree to be bound by these Terms of Service. If you do not agree to these terms, do not use the Service.</p>
+
+    <hr class="section-divider"/>
+
+    <h2>2. Not Financial Advice</h2>
+    <p>All data, charts, portfolio calculations, dividend estimates, analyst ratings, and other information displayed on StockScope are provided for informational and educational purposes only.</p>
+    <ul>
+      <li>StockScope is not a registered investment advisor, broker-dealer, or financial planner</li>
+      <li>Nothing on StockScope constitutes investment advice or a recommendation to buy or sell any security</li>
+      <li>Market data may be delayed and is not guaranteed to be accurate or complete</li>
+      <li>Dividend estimates and portfolio projections are approximations, not guarantees</li>
+      <li>Past performance does not indicate future results</li>
+    </ul>
+    <p>You are solely responsible for your own investment decisions. We strongly recommend consulting a qualified financial advisor before making any investment.</p>
+
+    <hr class="section-divider"/>
+
+    <h2>3. Data Accuracy</h2>
+    <p>Stock prices, financial data, news, and other market information displayed on StockScope is sourced from third-party providers including Financial Modeling Prep and Yahoo Finance. We make no representations or warranties regarding the accuracy, completeness, or timeliness of this data. Do not make financial decisions based solely on data from this service.</p>
+
+    <hr class="section-divider"/>
+
+    <h2>4. User Accounts</h2>
+    <p>When you create an account, you are responsible for:</p>
+    <ul>
+      <li>Maintaining the security of your Google account credentials</li>
+      <li>All activity that occurs under your account</li>
+      <li>Providing accurate information</li>
+    </ul>
+    <p>We reserve the right to suspend or terminate accounts that violate these terms.</p>
+
+    <hr class="section-divider"/>
+
+    <h2>5. Prohibited Uses</h2>
+    <p>You agree not to:</p>
+    <ul>
+      <li>Use the Service for any unlawful purpose</li>
+      <li>Attempt to scrape, crawl, or systematically extract data from the Service</li>
+      <li>Reverse engineer, decompile, or attempt to extract the source code</li>
+      <li>Use automated tools to make excessive requests to our servers</li>
+      <li>Attempt to gain unauthorized access to any part of the Service</li>
+      <li>Interfere with or disrupt the integrity or performance of the Service</li>
+    </ul>
+
+    <hr class="section-divider"/>
+
+    <h2>6. Intellectual Property</h2>
+    <p>The StockScope name, logo, and interface design are our intellectual property. Market data displayed in the app is owned by the respective data providers (Financial Modeling Prep, Yahoo Finance, etc.) and is subject to their terms of use.</p>
+
+    <hr class="section-divider"/>
+
+    <h2>7. Limitation of Liability</h2>
+    <p>To the maximum extent permitted by law, StockScope and its operators shall not be liable for any indirect, incidental, special, consequential, or punitive damages, including but not limited to:</p>
+    <ul>
+      <li>Financial losses from investment decisions made using this service</li>
+      <li>Loss of data</li>
+      <li>Service interruptions or downtime</li>
+      <li>Inaccurate or delayed market data</li>
+    </ul>
+    <p>Our total liability to you for any claims arising from use of the Service shall not exceed the amount you paid us in the 12 months preceding the claim (which may be zero for free-tier users).</p>
+
+    <hr class="section-divider"/>
+
+    <h2>8. Service Availability</h2>
+    <p>We do not guarantee that the Service will be available at all times. We may modify, suspend, or discontinue the Service at any time without notice. We are not liable for any loss resulting from unavailability of the Service.</p>
+
+    <hr class="section-divider"/>
+
+    <h2>9. Termination</h2>
+    <p>You may stop using the Service at any time. We may suspend or terminate your access at our discretion if you violate these terms. Upon termination, your right to use the Service ceases immediately.</p>
+
+    <hr class="section-divider"/>
+
+    <h2>10. Governing Law</h2>
+    <p>These Terms shall be governed by the laws of the United States. Any disputes shall be resolved in the appropriate courts of jurisdiction.</p>
+
+    <hr class="section-divider"/>
+
+    <h2>11. Changes to These Terms</h2>
+    <p>We may update these Terms from time to time. We will indicate the date of the most recent update at the top of this page. Continued use of the Service after changes are posted constitutes acceptance of the revised Terms.</p>
+
+    <hr class="section-divider"/>
+
+    <h2>12. Contact</h2>
+    <p>For questions about these Terms, contact us at:</p>
+    <p><strong style="color:#fff">legal@stockscope.app</strong></p>
+  </div>
+</div>
+
+<footer class="legal-footer">
+  <div>&copy; 2026 StockScope &nbsp;·&nbsp; <a href="/privacy">Privacy Policy</a> <a href="/terms">Terms of Service</a> &nbsp;·&nbsp; Not financial advice.</div>
+</footer>
+
+<script>
+function show(page){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-tab').forEach(t=>t.classList.remove('active'));
+  document.getElementById('page-'+page)?.classList.add('active');
+  document.querySelector('[data-page="'+page+'"]')?.classList.add('active');
+  document.title=(page==='privacy'?'Privacy Policy':'Terms of Service')+' — StockScope';
+  history.replaceState(null,'','/'+page);
+}
+// Route based on URL path
+const path=window.location.pathname.replace('/','');
+show(path==='terms'?'terms':'privacy');
+</script>
+</body>
+</html>
