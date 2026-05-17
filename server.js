@@ -11,6 +11,7 @@ const passport = require('passport');
 const { Strategy: GoogleStrategy } = require('passport-google-oauth20');
 const { Pool }  = require('pg');
 const pgSession = require('connect-pg-simple')(session);
+const rateLimit = require('express-rate-limit');
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -129,6 +130,22 @@ app.use(cors({ origin: true, credentials: true })); // allow all origins with cr
 app.use(express.json());
 app.use(express.static(path.join(__dirname, 'public')));
 
+// ── Rate limiting ─────────────────────────────────────────────────────────────
+const apiLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000, // 15 minutes
+  max: 200,                  // requests per window per IP
+  standardHeaders: true,
+  legacyHeaders: false,
+  message: { error: 'Too many requests, please try again later.' },
+});
+const authLimiter = rateLimit({
+  windowMs: 15 * 60 * 1000,
+  max: 20,                   // strict limit on auth routes
+  message: { error: 'Too many login attempts, please try again later.' },
+});
+app.use('/api/', apiLimiter);
+app.use('/auth/', authLimiter);
+
 // ── Session ───────────────────────────────────────────────────────────────────
 const sessionConfig = {
   secret: SESSION_SECRET,
@@ -158,7 +175,6 @@ app.get('/auth/google/callback',
     // passport.authenticate as middleware calls req.logIn automatically
     req.session.save(err => {
       if(err){ console.error('[callback] session save error:', err); return res.redirect('/?auth=fail'); }
-      console.log('[callback] session saved, user:', req.user?.id, req.isAuthenticated());
       res.redirect('/?auth=success');
     });
   }
@@ -178,7 +194,6 @@ app.post('/auth/logout', (req, res) => {
   req.logout(err => { if(err) return res.status(500).json({error:'logout failed'}); res.json({ok:true}); });
 });
 app.get('/api/auth/me', (req, res) => {
-  console.log('[auth/me] sessionID:', req.sessionID?.slice(0,8), 'user:', req.user?.id || null, 'isAuthenticated:', req.isAuthenticated?.());
   if(!req.user) return res.json(null);
   const { id, google_id, email, name, avatar } = req.user;
   res.json({ id, googleId: google_id, email, name, avatar });
@@ -428,18 +443,17 @@ async function yahooEtfHoldings(symbol){
     try{
       const url=`https://${host}.finance.yahoo.com/v11/finance/quoteSummary/${encodeURIComponent(symbol)}?modules=topHoldings&corsDomain=finance.yahoo.com`;
       const r=await fetch(url,{headers:hdrs});
-      if(!r.ok){console.log(`[yahooETF] ${host} status ${r.status}`);continue;}
+      if(!r.ok) continue;
       const data=await r.json();
       const top=data?.quoteSummary?.result?.[0]?.topHoldings;
-      if(!top||!top.holdings?.length){console.log(`[yahooETF] ${host} no holdings`);continue;}
+      if(!top||!top.holdings?.length) continue;
       const holdings=top.holdings.map(h=>({
         symbol:h.symbol||'',
         name:h.holdingName||h.symbol||'',
         percent:+(((h.holdingPercent?.raw??0)*100).toFixed(2)),
       }));
-      console.log(`[yahooETF] ${symbol} got ${holdings.length} holdings from ${host}`);
       return{holdings};
-    }catch(e){console.log(`[yahooETF] ${host} error:`,e.message);}
+    }catch(e){}
   }
   return{holdings:[]};
 }
@@ -773,9 +787,9 @@ async function yahooIntraday(symbol) {
   const yFetch=async url=>{
     try{
       const r=await fetch(url,{headers:hdrs});
-      if(!r.ok){console.log(`[yahoo] ${url} → HTTP ${r.status}`);return null;}
+      if(!r.ok) return null;
       return await r.json();
-    }catch(e){console.log(`[yahoo] fetch error: ${e.message}`);return null;}
+    }catch(e){return null;}
   };
   // Try query1, fall back to query2 if needed
   const yGet=async path=>{
@@ -840,7 +854,6 @@ app.get('/api/fmp/intraday/:symbol', async (req,res) => {
   const{symbol}=req.params;const ck=`intraday:${symbol}`;const hit=gc(ck);if(hit)return res.json(hit);
   try{
     const result=await yahooIntraday(symbol);
-    console.log(`[intraday] ${symbol} 1D=${result['1D'].prices.length}pts 1M=${result['1M'].prices.length}pts`);
     sc(ck,result,3*60_000);
     res.json(result);
   }catch(e){res.status(500).json({error:e.message});}
@@ -860,7 +873,7 @@ async function yahooNews(symbol, count=5){
       url:n.link||'',
       datetime:n.providerPublishTime||0,
     }));
-  }catch(e){console.log(`[yahooNews] ${symbol}:`,e.message);return[];}
+  }catch(e){return[];}
 }
 
 // Stock news — Yahoo Finance (single ticker, no plan limits)
@@ -1049,3 +1062,5 @@ if (require.main === module) {
 } else {
   app.get('*', (req,res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 }
+
+module.exports = app;
