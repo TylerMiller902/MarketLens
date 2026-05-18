@@ -1060,6 +1060,21 @@ app.get('/api/etf-info/:symbol',             (req,res) => res.json({}));
 app.get('/api/etf-sectors/:symbol',          (req,res) => res.json([]));
 
 
+app.get('/api/debug-cashflow/:symbol', async (req,res) => {
+  const { symbol } = req.params;
+  try {
+    const cf = await fmp('/cash-flow-statement', { symbol, period: 'annual', limit: 2 });
+    const row = arr(cf)[0] || {};
+    // Return all fields so we can see exactly what FMP sends
+    res.json({
+      symbol,
+      allFields: Object.keys(row),
+      dividendRelated: Object.entries(row).filter(([k]) => k.toLowerCase().includes('div') || k.toLowerCase().includes('payment') || k.toLowerCase().includes('sharehold')),
+      raw: row
+    });
+  } catch(e) { res.status(500).json({ error: e.message }); }
+});
+
 app.get('/api/admin/clear-cache', (req, res) => {
   const size = cache.size;
   cache.clear();
