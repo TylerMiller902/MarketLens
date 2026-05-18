@@ -38,7 +38,9 @@ button,input{font-family:var(--fb)}
 .fs-info-item{display:flex;flex-direction:column;gap:2px}
 .fs-info-lbl{font-size:10px;color:var(--di);font-family:var(--fm);text-transform:uppercase;letter-spacing:.08em}
 .fs-info-val{font-size:13px;font-family:var(--fm)}
-#nav{background:var(--bg2);border-bottom:1px solid var(--b2);padding:8px 14px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;position:sticky;top:0;z-index:100}
+#nav{background:var(--bg2);border-bottom:1px solid var(--b2);padding:8px 14px;display:flex;flex-direction:row;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
+.nav-top-row{display:contents}
+@media(max-width:600px){#nav{flex-direction:column;gap:5px}.nav-top-row{display:flex;align-items:center;gap:10px;width:100%;justify-content:center}.menu-wrap{top:calc(72px + .8rem)}.top-right-col{top:calc(72px + .8rem)}}
 .brand{font-family:var(--fd);font-size:13px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--P2)}
 .brand-market{color:#fff}
 .nav-dot{width:6px;height:6px;border-radius:50%;background:var(--G);animation:pulse 2s ease-in-out infinite}
@@ -59,14 +61,14 @@ button,input{font-family:var(--fb)}
   .home-sub{font-size:.85rem;margin-bottom:1.5rem}
   #home{padding:5rem 1.5rem 2rem}
 }
-.top-right-col{position:fixed;top:1.2rem;right:1.2rem;z-index:20;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+.top-right-col{position:fixed;top:calc(44px + .8rem);right:1.2rem;z-index:20;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
 .movers-wrap{text-align:right}
 .movers-bubble{background:var(--bg3);border:1px solid var(--b2);color:var(--tx);padding:8px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-family:var(--fm);display:flex;align-items:center;gap:6px;transition:border-color .15s,background .15s;white-space:nowrap;}
 .movers-bubble:hover{border-color:var(--P);background:var(--Pbg)}
 .movers-bubble .dot{width:6px;height:6px;border-radius:50%;background:var(--G);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
 .movers-panel{margin-top:8px;background:var(--bg2);border:1px solid var(--b2);border-radius:14px;overflow:hidden;width:300px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
 .movers-header{display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--b1);font-size:11px;font-family:var(--fm);color:var(--di)}
-.menu-wrap{position:fixed;top:1.2rem;left:1.2rem;z-index:20;text-align:left}
+.menu-wrap{position:fixed;top:calc(44px + .8rem);left:1.2rem;z-index:20;text-align:left}
 .menu-bubble{background:var(--bg3);border:1px solid var(--b2);color:var(--tx);padding:8px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-family:var(--fm);display:flex;align-items:center;gap:6px;transition:border-color .15s,background .15s;white-space:nowrap;}
 .menu-bubble:hover{border-color:var(--P);background:var(--Pbg)}
 .menu-panel{margin-top:8px;background:var(--bg2);border:1px solid var(--b2);border-radius:14px;overflow:hidden;min-width:160px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
@@ -548,8 +550,10 @@ button,input{font-family:var(--fb)}
 </div>
 
 <div id="nav">
-  <span class="brand"><span class="brand-market">Stock</span>Scope</span>
-  <div class="nav-live"><span class="nav-dot"></span><span id="live-label">Connecting&hellip;</span></div>
+  <div class="nav-top-row">
+    <span class="brand"><span class="brand-market">Stock</span>Scope</span>
+    <div class="nav-live"><span class="nav-dot"></span><span id="live-label">Connecting&hellip;</span></div>
+  </div>
   <div class="nav-pills" id="nav-pills"></div>
 </div>
 
