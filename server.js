@@ -1061,18 +1061,25 @@ app.get('/api/etf-info/:symbol',             (req,res) => res.json({}));
 app.get('/api/etf-sectors/:symbol',          (req,res) => res.json([]));
 
 
+// Debug screener
+app.get('/api/debug-screener', async (req,res) => {
+  try{
+    const data=await fmpV3fn('/stock-screener',{marketCapMoreThan:500000000000,limit:5});
+    res.json({count:arr(data).length,sample:arr(data).slice(0,3),firstKeys:arr(data)[0]?Object.keys(arr(data)[0]):[]});
+  }catch(e){res.status(500).json({error:e.message,stack:e.stack});}
+});
+
 // Market Cap Rank — top 100 stocks
 app.get('/api/market-cap-rank', async (req,res) => {
   const ck='mkt-cap-rank'; const hit=gc(ck); if(hit)return res.json(hit);
   try{
     const data=await fmpV3fn('/stock-screener',{
       marketCapMoreThan:1000000000,
-      exchange:'NYSE,NASDAQ',
-      isActivelyTrading:true,
       limit:100,
       sort:'marketCap',
       order:'desc'
     });
+    if(!arr(data).length) return res.status(500).json({error:'No data returned from screener'});
     const result=arr(data).map((s,i)=>({
       rank:i+1,
       symbol:s.symbol,
