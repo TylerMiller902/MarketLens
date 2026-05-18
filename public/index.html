@@ -38,13 +38,13 @@ button,input{font-family:var(--fb)}
 .fs-info-item{display:flex;flex-direction:column;gap:2px}
 .fs-info-lbl{font-size:10px;color:var(--di);font-family:var(--fm);text-transform:uppercase;letter-spacing:.08em}
 .fs-info-val{font-size:13px;font-family:var(--fm)}
-#nav{background:var(--bg2);border-bottom:1px solid var(--b2);padding:8px 14px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;position:sticky;top:0;z-index:100}
+#nav{background:var(--bg2);border-bottom:1px solid var(--b2);padding:8px 14px;display:grid;grid-template-columns:auto 1fr auto;align-items:center;gap:8px;position:sticky;top:0;z-index:100}
 .brand{font-family:var(--fd);font-size:13px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--P2)}
 .brand-market{color:#fff}
 .nav-dot{width:6px;height:6px;border-radius:50%;background:var(--G);animation:pulse 2s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .nav-live{font-size:11px;font-family:var(--fm);color:var(--G);display:flex;align-items:center;gap:5px}
-.nav-pills{display:flex;gap:6px;margin-left:auto;flex-wrap:wrap}
+.nav-pills{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
 .mpill{font-size:11px;font-family:var(--fm);color:var(--mu)}
 .mpill.up{color:var(--G)}.mpill.dn{color:var(--R)}
 #home{min-height:calc(100vh - 42px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem 2rem;text-align:center;position:relative;}
@@ -54,14 +54,19 @@ button,input{font-family:var(--fb)}
 .headline{font-family:var(--fd);font-size:clamp(3rem,8vw,5.5rem);font-weight:800;line-height:1;letter-spacing:-.04em;margin-bottom:1rem;}
 .headline em{color:var(--P2);font-style:normal;display:block}
 .home-sub{color:var(--mu);font-size:1rem;margin-bottom:2.5rem;font-weight:300;letter-spacing:.02em}
-.top-right-col{position:absolute;top:1.2rem;right:1.2rem;z-index:10;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
+@media(max-width:600px){
+  .headline{font-size:clamp(2rem,6vw,3rem);margin-bottom:.6rem}
+  .home-sub{font-size:.85rem;margin-bottom:1.5rem}
+  #home{padding:5rem 1.5rem 2rem}
+}
+.top-right-col{position:fixed;top:1.2rem;right:1.2rem;z-index:20;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
 .movers-wrap{text-align:right}
 .movers-bubble{background:var(--bg3);border:1px solid var(--b2);color:var(--tx);padding:8px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-family:var(--fm);display:flex;align-items:center;gap:6px;transition:border-color .15s,background .15s;white-space:nowrap;}
 .movers-bubble:hover{border-color:var(--P);background:var(--Pbg)}
 .movers-bubble .dot{width:6px;height:6px;border-radius:50%;background:var(--G);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
 .movers-panel{margin-top:8px;background:var(--bg2);border:1px solid var(--b2);border-radius:14px;overflow:hidden;width:300px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
 .movers-header{display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--b1);font-size:11px;font-family:var(--fm);color:var(--di)}
-.menu-wrap{position:absolute;top:1.2rem;left:1.2rem;z-index:10;text-align:left}
+.menu-wrap{position:fixed;top:1.2rem;left:1.2rem;z-index:20;text-align:left}
 .menu-bubble{background:var(--bg3);border:1px solid var(--b2);color:var(--tx);padding:8px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-family:var(--fm);display:flex;align-items:center;gap:6px;transition:border-color .15s,background .15s;white-space:nowrap;}
 .menu-bubble:hover{border-color:var(--P);background:var(--Pbg)}
 .menu-panel{margin-top:8px;background:var(--bg2);border:1px solid var(--b2);border-radius:14px;overflow:hidden;min-width:160px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
@@ -343,9 +348,8 @@ button,input{font-family:var(--fb)}
 /* ── Portfolio Page ──────────────────────────────────────── */
 #pfpage,#divpage,#newspage{position:fixed;top:44px;bottom:0;left:0;right:0;background:var(--bg);z-index:50;display:flex;flex-direction:column;overflow:hidden}
 #pfpage.gone,#divpage.gone,#newspage.gone{display:none}
-.pf-topbar{display:grid;grid-template-columns:1fr auto 1fr;align-items:center;gap:.5rem;padding:.7rem 1rem;border-bottom:1px solid var(--b1);background:var(--bg);flex-shrink:0}
-.pf-topbar>:first-child{justify-self:start}
-.pf-topbar>:last-child{display:flex;justify-content:flex-end}
+.pf-topbar{display:flex;flex-direction:column;align-items:center;gap:.45rem;padding:.6rem 1rem;border-bottom:1px solid var(--b1);background:var(--bg);flex-shrink:0}
+.pf-topbar-btns{display:flex;align-items:center;gap:6px;justify-content:center;flex-wrap:wrap}
 .page-nav-pills{display:flex;flex-direction:column;gap:3px;flex-shrink:0}
 .page-nav-pill{background:var(--bg3);border:1px solid var(--b2);color:var(--mu);padding:3px 10px;border-radius:6px;cursor:pointer;font-size:10px;font-family:var(--fm);font-weight:600;text-align:left;transition:border-color .12s,color .12s;white-space:nowrap;width:100%}
 .page-nav-pill:hover{border-color:var(--P);color:var(--P)}
@@ -678,13 +682,12 @@ button,input{font-family:var(--fb)}
 <!-- ══ Portfolio Page ══════════════════════════════════════ -->
 <div id="pfpage" class="gone">
   <div class="pf-topbar">
-    <div style="display:flex;align-items:center;gap:6px;justify-self:start">
+    <div class="pf-page-ttl">Portfolio</div>
+    <div class="pf-topbar-btns">
       <button class="backbtn-sm" onclick="closePortfolioPage()">&#8592; Back</button>
       <button class="backbtn-sm" onclick="openPage('dividends')">Dividends</button>
       <button class="backbtn-sm" onclick="openPage('news')">News</button>
     </div>
-    <div class="pf-page-ttl">Portfolio</div>
-    <div></div>
   </div>
   <div id="pf-scroll">
     <div class="pf-chart-card" id="pf-chart-card" style="display:none">
@@ -749,13 +752,12 @@ button,input{font-family:var(--fb)}
 <!-- ══ Dividends Page ═══════════════════════════════════════ -->
 <div id="divpage" class="gone">
   <div class="pf-topbar">
-    <div style="display:flex;align-items:center;gap:6px;justify-self:start">
+    <div class="pf-page-ttl" style="font-size:1.5rem">Dividends</div>
+    <div class="pf-topbar-btns">
       <button class="backbtn-sm" onclick="closeDividendPage()">&#8592; Back</button>
       <button class="backbtn-sm" onclick="openPage('portfolio')">Portfolio</button>
       <button class="backbtn-sm" onclick="openPage('news')">News</button>
     </div>
-    <div class="pf-page-ttl" style="font-size:1.5rem;font-weight:700">Dividends</div>
-    <div></div>
   </div>
   <div id="div-scroll" style="flex:1;overflow-y:auto;padding:.8rem 1.4rem">
     <!-- Stats bar -->
@@ -784,13 +786,12 @@ button,input{font-family:var(--fb)}
 <!-- ══ News Page ════════════════════════════════════════════ -->
 <div id="newspage" class="gone">
   <div class="pf-topbar">
-    <div style="display:flex;align-items:center;gap:6px;justify-self:start">
+    <div class="pf-page-ttl">News</div>
+    <div class="pf-topbar-btns">
       <button class="backbtn-sm" onclick="closeNewsPage()">&#8592; Back</button>
       <button class="backbtn-sm" onclick="openPage('portfolio')">Portfolio</button>
       <button class="backbtn-sm" onclick="openPage('dividends')">Dividends</button>
     </div>
-    <div class="pf-page-ttl">News</div>
-    <div></div>
   </div>
   <div id="news-scroll" style="flex:1;overflow-y:auto;padding:.8rem 1rem">
     <div class="pf-pos-box" id="news-pos-box">
