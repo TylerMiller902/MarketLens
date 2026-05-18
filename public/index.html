@@ -39,7 +39,6 @@ button,input{font-family:var(--fb)}
 .fs-info-lbl{font-size:10px;color:var(--di);font-family:var(--fm);text-transform:uppercase;letter-spacing:.08em}
 .fs-info-val{font-size:13px;font-family:var(--fm)}
 #nav{background:var(--bg2);border-bottom:1px solid var(--b2);padding:8px 14px;display:flex;flex-direction:row;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
-.nav-top-row{display:contents}
 .brand{font-family:var(--fd);font-size:13px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--P2)}
 .brand-market{color:#fff}
 .nav-dot{width:6px;height:6px;border-radius:50%;background:var(--G);animation:pulse 2s ease-in-out infinite}
@@ -548,10 +547,9 @@ button,input{font-family:var(--fb)}
 
 /* ── Mobile (≤600px) ─────────────────────────────────────── */
 @media(max-width:600px){
-  /* Nav: fixed, two-row */
-  #nav{position:fixed!important;width:100%;flex-direction:column;gap:4px;padding:7px 12px}
-  .nav-top-row{display:flex;align-items:center;gap:8px;width:100%;justify-content:center}
-  .nav-pills{margin-left:0!important;justify-content:center;width:100%}
+  /* Nav: fixed, two-row via flex-wrap */
+  #nav{position:fixed!important;width:100%;flex-wrap:wrap;gap:4px;padding:7px 12px}
+  .nav-pills{width:100%;margin-left:0!important;justify-content:center;order:1}
 
   /* Home buttons: below fixed two-row nav */
   .menu-wrap{top:78px!important;left:1rem!important}
@@ -560,7 +558,7 @@ button,input{font-family:var(--fb)}
   /* Home content: push below nav + buttons */
   #home{justify-content:flex-start;padding-top:195px;padding-left:1rem;padding-right:1rem}
 
-  /* Headline slightly larger than before on mobile */
+  /* Headline slightly larger on mobile */
   .headline{font-size:clamp(2.2rem,7vw,3rem);margin-bottom:.6rem}
   .home-sub{font-size:.9rem;margin-bottom:1.4rem}
 
@@ -604,10 +602,8 @@ button,input{font-family:var(--fb)}
 </div>
 
 <div id="nav">
-  <div class="nav-top-row">
-    <span class="brand"><span class="brand-market">Stock</span>Scope</span>
-    <div class="nav-live"><span class="nav-dot"></span><span id="live-label">Connecting&hellip;</span></div>
-  </div>
+  <span class="brand"><span class="brand-market">Stock</span>Scope</span>
+  <div class="nav-live"><span class="nav-dot"></span><span id="live-label">Connecting&hellip;</span></div>
   <div class="nav-pills" id="nav-pills"></div>
 </div>
 
