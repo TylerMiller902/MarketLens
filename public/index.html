@@ -40,13 +40,13 @@ button,input{font-family:var(--fb)}
 .fs-info-val{font-size:13px;font-family:var(--fm)}
 #nav{background:var(--bg2);border-bottom:1px solid var(--b2);padding:8px 14px;display:flex;flex-direction:row;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
 .nav-top-row{display:contents}
-@media(max-width:600px){#nav{flex-direction:column;gap:5px}.nav-top-row{display:flex;align-items:center;gap:10px;width:100%;justify-content:center}.menu-wrap{top:calc(72px + .8rem)}.top-right-col{top:calc(72px + .8rem)}}
+@media(max-width:600px){#nav{flex-direction:column;gap:5px;position:fixed;width:100%;top:0}.nav-pills{margin-left:0}.nav-top-row{display:flex;align-items:center;gap:10px;width:100%;justify-content:center}#home{padding-top:calc(72px + 4rem)}.menu-wrap{top:calc(72px + .8rem)}.top-right-col{top:calc(72px + .8rem)}.chips .chip:nth-child(n+8){display:none}#pfpage,#divpage,#newspage{top:72px}}
 .brand{font-family:var(--fd);font-size:13px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--P2)}
 .brand-market{color:#fff}
 .nav-dot{width:6px;height:6px;border-radius:50%;background:var(--G);animation:pulse 2s ease-in-out infinite}
 @keyframes pulse{0%,100%{opacity:1}50%{opacity:.3}}
 .nav-live{font-size:11px;font-family:var(--fm);color:var(--G);display:flex;align-items:center;gap:5px}
-.nav-pills{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;}
+.nav-pills{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-left:auto}
 .mpill{font-size:11px;font-family:var(--fm);color:var(--mu)}
 .mpill.up{color:var(--G)}.mpill.dn{color:var(--R)}
 #home{min-height:calc(100vh - 42px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem 2rem;text-align:center;position:relative;}
@@ -59,7 +59,6 @@ button,input{font-family:var(--fb)}
 @media(max-width:600px){
   .headline{font-size:clamp(2rem,6vw,3rem);margin-bottom:.6rem}
   .home-sub{font-size:.85rem;margin-bottom:1.5rem}
-  #home{padding:5rem 1.5rem 2rem}
 }
 .top-right-col{position:fixed;top:calc(44px + .8rem);right:1.2rem;z-index:20;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
 .movers-wrap{text-align:right}
