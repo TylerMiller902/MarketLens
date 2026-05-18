@@ -709,7 +709,7 @@ app.get('/api/fmp/financials/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
         { l:'Operating CF',   vals: cashflow.slice(0,4).reverse().map(c => `$${((c.operatingCashFlow||0)/1e9).toFixed(2)}B`) },
         { l:'Free Cash Flow', vals: cashflow.slice(0,4).reverse().map(c => `$${((c.freeCashFlow||0)/1e9).toFixed(2)}B`) },
         { l:'CapEx',          vals: cashflow.slice(0,4).reverse().map(c => `$${((c.capitalExpenditure||0)/1e9).toFixed(2)}B`) },
-        { l:'Dividends Paid', vals: cashflow.slice(0,4).reverse().map(c => `$${(Math.abs(c.dividendsPaid||0)/1e9).toFixed(2)}B`) },
+        { l:'Dividends Paid', vals: cashflow.slice(0,4).reverse().map(c => { const v=Math.abs(c.dividendsPaid||c.commonStockDividendsPaid||c.paymentOfDividends||0); return v>0?`$${(v/1e9).toFixed(2)}B`:'—'; }) },
       ],
     };
 
