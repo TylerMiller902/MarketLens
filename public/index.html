@@ -40,7 +40,7 @@ button,input{font-family:var(--fb)}
 .fs-info-val{font-size:13px;font-family:var(--fm)}
 #nav{background:var(--bg2);border-bottom:1px solid var(--b2);padding:8px 14px;display:flex;flex-direction:row;align-items:center;gap:10px;position:sticky;top:0;z-index:100}
 .nav-top-row{display:contents}
-@media(max-width:600px){#nav{flex-direction:column;gap:5px;position:fixed;width:100%;top:0}.nav-pills{margin-left:0}.nav-top-row{display:flex;align-items:center;gap:10px;width:100%;justify-content:center}#home{padding-top:calc(72px + 4rem)}.menu-wrap{top:calc(72px + .8rem)}.top-right-col{top:calc(72px + .8rem)}.chips .chip:nth-child(n+8){display:none}#pfpage,#divpage,#newspage{top:72px}}
+.nav-pills{margin-left:0}.nav-top-row{display:flex;align-items:center;gap:10px;width:100%;justify-content:center}#home{padding-top:calc(72px + 4rem)}.menu-wrap{top:calc(72px + .8rem)}.top-right-col{top:calc(72px + .8rem)}.chips .chip:nth-child(n+8){display:none}#pfpage,#divpage,#newspage{top:72px}}
 .brand{font-family:var(--fd);font-size:13px;font-weight:800;letter-spacing:.15em;text-transform:uppercase;color:var(--P2)}
 .brand-market{color:#fff}
 .nav-dot{width:6px;height:6px;border-radius:50%;background:var(--G);animation:pulse 2s ease-in-out infinite}
@@ -49,15 +49,14 @@ button,input{font-family:var(--fb)}
 .nav-pills{display:flex;gap:6px;flex-wrap:wrap;justify-content:center;margin-left:auto}
 .mpill{font-size:11px;font-family:var(--fm);color:var(--mu)}
 .mpill.up{color:var(--G)}.mpill.dn{color:var(--R)}
-#home{min-height:calc(100vh - 42px);display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem 2rem;text-align:center;position:relative;}
+#home{min-height:100vh;display:flex;flex-direction:column;align-items:center;justify-content:center;padding:3rem 2rem;text-align:center;position:relative;}
 #home::before{content:'';position:absolute;inset:0;background:radial-gradient(ellipse 70% 60% at 50% 45%,rgba(124,106,247,.15) 0%,transparent 65%),radial-gradient(ellipse 40% 30% at 80% 20%,rgba(34,197,94,.05) 0%,transparent 60%),radial-gradient(ellipse 40% 30% at 20% 80%,rgba(59,130,246,.05) 0%,transparent 60%);pointer-events:none;}
 #home::after{content:'';position:absolute;inset:0;background-image:linear-gradient(rgba(255,255,255,.02) 1px,transparent 1px),linear-gradient(90deg,rgba(255,255,255,.02) 1px,transparent 1px);background-size:60px 60px;pointer-events:none;}
 .home-inner{position:relative;z-index:1;width:100%;max-width:680px;display:flex;flex-direction:column;align-items:center}
 .headline{font-family:var(--fd);font-size:clamp(3rem,8vw,5.5rem);font-weight:800;line-height:1;letter-spacing:-.04em;margin-bottom:1rem;}
 .headline em{color:var(--P2);font-style:normal;display:block}
 .home-sub{color:var(--mu);font-size:1rem;margin-bottom:2.5rem;font-weight:300;letter-spacing:.02em}
-@media(max-width:600px){
-  .headline{font-size:clamp(2rem,6vw,3rem);margin-bottom:.6rem}
+
   .home-sub{font-size:.85rem;margin-bottom:1.5rem}
 }
 .top-right-col{position:fixed;top:calc(44px + .8rem);right:1.2rem;z-index:20;display:flex;flex-direction:column;align-items:flex-end;gap:8px}
@@ -265,7 +264,7 @@ button,input{font-family:var(--fb)}
 .earn-chart-title{font-size:12px;font-weight:500;margin-bottom:2px}
 .earn-chart-sub{font-size:10px;color:var(--mu);margin-bottom:.65rem;font-family:var(--fm)}
 .earn-wrap{height:220px;position:relative}
-@media(max-width:600px){.earn-charts-row{grid-template-columns:1fr}}
+}
 .etbl-wrap{overflow-x:auto}
 .etbl{width:100%;border-collapse:collapse;font-size:12px;min-width:420px}
 .etbl th{padding:6px 10px;font-family:var(--fm);font-size:10px;font-weight:500;color:var(--di);border-bottom:1px solid var(--b1);text-align:right}
@@ -520,6 +519,38 @@ button,input{font-family:var(--fb)}
 
 @keyframes ldFadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
 @keyframes ldFadeUp{from{opacity:0;transform:translateY(18px)}to{opacity:1;transform:translateY(0)}}
+
+/* ── Mobile (≤600px) ────────────────────────────────────────── */
+@media(max-width:600px){
+  /* Nav: fixed at top, 2-row layout */
+  #nav{position:fixed!important;width:100%;top:0;flex-direction:column;gap:4px;padding:7px 12px;z-index:200}
+  .nav-top-row{display:flex;align-items:center;gap:8px;width:100%;justify-content:center}
+  /* Pills: centered, full width */
+  .nav-pills{margin-left:0!important;justify-content:center;width:100%}
+
+  /* Push home buttons below fixed 2-row nav (~70px) + gap */
+  .menu-wrap{top:78px!important}
+  .top-right-col{top:78px!important}
+
+  /* Home page: push content well below fixed nav + buttons */
+  #home{min-height:100vh;justify-content:flex-start;padding-top:200px;padding-left:1rem;padding-right:1rem}
+
+  /* Headline reduced for mobile */
+  .headline{font-size:clamp(1.8rem,7vw,2.6rem);margin-bottom:.5rem}
+  .home-sub{font-size:.82rem;margin-bottom:1.2rem}
+
+  /* Chips: smaller so 2 fit per row */
+  .chips{gap:5px;justify-content:center}
+  .chip{font-size:.7rem;padding:5px 10px;border-radius:16px}
+  /* Hide 8th chip — keep first 7 (AAPL→SPY) */
+  .chips .chip:nth-child(n+8){display:none}
+
+  /* Portfolio/Dividends/News: push below fixed nav */
+  #pfpage,#divpage,#newspage{top:70px!important}
+
+  /* Earnings charts single column */
+  .earn-charts-row{grid-template-columns:1fr}
+}
 </style>
 </head>
 <body>
