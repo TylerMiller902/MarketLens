@@ -60,7 +60,11 @@ button,input{font-family:var(--fb)}
 .movers-bubble{background:var(--bg3);border:1px solid var(--b2);color:var(--tx);padding:9px 16px;border-radius:22px;cursor:pointer;font-size:13px;font-family:var(--fm);display:flex;align-items:center;gap:7px;transition:border-color .15s,background .15s;white-space:nowrap;}
 .movers-bubble:hover{border-color:var(--P);background:var(--Pbg)}
 .movers-bubble .dot{width:6px;height:6px;border-radius:50%;background:var(--G);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
-.movers-panel{margin-top:8px;background:var(--bg2);border:1px solid var(--b2);border-radius:14px;overflow:hidden;width:300px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.movers-panel{margin-top:8px;background:var(--bg2);border:1px solid var(--b2);border-radius:14px;overflow:hidden;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.dd-tabs{display:flex;border-bottom:1px solid var(--b1)}
+.dd-tab{flex:1;background:none;border:none;color:var(--mu);font-family:var(--fm);font-size:11px;padding:9px 6px;cursor:pointer;transition:color .12s,background .12s;border-bottom:2px solid transparent;margin-bottom:-1px}
+.dd-tab.active{color:var(--P);border-bottom-color:var(--P);background:rgba(124,92,252,.06)}
+.dd-tab:hover:not(.active){color:var(--tx);background:rgba(255,255,255,.03)}
 .movers-header{display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--b1);font-size:11px;font-family:var(--fm);color:var(--di)}
 .menu-wrap{position:fixed;top:76px;left:1.2rem;z-index:20;text-align:left}
 .menu-bubble{background:var(--bg3);border:1px solid var(--b2);color:var(--tx);padding:9px 16px;border-radius:22px;cursor:pointer;font-size:13px;font-family:var(--fm);display:flex;align-items:center;gap:7px;transition:border-color .15s,background .15s;white-space:nowrap;}
@@ -77,6 +81,13 @@ button,input{font-family:var(--fb)}
 @keyframes slideIn{to{opacity:1;transform:translateX(0)}}
 .mover-logo{width:20px;height:20px;border-radius:4px;object-fit:contain}
 .mover-logo-fail{visibility:hidden}
+.mktcap-row{display:grid;grid-template-columns:26px 42px 1fr auto;align-items:center;gap:6px;padding:7px 14px;cursor:pointer;transition:background .12s;border-bottom:1px solid rgba(255,255,255,.03)}
+.mktcap-row:hover{background:var(--bg3)}
+.mktcap-rank{font-size:10px;color:var(--di);font-family:var(--fm);text-align:right}
+.mktcap-sym{font-size:11px;font-weight:700;font-family:var(--fm)}
+.mktcap-name{font-size:10px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mktcap-cap{font-size:10px;font-family:var(--fm);color:var(--tx);text-align:right;white-space:nowrap}
+#mktcap-list{max-height:400px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--b2) transparent}
 .mover-ticker{font-family:var(--fm);font-size:12px;font-weight:600;}
 .mover-ticker.up{color:var(--G)}.mover-ticker.dn{color:var(--R)}
 .mover-name{font-size:11px;color:var(--mu);overflow:hidden;text-overflow:ellipsis;white-space:nowrap;min-width:0;}
@@ -680,11 +691,20 @@ button,input{font-family:var(--fb)}
     <div id="auth-btn" class="auth-btn-wrap"></div>
     <div class="movers-wrap" id="movers-wrap">
       <button class="movers-bubble" id="movers-btn">
-        <span class="dot"></span> Biggest Daily Movers &#x25BE;
+        <span class="dot"></span> Data Dashboard &#x25BE;
       </button>
       <div class="movers-panel" id="movers-panel" style="display:none">
-        <div class="movers-header"><span>&#x1F7E2; Top Gainers</span><span>&#x1F534; Top Losers</span></div>
-        <div id="movers-list"></div>
+        <div class="dd-tabs">
+          <button class="dd-tab active" id="dd-tab-movers" onclick="ddSwitch('movers')">📈 Daily Movers</button>
+          <button class="dd-tab" id="dd-tab-mktcap" onclick="ddSwitch('mktcap')">🏆 Market Cap Rank</button>
+        </div>
+        <div id="dd-movers">
+          <div class="movers-header"><span>🟢 Top Gainers</span><span>🔴 Top Losers</span></div>
+          <div id="movers-list"></div>
+        </div>
+        <div id="dd-mktcap" style="display:none">
+          <div id="mktcap-list"></div>
+        </div>
       </div>
     </div>
   </div>
@@ -1527,8 +1547,7 @@ $('pf-confirm-btn').addEventListener('click',()=>{
 });
 
 // ── Menu + Movers ───────────────────────────────────────────
-let moversLoaded=false;
-const menuBtn=$('menu-btn'),menuPanel=$('menu-panel');
+let moversLoaded=false,mktCapLoaded=false,ddActive='movers';const menuBtn=$('menu-btn'),menuPanel=$('menu-panel');
 if(menuBtn&&menuPanel){
   menuBtn.addEventListener('click',e=>{
     e.stopPropagation();
@@ -1541,6 +1560,32 @@ if(menuBtn&&menuPanel){
   });
 }
 // (openPage is defined in the Portfolio section above — no duplicate here)
+
+function ddSwitch(tab){
+  ddActive=tab;
+  $('dd-tab-movers').classList.toggle('active',tab==='movers');
+  $('dd-tab-mktcap').classList.toggle('active',tab==='mktcap');
+  $('dd-movers').style.display=tab==='movers'?'block':'none';
+  $('dd-mktcap').style.display=tab==='mktcap'?'block':'none';
+  if(tab==='mktcap'&&!mktCapLoaded) loadMktCap();
+}
+
+async function loadMktCap(){
+  mktCapLoaded=true;
+  $('mktcap-list').innerHTML='<div style="padding:1rem;text-align:center;color:var(--mu);font-size:12px;font-family:var(--fm)">Loading&hellip;</div>';
+  try{
+    const data=await apiFetch('/api/market-cap-rank');
+    const fmtCap=v=>{if(v>=1e12)return`$${(v/1e12).toFixed(2)}T`;if(v>=1e9)return`$${(v/1e9).toFixed(0)}B`;return`$${(v/1e6).toFixed(0)}M`;};
+    $('mktcap-list').innerHTML=data.map(s=>`
+      <div class="mktcap-row" onclick="go('${esc(s.symbol)}');$('movers-panel').style.display='none'">
+        <span class="mktcap-rank">#${s.rank}</span>
+        <span class="mktcap-sym">${esc(s.symbol)}</span>
+        <span class="mktcap-name">${esc(s.name)}</span>
+        <span class="mktcap-cap">${fmtCap(s.marketCap)}</span>
+      </div>`).join('');
+  }catch{$('mktcap-list').innerHTML='<div style="padding:1rem;color:var(--mu);font-size:12px">Could not load rankings.</div>';}
+}
+
 $('movers-btn').addEventListener('click',async()=>{
   const panel=$('movers-panel');const isOpen=panel.style.display!=='none';
   panel.style.display=isOpen?'none':'block';
