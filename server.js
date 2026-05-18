@@ -709,7 +709,19 @@ app.get('/api/fmp/financials/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
         { l:'Operating CF',   vals: cashflow.slice(0,4).reverse().map(c => `$${((c.operatingCashFlow||0)/1e9).toFixed(2)}B`) },
         { l:'Free Cash Flow', vals: cashflow.slice(0,4).reverse().map(c => `$${((c.freeCashFlow||0)/1e9).toFixed(2)}B`) },
         { l:'CapEx',          vals: cashflow.slice(0,4).reverse().map(c => `$${((c.capitalExpenditure||0)/1e9).toFixed(2)}B`) },
-        { l:'Dividends Paid', vals: cashflow.slice(0,4).reverse().map(c => { const v=Math.abs(c.dividendsPaid||c.commonStockDividendsPaid||c.paymentOfDividends||0); return v>0?`$${(v/1e9).toFixed(2)}B`:'—'; }) },
+        { l:'Dividends Paid', vals: cashflow.slice(0,4).reverse().map((c,i) => {
+          // Try direct cash flow field first
+          const direct=Math.abs(c.dividendsPaid||c.commonStockDividendsPaid||c.paymentOfDividends||0);
+          if(direct>0) return `$${(direct/1e9).toFixed(2)}B`;
+          // Fallback: dividendPerShare × shares outstanding from key metrics + income statement
+          const cfYear=c.calendarYear||c.date?.slice(0,4);
+          const kmMatch=(Array.isArray(keyMetrics)?keyMetrics:[]).find(k=>(k.calendarYear||k.date?.slice(0,4))===cfYear);
+          const incMatch=(Array.isArray(income)?income:[]).find(x=>(x.calendarYear||x.date?.slice(0,4))===cfYear);
+          const dps=Math.abs(kmMatch?.dividendPerShare||0);
+          const shares=incMatch?.weightedAverageShsOutDil||incMatch?.weightedAverageShsOut||0;
+          const est=dps*shares;
+          return est>0?`$${(est/1e9).toFixed(2)}B`:'—';
+        })},
       ],
     };
 
