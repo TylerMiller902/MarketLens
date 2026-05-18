@@ -710,17 +710,22 @@ app.get('/api/fmp/financials/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
         { l:'Free Cash Flow', vals: cashflow.slice(0,4).reverse().map(c => `$${((c.freeCashFlow||0)/1e9).toFixed(2)}B`) },
         { l:'CapEx',          vals: cashflow.slice(0,4).reverse().map(c => `$${((c.capitalExpenditure||0)/1e9).toFixed(2)}B`) },
         { l:'Dividends Paid', vals: cashflow.slice(0,4).reverse().map((c,i) => {
-          // Try direct cash flow field first
-          const direct=Math.abs(c.dividendsPaid||c.commonStockDividendsPaid||c.paymentOfDividends||0);
-          if(direct>0) return `$${(direct/1e9).toFixed(2)}B`;
-          // Fallback: dividendPerShare × shares outstanding from key metrics + income statement
-          const cfYear=c.calendarYear||c.date?.slice(0,4);
-          const kmMatch=(Array.isArray(keyMetrics)?keyMetrics:[]).find(k=>(k.calendarYear||k.date?.slice(0,4))===cfYear);
-          const incMatch=(Array.isArray(income)?income:[]).find(x=>(x.calendarYear||x.date?.slice(0,4))===cfYear);
-          const dps=Math.abs(kmMatch?.dividendPerShare||0);
-          const shares=incMatch?.weightedAverageShsOutDil||incMatch?.weightedAverageShsOut||0;
-          const est=dps*shares;
-          return est>0?`$${(est/1e9).toFixed(2)}B`:'—';
+          // Use explicit null check — 0 is valid (company pays no dividend) vs null = missing data
+          const raw = c.dividendsPaid != null ? c.dividendsPaid
+                    : c.commonStockDividendsPaid != null ? c.commonStockDividendsPaid
+                    : c.paymentOfDividends != null ? c.paymentOfDividends : null;
+          if(raw === null) {
+            // Fallback: estimate from dividendPerShare × shares outstanding
+            const cfYear = c.calendarYear || c.date?.slice(0,4);
+            const kmMatch = (Array.isArray(keyMetrics)?keyMetrics:[]).find(k=>(k.calendarYear||k.date?.slice(0,4))===cfYear);
+            const incMatch = (Array.isArray(income)?income:[]).find(x=>(x.calendarYear||x.date?.slice(0,4))===cfYear);
+            const dps = Math.abs(kmMatch?.dividendPerShare||0);
+            const shares = incMatch?.weightedAverageShsOutDil||incMatch?.weightedAverageShsOut||0;
+            const est = dps * shares;
+            return est > 0 ? `$${(est/1e9).toFixed(2)}B` : '—';
+          }
+          const v = Math.abs(raw);
+          return v > 0 ? `$${(v/1e9).toFixed(2)}B` : '—';
         })},
       ],
     };
@@ -1054,6 +1059,12 @@ app.get('/api/etf-holdings-returns/:symbol', (req,res) => res.json([]));
 app.get('/api/etf-info/:symbol',             (req,res) => res.json({}));
 app.get('/api/etf-sectors/:symbol',          (req,res) => res.json([]));
 
+
+app.get('/api/admin/clear-cache', (req, res) => {
+  const size = cache.size;
+  cache.clear();
+  res.json({ ok: true, cleared: size });
+});
 
 app.get('/health', (req,res) => res.json({ status: 'ok', version: '3.0', provider: 'FMP only', cached: cache.size, uptime: process.uptime() }));
 
