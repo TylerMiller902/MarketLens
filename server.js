@@ -1065,14 +1065,21 @@ app.get('/api/etf-sectors/:symbol',          (req,res) => res.json([]));
 app.get('/api/market-cap-rank', async (req,res) => {
   const ck='mkt-cap-rank'; const hit=gc(ck); if(hit)return res.json(hit);
   try{
-    const data=await fmp('/stock-screener',{marketCapMoreThan:1000000000,limit:100,sort:'marketCap',order:'desc'});
+    const data=await fmpV3fn('/stock-screener',{
+      marketCapMoreThan:1000000000,
+      exchange:'NYSE,NASDAQ',
+      isActivelyTrading:true,
+      limit:100,
+      sort:'marketCap',
+      order:'desc'
+    });
     const result=arr(data).map((s,i)=>({
       rank:i+1,
       symbol:s.symbol,
       name:s.companyName||s.name||s.symbol,
       marketCap:s.marketCap||0,
       price:s.price||0,
-      change:s.changesPercentage||s.changes||0,
+      change:+(s.changesPercentage||s.changes||0).toFixed(2),
     }));
     sc(ck,result,3_600_000);
     res.json(result);
