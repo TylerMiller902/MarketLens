@@ -526,9 +526,9 @@ button,input{font-family:var(--fb)}
   .nav-dot{width:5px!important;height:5px!important}
   .nav-pills{width:100%;margin-left:0!important;justify-content:center;order:1;flex-wrap:wrap;gap:5px!important}
 
-  /* Home buttons: below fixed nav, compact size */
-  .menu-wrap{top:85px!important;left:1rem!important}
-  .top-right-col{top:85px!important;right:1rem!important}
+  /* Home buttons: all aligned at same top, compact size */
+  .menu-wrap{top:75px!important;left:1rem!important}
+  .top-right-col{top:75px!important;right:1rem!important;gap:6px!important}
   .menu-bubble{font-size:12px!important;padding:8px 14px!important;border-radius:20px!important}
   .movers-bubble{font-size:12px!important;padding:8px 14px!important;border-radius:20px!important}
   .auth-signin-btn{font-size:12px!important;padding:6px 14px!important;border-radius:20px!important}
@@ -557,10 +557,13 @@ button,input{font-family:var(--fb)}
   .pcwrap{height:200px!important;overflow:hidden}
   .pf-range-row{flex-wrap:nowrap!important;overflow-x:auto;-webkit-overflow-scrolling:touch;padding-bottom:3px}
 
-  /* Position strips: smaller text to fit phone width */
-  .pf-col .pv{font-size:11px!important;font-weight:600}
-  .pf-col .pl{font-size:9px!important}
-  .pf-strip{padding:10px .6rem!important;gap:0 4px!important}
+  /* Position strips: compact to fit phone */
+  .pf-col .pv{font-size:10px!important;font-weight:600}
+  .pf-col .pl{font-size:8px!important;margin-top:1px!important}
+  .pf-strip{padding:8px .5rem!important;gap:0 3px!important}
+  .pf-strip-logo img{width:22px!important;height:22px!important}
+  .pf-sym{font-size:11px!important}
+  .pf-name{font-size:9px!important}
 
   /* Misc */
   .earn-charts-row{grid-template-columns:1fr}
@@ -894,7 +897,10 @@ const DEFAULT_CHIPS=[{t:'AAPL',l:'Apple'},{t:'MSFT',l:'Microsoft'},{t:'NVDA',l:'
 function loadChips(){try{const s=localStorage.getItem('ml-chips');return s?JSON.parse(s):DEFAULT_CHIPS;}catch{return DEFAULT_CHIPS;}}
 function saveChips(c){try{localStorage.setItem('ml-chips',JSON.stringify(c));}catch{}}
 function renderChips(){
-  const chips=loadChips();const c=$('chips-container');if(!c)return;
+  let chips=loadChips();
+  // Limit to 7 on mobile screens
+  if(window.innerWidth<=600) chips=chips.slice(0,7);
+  const c=$('chips-container');if(!c)return;
   c.innerHTML=chips.map(ch=>`<div class="chip-wrap" data-t="${esc(ch.t)}"><span class="chip" data-t="${esc(ch.t)}"><img class="chip-logo-img" src="https://images.financialmodelingprep.com/symbol/${esc(ch.t)}.png" onerror="this.style.display='none'"/><span class="chip-sym">${esc(ch.t)}</span><span class="chip-name">&middot; ${esc(ch.l)}</span><span class="chip-ret" id="cret-${esc(ch.t)}"></span></span></div>`).join('');
   c.querySelectorAll('.chip').forEach(el=>{
     const t=el.dataset.t;
@@ -1402,7 +1408,8 @@ async function drawPfChart(r){
   const labels=buildLabels(dates,r,isIntra);
   const up=prices[prices.length-1]>=prices[0],color=up?G:R;
   const tension={'1D':0,'1W':0,'1M':0.1,'3M':0.2,'YTD':0.3,'1Y':0.35,'5Y':0.4,'10Y':0.4,'All':0.4}[r]??0.35;
-  PfChart=new Chart(canvas,{type:'line',data:{labels,datasets:[{data:prices,borderColor:color,borderWidth:1.5,fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,400);g.addColorStop(0,rgba(color,.15));g.addColorStop(1,rgba(color,0));return g;},pointRadius:0,tension}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},layout:{padding:{right:20,left:4}},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{title:ctx=>dates[ctx[0]?.dataIndex]||'',label:ctx=>fVal(ctx.raw)}}},scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:9},maxRotation:0,autoSkip:false}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:10},callback:v=>fVal(v)}}}}});
+  const isMob=window.innerWidth<=600;
+  PfChart=new Chart(canvas,{type:'line',data:{labels,datasets:[{data:prices,borderColor:color,borderWidth:1.5,fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,400);g.addColorStop(0,rgba(color,.15));g.addColorStop(1,rgba(color,0));return g;},pointRadius:0,tension}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},layout:{padding:{right:isMob?2:20,left:isMob?2:4}},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{title:ctx=>dates[ctx[0]?.dataIndex]||'',label:ctx=>fVal(ctx.raw)}}},scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:isMob?8:9},maxRotation:0,autoSkip:true,maxTicksLimit:isMob?4:10}},y:{display:!isMob,grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:10},callback:v=>fVal(v)}}}}});
   const diff=prices[prices.length-1]-prices[0],pct=diff/prices[0]*100;
   const pe=$('pf-perf');if(pe){pe.className=`pcperf ${up?'up':'dn'}`;pe.textContent=`${up?'▲':'▼'} ${up?'+':''}${fVal(Math.abs(diff))} (${up?'+':''}${pct.toFixed(2)}%)`;}
 }
