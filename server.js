@@ -710,7 +710,6 @@ app.get('/api/fmp/financials/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
         { l:'Free Cash Flow', vals: cashflow.slice(0,4).reverse().map(c => `$${((c.freeCashFlow||0)/1e9).toFixed(2)}B`) },
         { l:'CapEx',          vals: cashflow.slice(0,4).reverse().map(c => `$${((c.capitalExpenditure||0)/1e9).toFixed(2)}B`) },
         { l:'Dividends Paid', vals: cashflow.slice(0,4).reverse().map((c,i) => {
-          // FMP Pro uses netDividendsPaid / commonDividendsPaid (not dividendsPaid)
           const raw = c.netDividendsPaid != null ? c.netDividendsPaid
                     : c.commonDividendsPaid != null ? c.commonDividendsPaid
                     : c.dividendsPaid != null ? c.dividendsPaid : null;
@@ -718,6 +717,17 @@ app.get('/api/fmp/financials/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
           const v = Math.abs(raw);
           return v > 0 ? `$${(v/1e9).toFixed(2)}B` : '—';
         })},
+        { l:'Payout Ratio',   vals: (() => {
+          const cfSlice  = cashflow.slice(0,4).reverse();
+          const incSlice = income.slice(0,4).reverse();
+          return cfSlice.map((c,i) => {
+            const divPaid = Math.abs(c.netDividendsPaid||c.commonDividendsPaid||c.dividendsPaid||0);
+            if(!divPaid) return '—';
+            const ni = incSlice[i]?.netIncome || 0;
+            if(ni <= 0) return 'N/M';
+            return `${((divPaid/ni)*100).toFixed(1)}%`;
+          });
+        })()},
       ],
     };
 
