@@ -672,7 +672,7 @@ app.get('/api/fmp/financials/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
       operatingCF:     cf.map(c  => +((c.operatingCashFlow||0)/1e9).toFixed(2)),
       capex:           cf.map(c  => +((c.capitalExpenditure||0)/1e9).toFixed(2)),
       fcfMargin:       cf.map((c,i) => { const rev=inc[i]?.revenue; return rev ? +((c.freeCashFlow||0)/rev*100).toFixed(2) : 0; }),
-      dividendPerShare:cf.map((c,i) => { const sh=inc[i]?.weightedAverageShsOutDil; const paid=Math.abs(c.dividendsPaid||0); return sh&&sh>0 ? +(paid/sh).toFixed(2) : 0; }),
+      dividendPerShare:cf.map((c,i) => { const sh=inc[i]?.weightedAverageShsOutDil; const paid=Math.abs(c.netDividendsPaid||c.commonDividendsPaid||c.dividendsPaid||0); return sh&&sh>0 ? +(paid/sh).toFixed(2) : 0; }),
       totalDebt:       bal.map(b => +((b.totalDebt||0)/1e9).toFixed(2)),
       totalEquity:     bal.map(b => +((b.totalStockholdersEquity||0)/1e9).toFixed(2)),
       cash:            bal.map(b => +((b.cashAndCashEquivalents||0)/1e9).toFixed(2)),
@@ -710,20 +710,11 @@ app.get('/api/fmp/financials/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
         { l:'Free Cash Flow', vals: cashflow.slice(0,4).reverse().map(c => `$${((c.freeCashFlow||0)/1e9).toFixed(2)}B`) },
         { l:'CapEx',          vals: cashflow.slice(0,4).reverse().map(c => `$${((c.capitalExpenditure||0)/1e9).toFixed(2)}B`) },
         { l:'Dividends Paid', vals: cashflow.slice(0,4).reverse().map((c,i) => {
-          // Use explicit null check — 0 is valid (company pays no dividend) vs null = missing data
-          const raw = c.dividendsPaid != null ? c.dividendsPaid
-                    : c.commonStockDividendsPaid != null ? c.commonStockDividendsPaid
-                    : c.paymentOfDividends != null ? c.paymentOfDividends : null;
-          if(raw === null) {
-            // Fallback: estimate from dividendPerShare × shares outstanding
-            const cfYear = c.calendarYear || c.date?.slice(0,4);
-            const kmMatch = (Array.isArray(keyMetrics)?keyMetrics:[]).find(k=>(k.calendarYear||k.date?.slice(0,4))===cfYear);
-            const incMatch = (Array.isArray(income)?income:[]).find(x=>(x.calendarYear||x.date?.slice(0,4))===cfYear);
-            const dps = Math.abs(kmMatch?.dividendPerShare||0);
-            const shares = incMatch?.weightedAverageShsOutDil||incMatch?.weightedAverageShsOut||0;
-            const est = dps * shares;
-            return est > 0 ? `$${(est/1e9).toFixed(2)}B` : '—';
-          }
+          // FMP Pro uses netDividendsPaid / commonDividendsPaid (not dividendsPaid)
+          const raw = c.netDividendsPaid != null ? c.netDividendsPaid
+                    : c.commonDividendsPaid != null ? c.commonDividendsPaid
+                    : c.dividendsPaid != null ? c.dividendsPaid : null;
+          if(raw === null) return '—';
           const v = Math.abs(raw);
           return v > 0 ? `$${(v/1e9).toFixed(2)}B` : '—';
         })},
