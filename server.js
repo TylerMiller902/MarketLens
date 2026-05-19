@@ -1077,24 +1077,22 @@ app.get('/api/debug-screener', async (req,res) => {
 });
 
 // Market Cap Rank — batch quotes for top stocks sorted by live market cap
-const TOP_STOCKS=['AAPL','MSFT','NVDA','GOOGL','AMZN','META','BRK-B','TSLA','AVGO','WMT',
+const TOP_STOCKS=['AAPL','MSFT','NVDA','GOOGL','AMZN','META','TSLA','AVGO','WMT',
   'JPM','LLY','V','MA','XOM','ORCL','COST','UNH','NFLX','JNJ','HD','AMD','CRM','BAC',
   'PG','ABBV','PLTR','TMUS','KO','PEP','ADBE','TXN','ACN','MRK','PM','WFC','TMO','ABT',
   'GE','DHR','IBM','VZ','CSCO','MCD','INTU','AMGN','SPGI','AXP','HON','ISRG','BKNG',
   'LOW','LMT','RTX','BLK','CB','SYK','VRTX','ADI','REGN','BMY','NOW','T','SCHW','PLD',
   'MU','ELV','CI','ETN','PANW','SBUX','GILD','UPS','MDT','KLAC','DUK','SO','PGR','MS',
-  'GS','C','ADP','ZTS','EOG','TJX','COF','WM','ITW','LRCX','CME','APD','PYPL','NKE',
-  'WELL','DE','INTC','QCOM','TGT','AMT','COP','SLB','USB','ICE','MMC','PH','EMR'];
+  'GS','C','ADP','ZTS','EOG','TJX','COF','WM','ITW','LRCX','CME','APD','NKE','QCOM',
+  'WELL','DE','INTC','TGT','AMT','COP','USB','ICE','MMC','PH','EMR','PYPL'];
 
 app.get('/api/market-cap-rank', async (req,res) => {
   const ck='mkt-cap-rank'; const hit=gc(ck); if(hit)return res.json(hit);
   try{
-    // Batch fetch in groups of 20 (FMP stable handles comma-separated symbols)
-    const chunks=[];
-    for(let i=0;i<TOP_STOCKS.length;i+=20) chunks.push(TOP_STOCKS.slice(i,i+20));
-    const results=await Promise.all(chunks.map(ch=>fmpSafe('/quote',{symbol:ch.join(',')})));
-    const all=results.flatMap(r=>arr(r)).filter(s=>s?.symbol&&s?.marketCap>0);
-    all.sort((a,b)=>b.marketCap-a.marketCap);
+    // Individual parallel calls — FMP stable only supports one symbol at a time
+    const quotes=await Promise.all(TOP_STOCKS.map(sym=>fmpSafe('/quote',{symbol:sym})));
+    const all=quotes.map(r=>arr(r)[0]).filter(s=>s?.symbol&&(s?.marketCap||0)>0);
+    all.sort((a,b)=>(b.marketCap||0)-(a.marketCap||0));
     const result=all.slice(0,100).map((s,i)=>({
       rank:i+1,
       symbol:s.symbol,
@@ -1103,7 +1101,7 @@ app.get('/api/market-cap-rank', async (req,res) => {
       price:s.price||0,
       change:+(s.changesPercentage||0).toFixed(2),
     }));
-    sc(ck,result,900_000); // 15 min cache
+    sc(ck,result,900_000);
     res.json(result);
   }catch(e){res.status(500).json({error:e.message});}
 });
