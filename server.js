@@ -1076,26 +1076,34 @@ app.get('/api/debug-screener', async (req,res) => {
   res.json(results);
 });
 
-// Market Cap Rank — top 100 stocks
+// Market Cap Rank — batch quotes for top stocks sorted by live market cap
+const TOP_STOCKS=['AAPL','MSFT','NVDA','GOOGL','AMZN','META','BRK-B','TSLA','AVGO','WMT',
+  'JPM','LLY','V','MA','XOM','ORCL','COST','UNH','NFLX','JNJ','HD','AMD','CRM','BAC',
+  'PG','ABBV','PLTR','TMUS','KO','PEP','ADBE','TXN','ACN','MRK','PM','WFC','TMO','ABT',
+  'GE','DHR','IBM','VZ','CSCO','MCD','INTU','AMGN','SPGI','AXP','HON','ISRG','BKNG',
+  'LOW','LMT','RTX','BLK','CB','SYK','VRTX','ADI','REGN','BMY','NOW','T','SCHW','PLD',
+  'MU','ELV','CI','ETN','PANW','SBUX','GILD','UPS','MDT','KLAC','DUK','SO','PGR','MS',
+  'GS','C','ADP','ZTS','EOG','TJX','COF','WM','ITW','LRCX','CME','APD','PYPL','NKE',
+  'WELL','DE','INTC','QCOM','TGT','AMT','COP','SLB','USB','ICE','MMC','PH','EMR'];
+
 app.get('/api/market-cap-rank', async (req,res) => {
   const ck='mkt-cap-rank'; const hit=gc(ck); if(hit)return res.json(hit);
   try{
-    const data=await fmpV3fn('/stock-screener',{
-      marketCapMoreThan:1000000000,
-      limit:100,
-      sort:'marketCap',
-      order:'desc'
-    });
-    if(!arr(data).length) return res.status(500).json({error:'No data returned from screener'});
-    const result=arr(data).map((s,i)=>({
+    // Batch fetch in groups of 20 (FMP stable handles comma-separated symbols)
+    const chunks=[];
+    for(let i=0;i<TOP_STOCKS.length;i+=20) chunks.push(TOP_STOCKS.slice(i,i+20));
+    const results=await Promise.all(chunks.map(ch=>fmpSafe('/quote',{symbol:ch.join(',')})));
+    const all=results.flatMap(r=>arr(r)).filter(s=>s?.symbol&&s?.marketCap>0);
+    all.sort((a,b)=>b.marketCap-a.marketCap);
+    const result=all.slice(0,100).map((s,i)=>({
       rank:i+1,
       symbol:s.symbol,
-      name:s.companyName||s.name||s.symbol,
+      name:s.name||s.symbol,
       marketCap:s.marketCap||0,
       price:s.price||0,
-      change:+(s.changesPercentage||s.changes||0).toFixed(2),
+      change:+(s.changesPercentage||0).toFixed(2),
     }));
-    sc(ck,result,3_600_000);
+    sc(ck,result,900_000); // 15 min cache
     res.json(result);
   }catch(e){res.status(500).json({error:e.message});}
 });
