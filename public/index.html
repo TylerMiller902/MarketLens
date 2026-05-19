@@ -471,8 +471,8 @@ button,input{font-family:var(--fb)}
 .auth-btn-wrap{text-align:right}
 .auth-signin-btn{background:var(--bg3);border:1px solid var(--b2);color:var(--tx);font-size:13px;font-weight:600;padding:9px 16px;border-radius:22px;cursor:pointer;transition:border-color .12s}
 .auth-signin-btn:hover{border-color:var(--P)}
-.auth-avatar{width:38px;height:38px;border-radius:50%;cursor:pointer;border:2px solid var(--P);transition:transform .12s}
-.auth-avatar:hover{transform:scale(1.07)}
+.auth-avatar-btn{width:36px;height:36px;border-radius:50%;cursor:pointer;border:1.5px solid var(--b2);background:var(--bg3);color:var(--tx);display:flex;align-items:center;justify-content:center;transition:border-color .12s,background .12s}
+.auth-avatar-btn:hover{border-color:var(--P);background:rgba(124,92,252,.1)}
 .user-menu{position:fixed;top:76px;right:1rem;background:var(--bg2);border:1px solid var(--b2);border-radius:12px;padding:.8rem 1rem;z-index:200;min-width:180px;box-shadow:0 8px 24px rgba(0,0,0,.5)}
 .um-name{font-weight:700;font-size:13px;margin-bottom:2px}
 .um-email{font-size:11px;color:var(--mu);margin-bottom:.3rem}
@@ -548,7 +548,7 @@ button,input{font-family:var(--fb)}
   .menu-bubble{font-size:12px!important;padding:8px 14px!important;border-radius:20px!important}
   .movers-bubble{font-size:12px!important;padding:8px 14px!important;border-radius:20px!important}
   .auth-signin-btn{font-size:12px!important;padding:6px 14px!important;border-radius:20px!important}
-  .auth-avatar{width:34px!important;height:34px!important}
+  .auth-avatar-btn{width:34px!important;height:34px!important}
 
   /* Home content */
   #home{justify-content:flex-start;padding-top:200px;padding-left:1rem;padding-right:1rem}
@@ -994,7 +994,11 @@ async function checkAuth(){
 function renderAuthUI(){
   const btn=$('auth-btn');if(!btn)return;
   if(AuthUser){
-    btn.innerHTML=`<img src="${AuthUser.avatar||''}" onerror="this.style.display='none'" class="auth-avatar" onclick="toggleUserMenu(event)" title="${AuthUser.name||AuthUser.email}"/>`;
+    btn.innerHTML=`<button class="auth-avatar-btn" onclick="toggleUserMenu(event)" title="${AuthUser.name||AuthUser.email}">
+      <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+        <circle cx="12" cy="8" r="4"/><path d="M4 20c0-4 3.6-7 8-7s8 3 8 7"/>
+      </svg>
+    </button>`;
   } else {
     btn.innerHTML=`<button class="auth-signin-btn" onclick="window.location.href='/auth/google'">Sign in</button>`;
   }
