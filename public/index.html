@@ -81,16 +81,16 @@ button,input{font-family:var(--fb)}
 @keyframes slideIn{to{opacity:1;transform:translateX(0)}}
 .mover-logo{width:20px;height:20px;border-radius:4px;object-fit:contain}
 .mover-logo-fail{visibility:hidden}
-.mktcap-row{display:grid;grid-template-columns:26px 24px 1fr auto;align-items:center;gap:7px;padding:7px 14px;cursor:pointer;transition:background .12s;border-bottom:1px solid rgba(255,255,255,.03)}
+.mktcap-row{display:flex;align-items:center;gap:7px;padding:7px 14px;cursor:pointer;transition:background .12s;border-bottom:1px solid rgba(255,255,255,.03)}
 .mktcap-row:hover{background:var(--bg3)}
-.mktcap-rank{font-size:9.5px;color:var(--di);font-family:var(--fm);text-align:right}
+.mktcap-rank{font-size:9px;color:var(--di);font-family:var(--fm);min-width:22px;text-align:right;flex-shrink:0}
 .mktcap-logo{width:22px;height:22px;border-radius:5px;object-fit:contain;background:var(--bg3);flex-shrink:0}
-.mktcap-info{display:flex;flex-direction:column;gap:1px;overflow:hidden}
-.mktcap-sym{font-size:11px;font-weight:700;font-family:var(--fm);line-height:1.2}
-.mktcap-name{font-size:9px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
-.mktcap-right{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
+.mktcap-info{display:flex;align-items:baseline;gap:5px;flex:1;overflow:hidden;min-width:0}
+.mktcap-sym{font-size:11px;font-weight:700;font-family:var(--fm);flex-shrink:0}
+.mktcap-name{font-size:9px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mktcap-right{display:flex;flex-direction:column;align-items:flex-end;gap:1px;flex-shrink:0}
 .mktcap-cap{font-size:10px;font-family:var(--fm);color:var(--tx);white-space:nowrap}
-.mktcap-chg{font-size:9px;font-family:var(--fm);white-space:nowrap}
+.mktcap-chg{font-size:9px;font-family:var(--fm);font-weight:600;white-space:nowrap}
 #mktcap-list{max-height:360px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--b2) transparent}
 #dd-movers{overflow:visible}
 .mover-ticker{font-family:var(--fm);font-size:12px;font-weight:600;}
@@ -1594,7 +1594,7 @@ async function loadMktCap(){
         </div>
         <div class="mktcap-right">
           <span class="mktcap-cap">${fmtCap(s.marketCap)}</span>
-          <span class="mktcap-chg ${up?'up':'dn'}">${up?'+':''}${s.change}%</span>
+          <span class="mktcap-chg" style="color:${up?'var(--G)':'var(--R)'}">${up?'+':''}${s.change}%</span>
         </div>
       </div>`;
     }).join('');
