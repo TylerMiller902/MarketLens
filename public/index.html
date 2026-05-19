@@ -18,7 +18,7 @@
   --R:#ef4444;--Rbg:rgba(239,68,68,.10);
   --fd:'Syne',sans-serif;--fb:'DM Sans',sans-serif;--fm:'DM Mono',monospace;
 }
-html,body{background:var(--bg);color:var(--tx);font-family:var(--fb);font-size:14px;height:100%;overflow:hidden}
+html,body{background:var(--bg);color:var(--tx);font-family:var(--fb);font-size:14px;height:100%}
 button,input{font-family:var(--fb)}
 #fs-modal{display:none;position:fixed;inset:0;z-index:9999;background:rgba(8,8,14,.97);backdrop-filter:blur(10px);flex-direction:column}
 #fs-modal.open{display:flex}
@@ -81,14 +81,16 @@ button,input{font-family:var(--fb)}
 @keyframes slideIn{to{opacity:1;transform:translateX(0)}}
 .mover-logo{width:20px;height:20px;border-radius:4px;object-fit:contain}
 .mover-logo-fail{visibility:hidden}
-.mktcap-row{display:grid;grid-template-columns:26px 42px 1fr auto;align-items:center;gap:6px;padding:7px 14px;cursor:pointer;transition:background .12s;border-bottom:1px solid rgba(255,255,255,.03)}
+.mktcap-row{display:grid;grid-template-columns:26px 24px 1fr auto;align-items:center;gap:7px;padding:7px 14px;cursor:pointer;transition:background .12s;border-bottom:1px solid rgba(255,255,255,.03)}
 .mktcap-row:hover{background:var(--bg3)}
-.mktcap-rank{font-size:10px;color:var(--di);font-family:var(--fm);text-align:right}
-.mktcap-sym{font-size:11px;font-weight:700;font-family:var(--fm)}
-.mktcap-name{font-size:10px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.mktcap-rank{font-size:9.5px;color:var(--di);font-family:var(--fm);text-align:right}
+.mktcap-logo{width:22px;height:22px;border-radius:5px;object-fit:contain;background:var(--bg3);flex-shrink:0}
+.mktcap-info{display:flex;flex-direction:column;gap:1px;overflow:hidden}
+.mktcap-sym{font-size:11px;font-weight:700;font-family:var(--fm);line-height:1.2}
+.mktcap-name{font-size:9px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis;line-height:1.2}
 .mktcap-right{display:flex;flex-direction:column;align-items:flex-end;gap:1px}
-.mktcap-cap{font-size:10px;font-family:var(--fm);color:var(--tx);text-align:right;white-space:nowrap}
-.mktcap-chg{font-size:9px;font-family:var(--fm);text-align:right;white-space:nowrap}
+.mktcap-cap{font-size:10px;font-family:var(--fm);color:var(--tx);white-space:nowrap}
+.mktcap-chg{font-size:9px;font-family:var(--fm);white-space:nowrap}
 #mktcap-list{max-height:360px;overflow-y:auto;scrollbar-width:thin;scrollbar-color:var(--b2) transparent}
 #dd-movers{overflow:visible}
 .mover-ticker{font-family:var(--fm);font-size:12px;font-weight:600;}
@@ -954,6 +956,7 @@ $('chip-inp').addEventListener('input',()=>{
 document.addEventListener('click',e=>{const s=$('chip-sugg');if(s&&!$('chip-inp').contains(e.target)&&!s.contains(e.target))s.classList.remove('open');});
 renderChips();
 checkAuth(); // load auth state + sync portfolio
+document.body.style.overflow='hidden'; // home page: no scroll
 
 // ── Movers ──────────────────────────────────────────────
 // ── Portfolio ───────────────────────────────────────────────
@@ -1584,8 +1587,11 @@ async function loadMktCap(){
       const up=s.change>=0;
       return`<div class="mktcap-row" onclick="go('${esc(s.symbol)}');$('movers-panel').style.display='none'">
         <span class="mktcap-rank">#${s.rank}</span>
-        <span class="mktcap-sym">${esc(s.symbol)}</span>
-        <span class="mktcap-name">${esc(s.name)}</span>
+        <img class="mktcap-logo" src="https://images.financialmodelingprep.com/symbol/${esc(s.symbol)}.png" onerror="this.style.opacity='0'"/>
+        <div class="mktcap-info">
+          <span class="mktcap-sym">${esc(s.symbol)}</span>
+          <span class="mktcap-name">${esc(s.name)}</span>
+        </div>
         <div class="mktcap-right">
           <span class="mktcap-cap">${fmtCap(s.marketCap)}</span>
           <span class="mktcap-chg ${up?'up':'dn'}">${up?'+':''}${s.change}%</span>
@@ -1758,10 +1764,11 @@ async function go(query){
 function navigateToStock(ticker){
   $('home').classList.add('gone');$('spage').classList.add('on');
   $('shead-sinp').value='';$('home-sugg').classList.remove('open');
+  document.body.style.overflow='';// allow scroll on stock page
   window.scrollTo(0,0);destroyAll();CurPR='1Y';CurGP=10;
   loadStock(ticker);
 }
-function goHome(){$('home').classList.remove('gone');$('spage').classList.remove('on');window.scrollTo(0,0);destroyAll();}
+function goHome(){$('home').classList.remove('gone');$('spage').classList.remove('on');document.body.style.overflow='hidden';window.scrollTo(0,0);destroyAll();}
 function destroyAll(){[PriceChart,RSIChart,EarnLineChart,EarnBarChart,FSChart,...Object.values(Charts)].forEach(c=>{try{if(c)c.destroy();}catch{}});PriceChart=RSIChart=EarnLineChart=EarnBarChart=FSChart=null;Charts={};CurIntraday=null;CurDivHistory=null;}
 
 function generatePriceHistory(price,w52h,w52l,beta){
