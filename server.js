@@ -1061,12 +1061,19 @@ app.get('/api/etf-info/:symbol',             (req,res) => res.json({}));
 app.get('/api/etf-sectors/:symbol',          (req,res) => res.json([]));
 
 
-// Debug screener
+// Debug screener — try multiple FMP stable endpoints
 app.get('/api/debug-screener', async (req,res) => {
-  try{
-    const data=await fmpV3fn('/stock-screener',{marketCapMoreThan:500000000000,limit:5});
-    res.json({count:arr(data).length,sample:arr(data).slice(0,3),firstKeys:arr(data)[0]?Object.keys(arr(data)[0]):[]});
-  }catch(e){res.status(500).json({error:e.message,stack:e.stack});}
+  const results={};
+  // Try stable company-screener
+  try{ const d=await fmp('/company-screener',{marketCapMin:500000000000,limit:5}); results.stableScreener={count:arr(d).length,sample:arr(d).slice(0,2),keys:arr(d)[0]?Object.keys(arr(d)[0]):[]}; }
+  catch(e){ results.stableScreener={error:e.message}; }
+  // Try stable stock-screener
+  try{ const d=await fmp('/stock-screener',{marketCapMoreThan:500000000000,limit:5}); results.stableStockScreener={count:arr(d).length,sample:arr(d).slice(0,2)}; }
+  catch(e){ results.stableStockScreener={error:e.message}; }
+  // Try quotes for known big stocks
+  try{ const d=await fmp('/quote',{symbol:'AAPL,MSFT,NVDA'}); results.quoteTest={count:arr(d).length,sample:arr(d).slice(0,1),keys:arr(d)[0]?Object.keys(arr(d)[0]):[]}; }
+  catch(e){ results.quoteTest={error:e.message}; }
+  res.json(results);
 });
 
 // Market Cap Rank — top 100 stocks
