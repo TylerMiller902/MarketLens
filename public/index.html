@@ -1575,9 +1575,10 @@ function ddSwitch(tab){
 
 async function loadMktCap(){
   mktCapLoaded=true;
-  $('mktcap-list').innerHTML='<div style="padding:1rem;text-align:center;color:var(--mu);font-size:12px;font-family:var(--fm)">Loading&hellip;</div>';
+  $('mktcap-list').innerHTML='<div style="padding:1rem;text-align:center;color:var(--mu);font-size:12px;font-family:var(--fm)">Loading rankings&hellip;</div>';
   try{
     const data=await apiFetch('/api/market-cap-rank');
+    if(!data||!data.length){$('mktcap-list').innerHTML='<div style="padding:1rem;color:var(--R);font-size:11px">No data returned.</div>';return;}
     const fmtCap=v=>{if(v>=1e12)return`$${(v/1e12).toFixed(2)}T`;if(v>=1e9)return`$${(v/1e9).toFixed(0)}B`;return`$${(v/1e6).toFixed(0)}M`;};
     $('mktcap-list').innerHTML=data.map(s=>{
       const up=s.change>=0;
@@ -1591,7 +1592,7 @@ async function loadMktCap(){
         </div>
       </div>`;
     }).join('');
-  }catch{$('mktcap-list').innerHTML='<div style="padding:1rem;color:var(--mu);font-size:12px">Could not load rankings.</div>';}
+  }catch(e){$('mktcap-list').innerHTML=`<div style="padding:1rem;color:var(--R);font-size:11px;font-family:var(--fm)">Error: ${e.message}</div>`;}
 }
 
 $('movers-btn').addEventListener('click',async()=>{
