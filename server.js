@@ -1061,18 +1061,18 @@ app.get('/api/etf-info/:symbol',             (req,res) => res.json({}));
 app.get('/api/etf-sectors/:symbol',          (req,res) => res.json([]));
 
 
-// Debug screener — try multiple FMP stable endpoints
+// Debug screener — try multiple FMP batch quote approaches
 app.get('/api/debug-screener', async (req,res) => {
   const results={};
-  // Try stable company-screener
-  try{ const d=await fmp('/company-screener',{marketCapMin:500000000000,limit:5}); results.stableScreener={count:arr(d).length,sample:arr(d).slice(0,2),keys:arr(d)[0]?Object.keys(arr(d)[0]):[]}; }
-  catch(e){ results.stableScreener={error:e.message}; }
-  // Try stable stock-screener
-  try{ const d=await fmp('/stock-screener',{marketCapMoreThan:500000000000,limit:5}); results.stableStockScreener={count:arr(d).length,sample:arr(d).slice(0,2)}; }
-  catch(e){ results.stableStockScreener={error:e.message}; }
-  // Try quotes for known big stocks
-  try{ const d=await fmp('/quote',{symbol:'AAPL,MSFT,NVDA'}); results.quoteTest={count:arr(d).length,sample:arr(d).slice(0,1),keys:arr(d)[0]?Object.keys(arr(d)[0]):[]}; }
-  catch(e){ results.quoteTest={error:e.message}; }
+  // Test comma-separated stable quote
+  try{ const d=await fmp('/quote',{symbol:'AAPL,MSFT,NVDA'}); results.batchStable={count:arr(d).length,keys:arr(d)[0]?Object.keys(arr(d)[0]):[],sample:arr(d)[0]}; }
+  catch(e){ results.batchStable={error:e.message}; }
+  // Test v3 batch quote in URL path
+  try{ const d=await fmpV3fn('/quote/AAPL,MSFT,NVDA'); results.batchV3Path={count:arr(d).length,sample:arr(d)[0]?.symbol}; }
+  catch(e){ results.batchV3Path={error:e.message}; }
+  // Test stable quotes endpoint (plural)
+  try{ const d=await fmp('/quotes',{symbols:'AAPL,MSFT,NVDA'}); results.stableQuotes={count:arr(d).length}; }
+  catch(e){ results.stableQuotes={error:e.message}; }
   res.json(results);
 });
 
