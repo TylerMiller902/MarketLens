@@ -1099,7 +1099,7 @@ app.get('/api/market-cap-rank', async (req,res) => {
       name:s.name||s.symbol,
       marketCap:s.marketCap||0,
       price:s.price||0,
-      change:+(s.changesPercentage||0).toFixed(2),
+      change:+(s.changePercentage??s.changesPercentage??0).toFixed(2),
     }));
     sc(ck,result,900_000);
     res.json(result);
