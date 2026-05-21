@@ -3,7 +3,18 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>StockScope</title>
+<title>StockScope — Markets, Decoded.</title>
+<meta name="description" content="Real-time stock analysis, portfolio tracking, dividend income, and market news — all in one place."/>
+<link rel="icon" type="image/png" href="/StockScope_Logo.png"/>
+<link rel="apple-touch-icon" href="/StockScope_Logo.png"/>
+<meta property="og:title" content="StockScope — Markets, Decoded."/>
+<meta property="og:description" content="Real-time stock analysis, portfolio tracking, dividend income, and market news."/>
+<meta property="og:image" content="https://thestockscope.com/StockScope_Logo.png"/>
+<meta property="og:url" content="https://thestockscope.com"/>
+<meta property="og:type" content="website"/>
+<meta name="twitter:card" content="summary"/>
+<meta name="twitter:title" content="StockScope — Markets, Decoded."/>
+<meta name="twitter:image" content="https://thestockscope.com/StockScope_Logo.png"/>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
@@ -613,7 +624,10 @@ button,input{font-family:var(--fb)}
 </div>
 
 <div id="nav">
-  <span class="brand"><span class="brand-market">Stock</span>Scope</span>
+  <a href="/" style="display:flex;align-items:center;gap:8px;text-decoration:none">
+    <img src="/StockScope_Logo.png" height="28" style="width:auto;display:block" alt="StockScope"/>
+    <span class="brand"><span class="brand-market">Stock</span>Scope</span>
+  </a>
   <div class="nav-live"><span class="nav-dot"></span><span id="live-label">Connecting&hellip;</span></div>
   <div class="nav-pills" id="nav-pills"></div>
 </div>
