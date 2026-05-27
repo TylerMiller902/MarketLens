@@ -603,6 +603,26 @@ button,input{font-family:var(--fb)}
   /* Misc */
   .earn-charts-row{grid-template-columns:1fr}
 }
+
+/* ── Upgrade / Pro ── */
+.upgrade-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:1000;display:flex;align-items:center;justify-content:center}
+.upgrade-modal{background:var(--bg2);border:1px solid var(--P);border-radius:20px;padding:2.5rem 2rem;max-width:380px;width:90%;text-align:center;box-shadow:0 0 60px rgba(124,92,252,.25)}
+.upgrade-modal-icon{font-size:2.5rem;margin-bottom:1rem}
+.upgrade-modal-title{font-family:var(--fd);font-size:1.5rem;font-weight:800;color:#fff;margin-bottom:.5rem}
+.upgrade-modal-sub{font-size:.85rem;color:var(--mu);margin-bottom:1.5rem;line-height:1.6}
+.upgrade-modal-features{text-align:left;background:var(--bg3);border-radius:12px;padding:1rem 1.2rem;margin-bottom:1.5rem}
+.upgrade-modal-features li{font-size:.82rem;color:rgba(255,255,255,.7);padding:.3rem 0;list-style:none;display:flex;align-items:center;gap:.5rem}
+.upgrade-modal-features li::before{content:'✓';color:var(--P);font-weight:700;flex-shrink:0}
+.upgrade-btn{background:var(--P);color:#fff;border:none;width:100%;padding:.9rem;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;font-family:var(--fd);transition:opacity .15s;margin-bottom:.8rem}
+.upgrade-btn:hover{opacity:.9}
+.upgrade-cancel{font-size:.78rem;color:var(--mu);cursor:pointer;background:none;border:none;color:var(--mu)}
+.upgrade-cancel:hover{color:var(--tx)}
+.pro-badge{background:var(--P);color:#fff;font-size:9px;font-weight:700;padding:2px 7px;border-radius:100px;letter-spacing:.06em;margin-left:6px;vertical-align:middle}
+.upgrade-wall{background:var(--bg2);border:1px solid var(--b1);border-radius:14px;padding:3rem 2rem;text-align:center;margin:1rem}
+.upgrade-wall-icon{font-size:2rem;margin-bottom:.8rem}
+.upgrade-wall-title{font-family:var(--fd);font-size:1.2rem;color:#fff;margin-bottom:.5rem}
+.upgrade-wall-sub{font-size:.82rem;color:var(--mu);margin-bottom:1.2rem;line-height:1.6}
+.upgrade-wall-btn{background:var(--P);color:#fff;border:none;padding:.7rem 1.6rem;border-radius:10px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:var(--fd)}
 </style>
 </head>
 <body>
@@ -1014,6 +1034,59 @@ async function checkAuth(){
   }catch(e){AuthUser=null;}
   finally{renderAuthUI();}
 }
+
+// ── Plan / Upgrade ──────────────────────────────────────────────────────────
+function isPro(){return AuthUser?.plan==='pro';}
+
+async function startCheckout(){
+  if(!AuthUser){window.location.href='/auth/google';return;}
+  const btn=document.querySelector('.upgrade-btn');
+  if(btn){btn.textContent='Redirecting…';btn.disabled=true;}
+  try{
+    const r=await fetch('/api/stripe/checkout',{method:'POST',credentials:'include'});
+    const d=await r.json();
+    if(d.url) window.location.href=d.url;
+    else showToast('Could not start checkout — try again','err');
+  }catch(e){showToast('Could not start checkout — try again','err');}
+}
+
+async function openBillingPortal(){
+  const r=await fetch('/api/stripe/portal',{method:'POST',credentials:'include'});
+  const d=await r.json();
+  if(d.url) window.open(d.url,'_blank');
+}
+
+function showUpgradeModal(feature='this feature'){
+  const existing=document.getElementById('upgrade-overlay');
+  if(existing)existing.remove();
+  const el=document.createElement('div');
+  el.id='upgrade-overlay';el.className='upgrade-overlay';
+  el.innerHTML=`<div class="upgrade-modal">
+    <div class="upgrade-modal-icon">🚀</div>
+    <div class="upgrade-modal-title">Upgrade to Pro</div>
+    <div class="upgrade-modal-sub">Unlock <strong>${feature}</strong> and everything Pro has to offer.</div>
+    <ul class="upgrade-modal-features">
+      <li>Unlimited portfolio positions</li>
+      <li>Dividends & income tracking</li>
+      <li>Full financials & cash flow</li>
+      <li>Insider trading & news</li>
+      <li>13F institutional holdings (coming soon)</li>
+    </ul>
+    <button class="upgrade-btn" onclick="startCheckout()">Upgrade to Pro — $8.99/month</button>
+    <button class="upgrade-cancel" onclick="document.getElementById('upgrade-overlay').remove()">No thanks</button>
+  </div>`;
+  document.body.appendChild(el);
+  el.addEventListener('click',e=>{if(e.target===el)el.remove();});
+}
+
+function upgradeWallHTML(feature){
+  return`<div class="upgrade-wall">
+    <div class="upgrade-wall-icon">🔒</div>
+    <div class="upgrade-wall-title">${feature} is a Pro Feature</div>
+    <div class="upgrade-wall-sub">Upgrade to StockScope Pro to access ${feature.toLowerCase()}, unlimited portfolio positions, advanced financials, insider trading data and more.</div>
+    <button class="upgrade-wall-btn" onclick="showUpgradeModal('${feature}')">Upgrade to Pro — $8.99/month</button>
+  </div>`;
+}
 function renderAuthUI(){
   const btn=$('auth-btn');if(!btn)return;
   if(AuthUser){
@@ -1053,8 +1126,10 @@ function openPage(page){
   if(page==='portfolio'){
     $('home').classList.add('gone');$('pfpage').classList.remove('gone');renderPfPage();
   } else if(page==='dividends'){
+    if(!isPro()){showUpgradeModal('Dividends & Income Tracking');return;}
     $('home').classList.add('gone');$('divpage').classList.remove('gone');renderDivPage();
   } else if(page==='news'){
+    if(!isPro()){showUpgradeModal('Market News');return;}
     $('home').classList.add('gone');$('newspage').classList.remove('gone');renderNewsPage();
   } else {
     $('home').classList.remove('gone');
@@ -1504,6 +1579,13 @@ function openPfModal(){
   $('pf-chips').style.display='block';
   $('pf-modal-bg').style.display='flex';
   setTimeout(()=>$('pf-ticker-inp').focus(),80);
+}
+function checkPfLimit(){
+  if(!isPro()){
+    const pf=getPf();
+    if((pf.positions||[]).length>=3){showUpgradeModal('Unlimited Portfolio Positions');return false;}
+  }
+  return true;
 }
 function closePfModal(){$('pf-modal-bg').style.display='none';}
 function showPfDrop(results){
