@@ -12,6 +12,12 @@ const { Strategy: GoogleStrategy } = require('passport-google-oauth20');
 const { Pool }  = require('pg');
 const pgSession = require('connect-pg-simple')(session);
 const rateLimit = require('express-rate-limit');
+const Stripe = require('stripe');
+
+const STRIPE_SECRET      = process.env.STRIPE_SECRET_KEY || '';
+const STRIPE_PRICE_ID    = process.env.STRIPE_PRICE_ID   || 'price_1Tbo5QFeM4NPwaTuxX35pcyA';
+const STRIPE_WEBHOOK_SEC = process.env.STRIPE_WEBHOOK_SECRET || '';
+const stripe = STRIPE_SECRET ? Stripe(STRIPE_SECRET) : null;
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
@@ -44,6 +50,10 @@ async function initDB(){
       email      TEXT,
       name       TEXT,
       avatar     TEXT,
+      plan       TEXT NOT NULL DEFAULT 'free',
+      stripe_customer_id     TEXT,
+      stripe_subscription_id TEXT,
+      plan_expires_at        TIMESTAMPTZ,
       created_at TIMESTAMPTZ DEFAULT NOW()
     );
 
@@ -53,6 +63,15 @@ async function initDB(){
       updated_at TIMESTAMPTZ DEFAULT NOW()
     );
   `);
+  // Migrate existing users table to add plan columns if not present
+  if(db){
+    await db.query(`
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'free';
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
+      ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_expires_at TIMESTAMPTZ;
+    `).catch(()=>{});
+  }
   console.log('[DB] Tables ready');
 }
 
@@ -125,9 +144,13 @@ process.on('uncaughtException', (err) => {
   console.error('[uncaughtException]', err);
 });
 
-app.set('trust proxy', 1); // Required for Railway — sits behind a reverse proxy
-app.use(cors({ origin: true, credentials: true })); // allow all origins with credentials
-app.use(express.json());
+app.set('trust proxy', 1);
+app.use(cors({ origin: true, credentials: true }));
+app.use(express.json({
+  verify: (req, res, buf) => {
+    if (req.originalUrl === '/api/stripe/webhook') req.rawBody = buf;
+  }
+}));
 app.use(express.static(path.join(__dirname, 'public')));
 
 // ── Rate limiting ─────────────────────────────────────────────────────────────
@@ -195,8 +218,8 @@ app.post('/auth/logout', (req, res) => {
 });
 app.get('/api/auth/me', (req, res) => {
   if(!req.user) return res.json(null);
-  const { id, google_id, email, name, avatar } = req.user;
-  res.json({ id, googleId: google_id, email, name, avatar });
+  const { id, google_id, email, name, avatar, plan } = req.user;
+  res.json({ id, googleId: google_id, email, name, avatar, plan: plan||'free' });
 });
 
 // ── Portfolio API (server-persisted when logged in) ───────────────────────────
@@ -1130,7 +1153,87 @@ app.get('/api/admin/clear-cache', (req, res) => {
 app.get('/health', (req,res) => res.json({ status: 'ok', version: '3.0', provider: 'FMP only', cached: cache.size, uptime: process.uptime() }));
 
 // ── SPA fallback ──────────────────────────────────────────
-// Legal pages
+// ── Stripe ────────────────────────────────────────────────────────────────────
+
+// Create checkout session
+app.post('/api/stripe/checkout', async (req, res) => {
+  if(!req.user) return res.status(401).json({error:'Not logged in'});
+  if(!stripe) return res.status(500).json({error:'Stripe not configured'});
+  try{
+    let customerId = req.user.stripe_customer_id;
+    if(!customerId && db){
+      const customer = await stripe.customers.create({
+        email: req.user.email||undefined,
+        name:  req.user.name||undefined,
+        metadata:{ userId: String(req.user.id) }
+      });
+      customerId = customer.id;
+      await db.query('UPDATE users SET stripe_customer_id=$1 WHERE id=$2',[customerId,req.user.id]);
+    }
+    const session = await stripe.checkout.sessions.create({
+      customer: customerId||undefined,
+      customer_email: !customerId ? req.user.email||undefined : undefined,
+      mode: 'subscription',
+      line_items:[{ price: STRIPE_PRICE_ID, quantity: 1 }],
+      success_url: `${BASE_URL}/?upgraded=1`,
+      cancel_url:  `${BASE_URL}/`,
+      metadata:{ userId: String(req.user.id) },
+      allow_promotion_codes: true,
+    });
+    res.json({ url: session.url });
+  }catch(e){ res.status(500).json({error:e.message}); }
+});
+
+// Customer portal
+app.post('/api/stripe/portal', async (req, res) => {
+  if(!req.user) return res.status(401).json({error:'Not logged in'});
+  if(!stripe) return res.status(500).json({error:'Stripe not configured'});
+  if(!req.user.stripe_customer_id) return res.status(400).json({error:'No subscription found'});
+  try{
+    const session = await stripe.billingPortal.sessions.create({
+      customer: req.user.stripe_customer_id,
+      return_url: BASE_URL,
+    });
+    res.json({ url: session.url });
+  }catch(e){ res.status(500).json({error:e.message}); }
+});
+
+// Stripe webhook
+app.post('/api/stripe/webhook', async (req, res) => {
+  if(!stripe) return res.json({received:true});
+  let event;
+  try{
+    if(STRIPE_WEBHOOK_SEC){
+      event = stripe.webhooks.constructEvent(req.rawBody, req.headers['stripe-signature'], STRIPE_WEBHOOK_SEC);
+    } else { event = req.body; }
+  }catch(e){ return res.status(400).json({error:`Webhook error: ${e.message}`}); }
+  if(!db) return res.json({received:true});
+  try{
+    if(event.type==='checkout.session.completed'){
+      const s = event.data.object;
+      const userId = s.metadata?.userId;
+      if(userId) await db.query(
+        `UPDATE users SET plan='pro', stripe_customer_id=$1, stripe_subscription_id=$2 WHERE id=$3`,
+        [s.customer, s.subscription, userId]
+      );
+    }
+    if(event.type==='customer.subscription.deleted'||event.type==='customer.subscription.paused'){
+      const sub = event.data.object;
+      await db.query(`UPDATE users SET plan='free', stripe_subscription_id=NULL WHERE stripe_subscription_id=$1`,[sub.id]);
+    }
+    if(event.type==='invoice.payment_succeeded'){
+      await db.query(`UPDATE users SET plan='pro' WHERE stripe_customer_id=$1`,[event.data.object.customer]);
+    }
+  }catch(e){ console.error('[stripe webhook]',e.message); }
+  res.json({received:true});
+});
+
+app.get('/api/user/plan', (req, res) => {
+  if(!req.user) return res.json({plan:'free'});
+  res.json({plan: req.user.plan||'free'});
+});
+
+// ── Legal pages ───────────────────────────────────────────────────────────────
 app.get('/privacy', (req,res) => res.sendFile(path.join(__dirname, 'public', 'legal.html')));
 app.get('/terms',   (req,res) => res.sendFile(path.join(__dirname, 'public', 'legal.html')));
 
