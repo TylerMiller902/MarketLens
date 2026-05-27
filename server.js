@@ -12,12 +12,13 @@ const { Strategy: GoogleStrategy } = require('passport-google-oauth20');
 const { Pool }  = require('pg');
 const pgSession = require('connect-pg-simple')(session);
 const rateLimit = require('express-rate-limit');
-const Stripe = require('stripe');
+let Stripe = null;
+try { Stripe = require('stripe'); } catch(e) { console.log('[stripe] package not installed — payments disabled'); }
 
 const STRIPE_SECRET      = process.env.STRIPE_SECRET_KEY || '';
 const STRIPE_PRICE_ID    = process.env.STRIPE_PRICE_ID   || 'price_1Tbo5QFeM4NPwaTuxX35pcyA';
 const STRIPE_WEBHOOK_SEC = process.env.STRIPE_WEBHOOK_SECRET || '';
-const stripe = STRIPE_SECRET ? Stripe(STRIPE_SECRET) : null;
+const stripe = (Stripe && STRIPE_SECRET) ? Stripe(STRIPE_SECRET) : null;
 
 const app  = express();
 const PORT = process.env.PORT || 3000;
