@@ -74,18 +74,18 @@ button,input{font-family:var(--fb)}
 .headline em{color:var(--P2);font-style:normal;display:block}
 .home-sub{color:var(--mu);font-size:1rem;margin-bottom:2.5rem;font-weight:300;letter-spacing:.02em}
 
-.top-right-col{position:fixed;top:52px;right:1.2rem;z-index:20;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
-.movers-wrap{text-align:right}
+.top-right-col{position:fixed;top:64px;right:1.2rem;z-index:20;display:flex;flex-direction:column;align-items:flex-end;gap:10px}
+.movers-wrap{text-align:left}.menu-wrap-inner{text-align:right}
 .movers-bubble{background:var(--bg3);border:1px solid var(--b2);color:var(--tx);padding:9px 16px;border-radius:22px;cursor:pointer;font-size:13px;font-family:var(--fm);display:flex;align-items:center;gap:7px;transition:border-color .15s,background .15s;white-space:nowrap;}
 .movers-bubble:hover{border-color:var(--P);background:var(--Pbg)}
 .movers-bubble .dot{width:6px;height:6px;border-radius:50%;background:var(--G);animation:pulse 2s ease-in-out infinite;flex-shrink:0}
-.movers-panel{margin-top:8px;background:var(--bg2);border:1px solid var(--b2);border-radius:14px;overflow:hidden;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
+.movers-panel{margin-top:8px;background:var(--bg2);border:1px solid var(--b2);border-radius:14px;overflow:hidden;width:340px;box-shadow:0 20px 60px rgba(0,0,0,.6);text-align:left}
 .dd-tabs{display:flex;border-bottom:1px solid var(--b1)}
 .dd-tab{flex:1;background:none;border:none;color:var(--mu);font-family:var(--fm);font-size:11px;padding:9px 6px;cursor:pointer;transition:color .12s,background .12s;border-bottom:2px solid transparent;margin-bottom:-1px}
 .dd-tab.active{color:var(--P);border-bottom-color:var(--P);background:rgba(124,92,252,.06)}
 .dd-tab:hover:not(.active){color:var(--tx);background:rgba(255,255,255,.03)}
 .movers-header{display:flex;justify-content:space-between;padding:10px 14px;border-bottom:1px solid var(--b1);font-size:11px;font-family:var(--fm);color:var(--di)}
-.menu-wrap{position:fixed;top:52px;left:1.2rem;z-index:20;text-align:left}
+.menu-wrap{position:fixed;top:64px;left:1.2rem;z-index:20;text-align:left}
 .menu-bubble{background:var(--bg3);border:1px solid var(--b2);color:var(--tx);padding:9px 16px;border-radius:22px;cursor:pointer;font-size:13px;font-family:var(--fm);display:flex;align-items:center;gap:7px;transition:border-color .15s,background .15s;white-space:nowrap;}
 .menu-bubble:hover{border-color:var(--P);background:var(--Pbg)}
 .menu-panel{margin-top:8px;background:var(--bg2);border:1px solid var(--b2);border-radius:14px;overflow:hidden;min-width:160px;box-shadow:0 20px 60px rgba(0,0,0,.6);}
@@ -562,8 +562,8 @@ button,input{font-family:var(--fb)}
   .nav-pills{width:100%;margin-left:0!important;justify-content:center;order:1;flex-wrap:wrap;gap:5px!important}
 
   /* Home buttons: all aligned at same top, compact size */
-  .menu-wrap{top:75px!important;left:1rem!important}
-  .top-right-col{top:75px!important;right:1rem!important;gap:6px!important}
+  .menu-wrap{top:88px!important;left:1rem!important}
+  .top-right-col{top:88px!important;right:1rem!important;gap:6px!important}
   .menu-bubble{font-size:12px!important;padding:8px 14px!important;border-radius:20px!important}
   .movers-bubble{font-size:12px!important;padding:8px 14px!important;border-radius:20px!important}
   .auth-signin-btn{font-size:12px!important;padding:6px 14px!important;border-radius:20px!important}
@@ -696,26 +696,8 @@ button,input{font-family:var(--fb)}
 </div>
 
 <div id="home">
-  <!-- Menu bubble — top left -->
-  <div class="menu-wrap" id="menu-wrap">
-    <button class="menu-bubble" id="menu-btn">&#9776; Menu &#x25BE;</button>
-    <div class="menu-panel" id="menu-panel" style="display:none">
-      <div class="menu-item" onclick="openPage('portfolio')">
-        <span class="menu-item-icon">💼</span><span class="menu-item-lbl">Portfolio</span>
-      </div>
-      <div class="menu-item" onclick="openPage('dividends')">
-        <span class="menu-item-icon">💰</span><span class="menu-item-lbl">Dividends</span>
-      </div>
-      <div class="menu-item" onclick="openPage('news')">
-        <span class="menu-item-icon">📰</span><span class="menu-item-lbl">News</span>
-      </div>
-    </div>
-  </div>
-
-  <!-- Auth button — top right -->
-  <!-- Right side: Sign in (levelled with Menu) + Movers below -->
-  <div class="top-right-col">
-    <div id="auth-btn" class="auth-btn-wrap"></div>
+  <!-- Data Dashboard — now top left -->
+  <div class="menu-wrap" id="movers-wrap-left">
     <div class="movers-wrap" id="movers-wrap">
       <button class="movers-bubble" id="movers-btn">
         <span class="dot"></span> Data Dashboard &#x25BE;
@@ -731,6 +713,25 @@ button,input{font-family:var(--fb)}
         </div>
         <div id="dd-mktcap" style="display:none">
           <div id="mktcap-list"></div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <!-- Menu + Auth — now top right -->
+  <div class="top-right-col">
+    <div id="auth-btn" class="auth-btn-wrap"></div>
+    <div class="menu-wrap-inner" id="menu-wrap">
+      <button class="menu-bubble" id="menu-btn">&#9776; Menu &#x25BE;</button>
+      <div class="menu-panel" id="menu-panel" style="display:none">
+        <div class="menu-item" onclick="openPage('portfolio')">
+          <span class="menu-item-icon">💼</span><span class="menu-item-lbl">Portfolio</span>
+        </div>
+        <div class="menu-item" onclick="openPage('dividends')">
+          <span class="menu-item-icon">💰</span><span class="menu-item-lbl">Dividends</span>
+        </div>
+        <div class="menu-item" onclick="openPage('news')">
+          <span class="menu-item-icon">📰</span><span class="menu-item-lbl">News</span>
         </div>
       </div>
     </div>
@@ -1588,7 +1589,7 @@ if(menuBtn&&menuPanel){
     const mp=$('movers-panel');if(mp)mp.style.display='none';
   });
   document.addEventListener('click',e=>{
-    if(!$('menu-wrap')?.contains(e.target))menuPanel.style.display='none';
+    if(!$('menu-wrap')?.contains(e.target)&&!$('movers-wrap-left')?.contains(e.target.closest('#menu-wrap')))menuPanel.style.display='none';
   });
 }
 // (openPage is defined in the Portfolio section above — no duplicate here)
