@@ -2042,6 +2042,30 @@ function build52W(price,low,high){
 function buildFinTable(rows,years){if(!rows?.length||!years?.length)return'<p style="padding:1rem;color:var(--mu);font-size:12px">No data.</p>';return`<table class="ftbl"><thead><tr><th style="text-align:left">Metric</th>${years.map(y=>`<th>${esc(y)}</th>`).join('')}</tr></thead><tbody>${rows.map(r=>`<tr><td>${esc(r.l)}</td>${r.vals.map(v=>`<td>${esc(v)}</td>`).join('')}</tr>`).join('')}</tbody></table>`;}
 function ccard(title,sub,statId,canvId){return`<div class="ccard" data-canv="${canvId}"><div class="ccard-top"><div><div class="cctitle">${title}</div><div class="ccsub">${sub}</div></div><span class="expand-ico">&#x2922;</span></div><div class="cc-stat" id="${statId}"></div><div class="canv"><canvas id="${canvId}"></canvas></div></div>`;}
 
+// Fake chart helpers for free tier teaser
+function fakeCard(title,sub,id){return`<div class="ccard"><div class="ccard-top"><div><div class="cctitle">${title}</div><div class="ccsub">${sub}</div></div></div><div class="canv"><canvas id="${id}"></canvas></div></div>`;}
+function drawFakeChart(id,type,data,color,data2,color2){
+  const el=document.getElementById(id);if(!el)return;
+  const yrs=['2015','2016','2017','2018','2019','2020','2021','2022','2023','2024'];
+  const ds=[{data,backgroundColor:type==='bar'?color+'88':undefined,borderColor:color,fill:type==='line'?{target:'origin',above:color+'18'}:false,tension:.4,borderWidth:2.5,pointRadius:0,borderRadius:type==='bar'?4:0}];
+  if(data2)ds.push({data:data2,backgroundColor:color2+'88',borderColor:color2,fill:false,tension:.4,borderWidth:2.5,pointRadius:0,borderRadius:4});
+  if(el._fakeChart)el._fakeChart.destroy();
+  el._fakeChart=new Chart(el,{type,data:{labels:yrs,datasets:ds},options:{responsive:true,maintainAspectRatio:false,animation:false,plugins:{legend:{display:false},tooltip:{enabled:false}},scales:{x:{display:false},y:{display:false}}}});
+}
+function drawFakeCharts(){
+  const G='#22c55e',R='#ef4444',P='#7c5cfc',B='#60a5fa';
+  drawFakeChart('fk-fcf','bar',[28,35,42,38,51,47,62,71,85,94],G);
+  drawFakeChart('fk-fcfm','line',[18,20,22,19,24,21,26,25,28,30],G);
+  drawFakeChart('fk-gm','line',[38,39,41,40,43,44,45,46,47,46],G,null,null);
+  drawFakeChart('fk-eps','bar',[2.1,2.6,3.0,2.8,3.5,3.2,4.1,4.7,5.3,6.1],P);
+  drawFakeChart('fk-epsg','bar',[12,18,14,-5,22,-8,28,16,13,15],P);
+  drawFakeChart('fk-deq','bar',[40,45,52,58,55,62,68,64,70,75],R,[80,88,92,95,100,105,112,108,115,122],B);
+  drawFakeChart('fk-pe','line',[22,24,28,19,26,32,29,18,21,24],B);
+  drawFakeChart('fk-roic','line',[14,16,18,15,20,19,22,24,26,28],G);
+  drawFakeChart('fk-shares','bar',[920,900,875,850,820,790,760,730,700,675],P);
+  drawFakeChart('fk-nd','bar',[45,38,30,52,25,18,10,-5,-22,-40],R);
+}
+
 function renderPage(){
   const pfNavBtn=$('pf-nav-btn');
   if(pfNavBtn)pfNavBtn.style.display=CameFromPortfolio?'inline-block':'none';
@@ -2111,20 +2135,21 @@ function renderPage(){
 
       <div class="${isPro()?'':'chart-locked-wrap'}">
         <div class="stitle-sm" style="margin-top:.8rem">Free Cash Flow</div>
-        <div class="c2">${ccard('Free Cash Flow','Billions','s-fcf','ch-fcf')}${ccard('FCF Margin','% of revenue','s-fcfm','ch-fcfm')}</div>
+        <div class="c2">${isPro()?ccard('Free Cash Flow','Billions','s-fcf','ch-fcf')+ccard('FCF Margin','% of revenue','s-fcfm','ch-fcfm'):fakeCard('Free Cash Flow','Billions','fk-fcf')+fakeCard('FCF Margin','% of revenue','fk-fcfm')}</div>
         <div class="stitle-sm" style="margin-top:.8rem">Profit Margins</div>
-        <div class="card" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;flex-wrap:wrap;gap:6px"><div><div class="cctitle">All Margins Over Time</div><div class="ccsub">Gross / Operating / Net / FCF</div></div><div style="display:flex;gap:12px;flex-wrap:wrap"><span style="font-size:10px;font-family:var(--fm);color:${G}">— Gross <span id="v-gm">—</span></span><span style="font-size:10px;font-family:var(--fm);color:${B}">— Oper <span id="v-om">—</span></span><span style="font-size:10px;font-family:var(--fm);color:${P}">— Net <span id="v-nm">—</span></span><span style="font-size:10px;font-family:var(--fm);color:#60a5fa">— FCF <span id="v-fm">—</span></span></div></div><div class="canv" style="height:220px"><canvas id="ch-mg"></canvas></div></div>
+        ${isPro()?`<div class="card" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;flex-wrap:wrap;gap:6px"><div><div class="cctitle">All Margins Over Time</div><div class="ccsub">Gross / Operating / Net / FCF</div></div><div style="display:flex;gap:12px;flex-wrap:wrap"><span style="font-size:10px;font-family:var(--fm);color:${G}">— Gross <span id="v-gm">—</span></span><span style="font-size:10px;font-family:var(--fm);color:${B}">— Oper <span id="v-om">—</span></span><span style="font-size:10px;font-family:var(--fm);color:${P}">— Net <span id="v-nm">—</span></span><span style="font-size:10px;font-family:var(--fm);color:#60a5fa">— FCF <span id="v-fm">—</span></span></div></div><div class="canv" style="height:220px"><canvas id="ch-mg"></canvas></div></div>`
+        :`<div class="card" style="margin-bottom:8px"><div class="cctitle">All Margins Over Time</div><div class="ccsub">Gross / Operating / Net / FCF</div><div class="canv" style="height:220px"><canvas id="fk-gm"></canvas></div></div>`}
         <div class="stitle-sm" style="margin-top:.8rem">Earnings Per Share</div>
-        <div class="c2">${ccard('EPS History','Diluted EPS','s-eps','ch-eps')}${ccard('EPS Growth YoY','% change','s-epsg','ch-epsg')}</div>
-        ${hasDividend?`<div class="stitle-sm" style="margin-top:.8rem">Dividend</div><div class="c2">${ccard('Dividend Per Share','Annual payout per share','s-div','ch-div')}${ccard('Dividend Growth YoY','% change','s-divg','ch-divg')}</div>`:''}
+        <div class="c2">${isPro()?ccard('EPS History','Diluted EPS','s-eps','ch-eps')+ccard('EPS Growth YoY','% change','s-epsg','ch-epsg'):fakeCard('EPS History','Diluted EPS','fk-eps')+fakeCard('EPS Growth YoY','% change','fk-epsg')}</div>
+        ${hasDividend?`<div class="stitle-sm" style="margin-top:.8rem">Dividend</div><div class="c2">${isPro()?ccard('Dividend Per Share','Annual payout per share','s-div','ch-div')+ccard('Dividend Growth YoY','% change','s-divg','ch-divg'):fakeCard('Dividend Per Share','Annual payout','fk-div')+fakeCard('Dividend Growth YoY','% change','fk-divg')}</div>`:''}
         <div class="stitle-sm" style="margin-top:.8rem">Technical</div>
-        <div class="c2">${ccard('RSI (14) — 1 Year','Relative Strength Index &middot; 70 overbought &middot; 30 oversold','s-rsi','ch-rsi')}</div>
+        <div class="c2">${isPro()?ccard('RSI (14) — 1 Year','Relative Strength Index &middot; 70 overbought &middot; 30 oversold','s-rsi','ch-rsi'):fakeCard('RSI (14) — 1 Year','Relative Strength Index','fk-rsi')}</div>
         <div class="stitle-sm" style="margin-top:.8rem">Balance Sheet</div>
-        <div class="c2">${ccard('Debt vs Equity','Grouped bars','s-deq','ch-deq')}${ccard('Net Income vs FCF','Earnings quality','s-ni','ch-ni')}</div>
+        <div class="c2">${isPro()?ccard('Debt vs Equity','Grouped bars','s-deq','ch-deq')+ccard('Net Income vs FCF','Earnings quality','s-ni','ch-ni'):fakeCard('Debt vs Equity','Grouped bars','fk-deq')+fakeCard('Net Income vs FCF','Earnings quality','fk-ni')}</div>
         <div class="stitle-sm" style="margin-top:.8rem">Valuation History</div>
-        <div class="c2">${ccard('P/E Ratio History','Price-to-Earnings','s-pe','ch-pe')}${ccard('ROIC History','Return on Invested Capital','s-roic','ch-roic')}</div>
+        <div class="c2">${isPro()?ccard('P/E Ratio History','Price-to-Earnings','s-pe','ch-pe')+ccard('ROIC History','Return on Invested Capital','s-roic','ch-roic'):fakeCard('P/E Ratio History','Price-to-Earnings','fk-pe')+fakeCard('ROIC History','Return on Invested Capital','fk-roic')}</div>
         <div class="stitle-sm" style="margin-top:.8rem">Capital Allocation</div>
-        <div class="c2">${ccard('Shares Outstanding','Declining = buybacks','s-shares','ch-shares')}${ccard('Net Debt / Cash','Positive = debt &middot; Negative = cash','s-netdebt','ch-netdebt')}</div>
+        <div class="c2">${isPro()?ccard('Shares Outstanding','Declining = buybacks','s-shares','ch-shares')+ccard('Net Debt / Cash','Positive = debt &middot; Negative = cash','s-netdebt','ch-netdebt'):fakeCard('Shares Outstanding','Declining = buybacks','fk-shares')+fakeCard('Net Debt / Cash','Positive = debt · Negative = cash','fk-nd')}</div>
         ${!isPro()?`<div class="chart-lock-overlay" onclick="showUpgradeModal('Advanced Financial Charts')">
           <div class="chart-lock-icon">🔒</div>
           <div class="chart-lock-title">Unlock Pro Financial Charts</div>
@@ -2146,8 +2171,9 @@ function renderPage(){
   $('scontent').addEventListener('click',e=>{const card=e.target.closest('.ccard');if(!card)return;const canvId=card.dataset.canv,title=card.querySelector('.cctitle')?.textContent?.trim()||'',sub=card.querySelector('.ccsub')?.textContent?.trim()||'';if(canvId&&Charts[canvId])openChartFS(canvId,title,sub);});
   drawPrice('1Y');
   if(earns.length)drawEarnCharts(earns);
-  if(hasFMP)drawFinCharts();
-  if(hasInsiders)drawInsiderChart();
+  if(hasFMP&&isPro())drawFinCharts();
+  if(hasInsiders&&isPro())drawInsiderChart();
+  if(!isPro())setTimeout(drawFakeCharts,120);
 }
 
 // ──────────────────────────────────────────────────────────
