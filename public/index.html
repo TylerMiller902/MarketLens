@@ -603,6 +603,16 @@ button,input{font-family:var(--fb)}
 
   /* Misc */
   .earn-charts-row{grid-template-columns:1fr}
+
+  /* Fix 1: spage back button + search bar covered by fixed nav */
+  #spage{padding-top:62px}
+  .shead{position:relative;z-index:10}
+
+  /* Fix 2: Competitors — 6 max (3 rows of 2) */
+  .peers-grid .peer-card:nth-child(n+7){display:none!important}
+
+  /* Fix 3: Company about — truncate to ~4 lines */
+  .about-text{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 }
 
 /* ── Upgrade / Pro ── */
