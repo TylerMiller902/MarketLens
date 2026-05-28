@@ -634,6 +634,14 @@ button,input{font-family:var(--fb)}
 .upgrade-wall-title{font-family:var(--fd);font-size:1.2rem;color:#fff;margin-bottom:.5rem}
 .upgrade-wall-sub{font-size:.82rem;color:var(--mu);margin-bottom:1.2rem;line-height:1.6}
 .upgrade-wall-btn{background:var(--P);color:#fff;border:none;padding:.7rem 1.6rem;border-radius:10px;font-size:.85rem;font-weight:700;cursor:pointer;font-family:var(--fd)}
+/* Locked chart overlay */
+.chart-locked-wrap{position:relative;border-radius:14px;overflow:hidden;margin-bottom:0}
+.chart-locked-wrap .c2,.chart-locked-wrap .card,.chart-locked-wrap .ccard{pointer-events:none;user-select:none}
+.chart-lock-overlay{position:absolute;inset:0;background:rgba(8,8,15,.78);backdrop-filter:blur(3px);display:flex;flex-direction:column;align-items:center;justify-content:center;z-index:10;cursor:pointer;text-align:center;padding:1.5rem;border-radius:14px}
+.chart-lock-icon{font-size:2rem;margin-bottom:.5rem}
+.chart-lock-title{font-family:var(--fd);font-size:1rem;font-weight:700;color:#fff;margin-bottom:.3rem}
+.chart-lock-sub{font-size:.78rem;color:rgba(255,255,255,.45);margin-bottom:1rem;line-height:1.5}
+.chart-lock-btn{background:var(--P);color:#fff;border:none;padding:.6rem 1.4rem;border-radius:10px;font-size:.82rem;font-weight:700;cursor:pointer;font-family:var(--fd)}
 </style>
 </head>
 <body>
@@ -2100,32 +2108,34 @@ function renderPage(){
       </div></div>
       <div class="stitle-sm">Revenue</div>
       <div class="c2">${ccard('Annual Revenue','Billions','s-rv','ch-rev')}${ccard('Revenue Growth YoY','% change','s-rvg','ch-rvg')}</div>
-      ${isPro()?`
-      <div class="stitle-sm" style="margin-top:.8rem">Free Cash Flow</div>
-      <div class="c2">${ccard('Free Cash Flow','Billions','s-fcf','ch-fcf')}${ccard('FCF Margin','% of revenue','s-fcfm','ch-fcfm')}</div>
-      <div class="stitle-sm" style="margin-top:.8rem">Profit Margins</div>
-      <div class="card" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;flex-wrap:wrap;gap:6px"><div><div class="cctitle">All Margins Over Time</div><div class="ccsub">Gross / Operating / Net / FCF</div></div><div style="display:flex;gap:12px;flex-wrap:wrap"><span style="font-size:10px;font-family:var(--fm);color:${G}">— Gross <span id="v-gm">—</span></span><span style="font-size:10px;font-family:var(--fm);color:${B}">— Oper <span id="v-om">—</span></span><span style="font-size:10px;font-family:var(--fm);color:${P}">— Net <span id="v-nm">—</span></span><span style="font-size:10px;font-family:var(--fm);color:#60a5fa">— FCF <span id="v-fm">—</span></span></div></div><div class="canv" style="height:220px"><canvas id="ch-mg"></canvas></div></div>
-      <div class="stitle-sm" style="margin-top:.8rem">Earnings Per Share</div>
-      <div class="c2">${ccard('EPS History','Diluted EPS','s-eps','ch-eps')}${ccard('EPS Growth YoY','% change','s-epsg','ch-epsg')}</div>
-      ${hasDividend?`<div class="stitle-sm" style="margin-top:.8rem">Dividend</div><div class="c2">${ccard('Dividend Per Share','Annual payout per share','s-div','ch-div')}${ccard('Dividend Growth YoY','% change','s-divg','ch-divg')}</div>`:''}
-      <div class="stitle-sm" style="margin-top:.8rem">Technical</div>
-      <div class="c2">${ccard('RSI (14) — 1 Year','Relative Strength Index &middot; 70 overbought &middot; 30 oversold','s-rsi','ch-rsi')}</div>
-      <div class="stitle-sm" style="margin-top:.8rem">Balance Sheet</div>
-      <div class="c2">${ccard('Debt vs Equity','Grouped bars','s-deq','ch-deq')}${ccard('Net Income vs FCF','Earnings quality','s-ni','ch-ni')}</div>
-      <div class="stitle-sm" style="margin-top:.8rem">Valuation History</div>
-      <div class="c2">${ccard('P/E Ratio History','Price-to-Earnings','s-pe','ch-pe')}${ccard('ROIC History','Return on Invested Capital','s-roic','ch-roic')}</div>
-      <div class="stitle-sm" style="margin-top:.8rem">Capital Allocation</div>
-      <div class="c2">${ccard('Shares Outstanding','Declining = buybacks','s-shares','ch-shares')}${ccard('Net Debt / Cash','Positive = debt &middot; Negative = cash','s-netdebt','ch-netdebt')}</div>
-      `:`<div class="upgrade-wall" style="margin-top:1rem">
-        <div class="upgrade-wall-icon">🔒</div>
-        <div class="upgrade-wall-title">Pro Financial Charts</div>
-        <div class="upgrade-wall-sub">Upgrade to unlock FCF, Margins, EPS, Balance Sheet, Valuation, Capital Allocation and more — with All historical data.</div>
-        <button class="upgrade-wall-btn" onclick="showUpgradeModal('Advanced Financial Charts')">Upgrade to Pro — $8.99/month</button>
-      </div>`}
+
+      <div class="${isPro()?'':'chart-locked-wrap'}">
+        <div class="stitle-sm" style="margin-top:.8rem">Free Cash Flow</div>
+        <div class="c2">${ccard('Free Cash Flow','Billions','s-fcf','ch-fcf')}${ccard('FCF Margin','% of revenue','s-fcfm','ch-fcfm')}</div>
+        <div class="stitle-sm" style="margin-top:.8rem">Profit Margins</div>
+        <div class="card" style="margin-bottom:8px"><div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:.5rem;flex-wrap:wrap;gap:6px"><div><div class="cctitle">All Margins Over Time</div><div class="ccsub">Gross / Operating / Net / FCF</div></div><div style="display:flex;gap:12px;flex-wrap:wrap"><span style="font-size:10px;font-family:var(--fm);color:${G}">— Gross <span id="v-gm">—</span></span><span style="font-size:10px;font-family:var(--fm);color:${B}">— Oper <span id="v-om">—</span></span><span style="font-size:10px;font-family:var(--fm);color:${P}">— Net <span id="v-nm">—</span></span><span style="font-size:10px;font-family:var(--fm);color:#60a5fa">— FCF <span id="v-fm">—</span></span></div></div><div class="canv" style="height:220px"><canvas id="ch-mg"></canvas></div></div>
+        <div class="stitle-sm" style="margin-top:.8rem">Earnings Per Share</div>
+        <div class="c2">${ccard('EPS History','Diluted EPS','s-eps','ch-eps')}${ccard('EPS Growth YoY','% change','s-epsg','ch-epsg')}</div>
+        ${hasDividend?`<div class="stitle-sm" style="margin-top:.8rem">Dividend</div><div class="c2">${ccard('Dividend Per Share','Annual payout per share','s-div','ch-div')}${ccard('Dividend Growth YoY','% change','s-divg','ch-divg')}</div>`:''}
+        <div class="stitle-sm" style="margin-top:.8rem">Technical</div>
+        <div class="c2">${ccard('RSI (14) — 1 Year','Relative Strength Index &middot; 70 overbought &middot; 30 oversold','s-rsi','ch-rsi')}</div>
+        <div class="stitle-sm" style="margin-top:.8rem">Balance Sheet</div>
+        <div class="c2">${ccard('Debt vs Equity','Grouped bars','s-deq','ch-deq')}${ccard('Net Income vs FCF','Earnings quality','s-ni','ch-ni')}</div>
+        <div class="stitle-sm" style="margin-top:.8rem">Valuation History</div>
+        <div class="c2">${ccard('P/E Ratio History','Price-to-Earnings','s-pe','ch-pe')}${ccard('ROIC History','Return on Invested Capital','s-roic','ch-roic')}</div>
+        <div class="stitle-sm" style="margin-top:.8rem">Capital Allocation</div>
+        <div class="c2">${ccard('Shares Outstanding','Declining = buybacks','s-shares','ch-shares')}${ccard('Net Debt / Cash','Positive = debt &middot; Negative = cash','s-netdebt','ch-netdebt')}</div>
+        ${!isPro()?`<div class="chart-lock-overlay" onclick="showUpgradeModal('Advanced Financial Charts')">
+          <div class="chart-lock-icon">🔒</div>
+          <div class="chart-lock-title">Unlock Pro Financial Charts</div>
+          <div class="chart-lock-sub">FCF · Margins · EPS · Balance Sheet<br/>Valuation · Capital Allocation & more</div>
+          <button class="chart-lock-btn">Upgrade to Pro — $8.99/month</button>
+        </div>`:''}
+      </div>
     </div>`:''}
 
     ${hasInsiders&&isPro()?`<div style="border-top:1px solid var(--b2);margin:1.2rem 0 1rem;padding-top:1.2rem"><div class="charts-hdr"><div><h3>Insider Transactions <span class="badge live">Live</span></h3><p>Buying and selling by executives and directors</p></div></div><div class="insider-grid"><div class="insider-chart-card"><div class="earn-chart-title">Insider Activity by Month</div><div class="earn-chart-sub">Green = buys &middot; Red = sells</div><div class="earn-wrap"><canvas id="ch-insiders"></canvas></div></div><div class="insider-chart-card"><div class="earn-chart-title">Summary</div><div class="earn-chart-sub">Last ${CurInsiders.transactions.length} transactions</div><div style="display:flex;gap:1.2rem;padding:.5rem 0;flex-wrap:wrap"><div><div style="font-size:10px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:3px">Total Buys</div><div style="font-family:var(--fd);font-size:1.1rem;font-weight:700;color:var(--G)">${fmtV(CurInsiders.transactions.filter(t=>t.isBuy).reduce((s,t)=>s+t.value,0))}</div></div><div><div style="font-size:10px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:3px">Total Sells</div><div style="font-family:var(--fd);font-size:1.1rem;font-weight:700;color:var(--R)">${fmtV(CurInsiders.transactions.filter(t=>!t.isBuy).reduce((s,t)=>s+t.value,0))}</div></div></div></div></div><div class="insider-table-wrap"><table class="ins-tbl"><thead><tr><th>Name</th><th>Role</th><th>Type</th><th>Shares</th><th>Price</th><th>Value</th><th>Date</th></tr></thead><tbody>${CurInsiders.transactions.slice(0,15).map(t=>`<tr><td class="ins-name">${esc(t.name)}</td><td style="text-transform:capitalize">${esc(t.title)}</td><td><span class="${t.isBuy?'ins-buy':'ins-sell'}">${t.isBuy?'Buy':'Sell'}</span></td><td style="text-align:right">${Number(t.shares).toLocaleString()}</td><td style="text-align:right">${t.price?f$(t.price):'—'}</td><td style="text-align:right;color:${t.isBuy?'var(--G)':'var(--R)'}">${fmtV(t.value)}</td><td>${esc(t.date)}</td></tr>`).join('')}</tbody></table></div></div>`:
-    hasInsiders&&!isPro()?`<div style="border-top:1px solid var(--b2);margin:1.2rem 0 1rem;padding-top:1.2rem"><div class="charts-hdr"><div><h3>Insider Transactions <span class="badge live">Live</span></h3></div></div><div class="upgrade-wall"><div class="upgrade-wall-icon">🔒</div><div class="upgrade-wall-title">Insider Trading Data</div><div class="upgrade-wall-sub">See what executives and directors are buying and selling with a Pro subscription.</div><button class="upgrade-wall-btn" onclick="showUpgradeModal('Insider Trading')">Upgrade to Pro — $8.99/month</button></div></div>`:''}
+    hasInsiders&&!isPro()?`<div style="border-top:1px solid var(--b2);margin:1.2rem 0 1rem;padding-top:1.2rem"><div class="charts-hdr"><div><h3>Insider Transactions <span class="badge live">Live</span></h3></div></div><div class="chart-locked-wrap"><div style="padding:1.5rem;opacity:.35;pointer-events:none"><div class="stitle-sm">Recent Insider Activity</div><div style="height:80px;background:var(--bg3);border-radius:10px;margin:.5rem 0"></div><div style="height:60px;background:var(--bg3);border-radius:10px"></div></div><div class="chart-lock-overlay" onclick="showUpgradeModal('Insider Trading')"><div class="chart-lock-icon">🔒</div><div class="chart-lock-title">Insider Trading Data</div><div class="chart-lock-sub">See what executives are buying and selling</div><button class="chart-lock-btn">Upgrade to Pro — $8.99/month</button></div></div></div>`:''}
   `;
 
   // Wire events
