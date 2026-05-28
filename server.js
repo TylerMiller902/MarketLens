@@ -497,25 +497,26 @@ app.get('/api/debug-etf/:symbol([A-Z0-9.\\-^]+)', async(req,res)=>{
 app.get('/api/search', async (req,res) => {
   const q = req.query.q || '';
   if(!q) return res.json({result:[]});
-  const ck = `search:${q}`; const hit = gc(ck); if(hit) return res.json(hit);
+  const ck = `search:${q.toLowerCase()}`; const hit = gc(ck); if(hit) return res.json(hit);
   try {
-    const data = await fmp('/search', { query: q, limit: 10 });
+    const data = await fmp('/search', { query: q, limit: 20 });
     const items = Array.isArray(data) ? data : (data?.result || data?.results || []);
     const result = {
       result: items
-        .filter(r => r.symbol)
+        .filter(r => r.symbol && !r.symbol.match(/\.[A-Z]{2,}$/) && r.symbol.length <= 6)
         .map(r => ({
           symbol:      r.symbol,
           description: r.name || r.companyName || r.description || r.symbol,
           type:        r.type || 'Stock',
           displaySymbol: r.symbol,
         }))
+        .slice(0, 10)
     };
     sc(ck, result, TTL.search);
     res.json(result);
   } catch(e) {
     console.error('Search error:', e.message);
-    res.json({result:[]}); // return empty instead of 500 so frontend handles gracefully
+    res.json({result:[]});
   }
 });
 
