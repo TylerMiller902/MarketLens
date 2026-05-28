@@ -149,6 +149,7 @@ button,input{font-family:var(--fb)}
 .sugg-item{display:flex;align-items:center;gap:8px;padding:.35rem .75rem;cursor:pointer;border-bottom:1px solid var(--b1);transition:background .1s}
 .sugg-item:last-child{border-bottom:none}
 .sugg-item:hover{background:var(--bg4)}
+.sugg-item.active{background:var(--bg4)}
 .sugg-logo{width:20px;height:20px;border-radius:4px;object-fit:contain;flex-shrink:0;background:var(--bg4);padding:2px}
 .sugg-info{flex:1;min-width:0}
 .sugg-sym{font-family:var(--fm);font-size:11px;color:var(--P2);font-weight:600}
@@ -1836,8 +1837,55 @@ function showSuggestions(items,sugg){
   items.forEach(it=>{apiFetch(`/api/quote/${it.symbol}`).then(qt=>{const el=$(`sqr-${it.symbol}`);if(!el||!qt?.c)return;const up=(qt.dp||0)>=0;el.innerHTML=`<div class="sugg-price">${f$(qt.c)}</div><div class="sugg-chg ${up?'up':'dn'}">${up?'▲':'▼'}${Math.abs(qt.dp||0).toFixed(2)}%</div>`;}).catch(()=>{});});
 }
 function setupSearch(inp,sugg){
-  inp.addEventListener('input',()=>{clearTimeout(searchTimer);if(sugg)sugg.classList.remove('open');const q=inp.value.trim();if(!q||!sugg)return;const local=localSearch(q);if(local.length)showSuggestions(local,sugg);searchTimer=setTimeout(async()=>{try{const d=await apiFetch(`/api/search?q=${encodeURIComponent(q)}`);const fi=(d?.result||[]).filter(r=>r.symbol&&!r.symbol.match(/\.[A-Z]{2,}$/)).slice(0,5);if(!fi.length)return;const ls=new Set(local.map(r=>r.symbol));const extra=fi.filter(r=>!ls.has(r.symbol));if(extra.length)showSuggestions([...local,...extra].slice(0,5),sugg);}catch{}},300);});
-  inp.addEventListener('keydown',e=>{if(e.key==='Enter'){const v=inp.value.trim().toUpperCase();if(v)go(v);}if(e.key==='Escape'&&sugg)sugg.classList.remove('open');});
+  inp.addEventListener('input',()=>{
+    clearTimeout(searchTimer);
+    if(sugg)sugg.classList.remove('open');
+    const q=inp.value.trim();
+    if(!q||!sugg)return;
+    // Show local results instantly
+    const local=localSearch(q);
+    if(local.length)showSuggestions(local,sugg);
+    // Fetch FMP results with short debounce
+    searchTimer=setTimeout(async()=>{
+      try{
+        const d=await apiFetch(`/api/search?q=${encodeURIComponent(q)}`);
+        const fi=(d?.result||[]).filter(r=>r.symbol&&!r.symbol.match(/\.[A-Z]{2,}$/)).slice(0,8);
+        if(!fi.length)return;
+        // Merge: FMP results first, deduplicate, show up to 8
+        const seen=new Set();
+        const merged=[];
+        for(const r of fi){if(!seen.has(r.symbol)){seen.add(r.symbol);merged.push(r);}}
+        for(const r of local){if(!seen.has(r.symbol)&&merged.length<8){seen.add(r.symbol);merged.push(r);}}
+        showSuggestions(merged,sugg);
+      }catch{}
+    },200);
+  });
+  inp.addEventListener('keydown',e=>{
+    if(e.key==='Enter'){
+      // If suggestions open, pick the first one
+      const firstSugg=sugg?.querySelector('.sugg-item');
+      if(firstSugg&&sugg?.classList.contains('open')){
+        const sym=firstSugg.dataset.sym;
+        if(sym){sugg.classList.remove('open');go(sym);return;}
+      }
+      // Otherwise use typed text as ticker
+      const v=inp.value.trim().toUpperCase();
+      if(v)go(v);
+    }
+    if(e.key==='Escape'&&sugg)sugg.classList.remove('open');
+    // Arrow key navigation
+    if(e.key==='ArrowDown'||e.key==='ArrowUp'){
+      e.preventDefault();
+      const items=[...sugg.querySelectorAll('.sugg-item')];
+      if(!items.length)return;
+      const active=sugg.querySelector('.sugg-item.active');
+      let idx=items.indexOf(active);
+      if(active)active.classList.remove('active');
+      idx=e.key==='ArrowDown'?Math.min(idx+1,items.length-1):Math.max(idx-1,0);
+      items[idx].classList.add('active');
+      inp.value=items[idx].dataset.sym||inp.value;
+    }
+  });
   document.addEventListener('click',e=>{if(sugg&&!inp.contains(e.target)&&!sugg.contains(e.target))sugg.classList.remove('open');});
 }
 setupSearch($('sinp'),$('home-sugg'));
