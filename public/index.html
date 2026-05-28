@@ -144,7 +144,7 @@ button,input{font-family:var(--fb)}
 .sinp::placeholder{color:var(--di)}
 .gobtn{background:var(--P);border:none;color:#fff;padding:.945rem 1.47rem;border-radius:12px;font-size:.9975rem;font-weight:700;cursor:pointer;white-space:nowrap;font-family:var(--fd)}
 .gobtn:hover{opacity:.85}
-.sugg-wrap{position:absolute;top:calc(100% + 8px);left:0;right:0;background:var(--bg3);border:1.5px solid var(--b2);border-radius:10px;overflow:hidden;z-index:500;display:none;box-shadow:0 12px 32px rgba(0,0,0,.7);min-width:200px}
+.sugg-wrap{position:absolute;top:calc(100% + 8px);left:0;right:0;background:var(--bg3);border:1.5px solid var(--b2);border-radius:10px;overflow-y:auto;overflow-x:hidden;z-index:500;display:none;box-shadow:0 12px 32px rgba(0,0,0,.7);min-width:200px;max-height:min(340px,calc(100vh - 100% - 80px));scrollbar-width:thin;scrollbar-color:var(--b2) transparent}
 .sugg-wrap.open{display:block}
 .sugg-item{display:flex;align-items:center;gap:8px;padding:.35rem .75rem;cursor:pointer;border-bottom:1px solid var(--b1);transition:background .1s}
 .sugg-item:last-child{border-bottom:none}
@@ -1833,6 +1833,9 @@ function localSearch(q){const ql=q.toLowerCase();return LOCAL_STOCKS.filter(([s,
 function showSuggestions(items,sugg){
   sugg.innerHTML=items.map(it=>`<div class="sugg-item" data-sym="${esc(it.symbol)}"><img class="sugg-logo" src="https://images.financialmodelingprep.com/symbol/${esc(it.symbol)}.png" onerror="this.style.display='none'"/><div class="sugg-info"><span class="sugg-sym">${esc(it.symbol)}</span><span class="sugg-name">${esc(it.description||it.symbol)}</span></div><div class="sugg-right" id="sqr-${esc(it.symbol)}"></div></div>`).join('');
   sugg.querySelectorAll('.sugg-item').forEach(el=>el.addEventListener('click',()=>{go(el.dataset.sym);sugg.classList.remove('open');}));
+  // Cap height to avoid going off screen
+  const rect=sugg.parentElement?.getBoundingClientRect();
+  if(rect){const avail=window.innerHeight-rect.bottom-16;sugg.style.maxHeight=Math.min(340,Math.max(120,avail))+'px';}
   sugg.classList.add('open');
   items.forEach(it=>{apiFetch(`/api/quote/${it.symbol}`).then(qt=>{const el=$(`sqr-${it.symbol}`);if(!el||!qt?.c)return;const up=(qt.dp||0)>=0;el.innerHTML=`<div class="sugg-price">${f$(qt.c)}</div><div class="sugg-chg ${up?'up':'dn'}">${up?'▲':'▼'}${Math.abs(qt.dp||0).toFixed(2)}%</div>`;}).catch(()=>{});});
 }
