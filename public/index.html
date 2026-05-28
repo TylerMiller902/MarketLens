@@ -615,7 +615,23 @@ button,input{font-family:var(--fb)}
   .about-text{display:-webkit-box;-webkit-line-clamp:4;-webkit-box-orient:vertical;overflow:hidden}
 }
 
-/* ── Upgrade / Pro ── */
+/* ── Pricing Page ── */
+.pricing-card{background:var(--bg2);border:1px solid var(--b2);border-radius:18px;padding:1.4rem 1.2rem}
+.pricing-card-pro{border-color:var(--P);box-shadow:0 0 30px rgba(124,92,252,.15)}
+.pricing-card-header{display:flex;justify-content:space-between;align-items:flex-start;margin-bottom:1.2rem}
+.pricing-tier{font-family:var(--fd);font-size:1rem;font-weight:700;color:#fff;margin-bottom:.3rem}
+.pricing-price{font-family:var(--fd);font-size:2rem;font-weight:800;color:#fff;line-height:1}
+.pricing-per{font-size:.85rem;font-weight:400;color:var(--mu)}
+.pricing-features{display:flex;flex-direction:column;gap:.5rem}
+.pf-feat{font-size:.82rem;color:rgba(255,255,255,.7);display:flex;align-items:center;gap:.5rem;line-height:1.4}
+.pf-feat.yes::before{content:'✓';color:var(--G);font-weight:700;flex-shrink:0;width:14px}
+.pf-feat.no::before{content:'✕';color:var(--di);font-weight:700;flex-shrink:0;width:14px}
+.pf-feat.no{color:var(--di)}
+.pricing-upgrade-btn{background:var(--P);color:#fff;border:none;width:100%;padding:.85rem;border-radius:12px;font-size:.95rem;font-weight:700;cursor:pointer;font-family:var(--fd);transition:opacity .15s}
+.pricing-upgrade-btn:hover{opacity:.9}
+.pricing-current-btn{background:var(--bg3);color:var(--mu);border:1px solid var(--b2);width:100%;padding:.85rem;border-radius:12px;font-size:.9rem;font-weight:600;cursor:default;font-family:var(--fd)}
+.pricing-manage-btn{background:none;color:var(--P);border:1px solid var(--P);width:100%;padding:.85rem;border-radius:12px;font-size:.9rem;font-weight:600;cursor:pointer;font-family:var(--fd);transition:background .15s}
+.pricing-manage-btn:hover{background:rgba(124,92,252,.1)}
 .upgrade-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:1000;display:flex;align-items:center;justify-content:center}
 .upgrade-modal{background:var(--bg2);border:1px solid var(--P);border-radius:20px;padding:2.5rem 2rem;max-width:380px;width:90%;text-align:center;box-shadow:0 0 60px rgba(124,92,252,.25)}
 .upgrade-modal-icon{font-size:2.5rem;margin-bottom:1rem}
@@ -919,6 +935,78 @@ button,input{font-family:var(--fb)}
     </div>
   </div>
 </div>
+<!-- ══ Pricing Page ══════════════════════════════════════════ -->
+<div id="pricingpage" class="gone">
+  <div class="pf-topbar">
+    <div class="pf-page-ttl">Plans</div>
+    <div class="pf-topbar-btns">
+      <button class="backbtn-sm" onclick="closePricingPage()">&#8592; Back</button>
+    </div>
+  </div>
+  <div id="pricing-content" style="overflow-y:auto;flex:1;padding:1.5rem 1rem 3rem">
+
+    <div style="text-align:center;margin-bottom:2rem">
+      <div style="font-family:var(--fd);font-size:1.6rem;font-weight:800;color:#fff;margin-bottom:.4rem">Choose Your Plan</div>
+      <div style="font-size:.85rem;color:var(--mu)">Start free. Upgrade when you're ready.</div>
+    </div>
+
+    <!-- Free Plan -->
+    <div class="pricing-card" style="margin-bottom:1rem">
+      <div class="pricing-card-header">
+        <div>
+          <div class="pricing-tier">Free</div>
+          <div class="pricing-price">$0<span class="pricing-per">/month</span></div>
+        </div>
+        <div id="pricing-free-badge"></div>
+      </div>
+      <div class="pricing-features">
+        <div class="pf-feat yes">Unlimited stock & ETF searches</div>
+        <div class="pf-feat yes">Live quotes, charts & key stats</div>
+        <div class="pf-feat yes">Analyst ratings & price targets</div>
+        <div class="pf-feat yes">Company profile & peers</div>
+        <div class="pf-feat yes">Market cap rankings & daily movers</div>
+        <div class="pf-feat yes">Annual Revenue & Revenue Growth charts</div>
+        <div class="pf-feat yes">Portfolio tracking (3 positions)</div>
+        <div class="pf-feat no">Advanced financial charts</div>
+        <div class="pf-feat no">Dividends & income tracking</div>
+        <div class="pf-feat no">Insider trading data</div>
+        <div class="pf-feat no">Market news</div>
+        <div class="pf-feat no">Unlimited portfolio positions</div>
+        <div class="pf-feat no">All historical data</div>
+      </div>
+      <div id="pricing-free-btn-wrap" style="margin-top:1.2rem"></div>
+    </div>
+
+    <!-- Pro Plan -->
+    <div class="pricing-card pricing-card-pro">
+      <div class="pricing-card-header">
+        <div>
+          <div class="pricing-tier" style="color:var(--P)">Pro <span class="pro-badge">BEST VALUE</span></div>
+          <div class="pricing-price">$8.99<span class="pricing-per">/month</span></div>
+        </div>
+        <div id="pricing-pro-badge"></div>
+      </div>
+      <div class="pricing-features">
+        <div class="pf-feat yes">Everything in Free</div>
+        <div class="pf-feat yes">Full financial charts — FCF, Margins, EPS</div>
+        <div class="pf-feat yes">Balance Sheet, Valuation & Capital Allocation</div>
+        <div class="pf-feat yes">Dividends & income tracking</div>
+        <div class="pf-feat yes">Insider trading & congressional data</div>
+        <div class="pf-feat yes">Market news — stock & market-wide</div>
+        <div class="pf-feat yes">Unlimited portfolio positions</div>
+        <div class="pf-feat yes">All historical data</div>
+        <div class="pf-feat yes" style="color:var(--mu)">13F Institutional holdings <span style="font-size:10px;opacity:.6">(coming soon)</span></div>
+        <div class="pf-feat yes" style="color:var(--mu)">Earnings call transcripts <span style="font-size:10px;opacity:.6">(coming soon)</span></div>
+      </div>
+      <div id="pricing-pro-btn-wrap" style="margin-top:1.2rem"></div>
+    </div>
+
+    <div style="text-align:center;margin-top:1.5rem;font-size:.75rem;color:var(--di);line-height:1.7">
+      Cancel anytime. No hidden fees.<br/>Billed monthly. Access continues until end of billing period.
+    </div>
+  </div>
+</div>
+
 <!-- ══ News Page ════════════════════════════════════════════ -->
 <div id="newspage" class="gone">
   <div class="pf-topbar">
@@ -1054,7 +1142,37 @@ async function checkAuth(){
   finally{renderAuthUI();}
 }
 
-// ── Plan / Upgrade ──────────────────────────────────────────────────────────
+// ── Pricing Page ─────────────────────────────────────────────────────────────
+function openPricingPage(){
+  ['pfpage','divpage','newspage'].forEach(id=>{const e=$(id);if(e)e.classList.add('gone');});
+  $('home').classList.add('gone');
+  $('spage').classList.remove('on');
+  $('pricingpage').classList.remove('gone');
+  renderPricingPage();
+}
+function closePricingPage(){
+  $('pricingpage').classList.add('gone');
+  $('home').classList.remove('gone');
+}
+function renderPricingPage(){
+  const pro=isPro();
+  // Free plan button
+  const fb=$('pricing-free-btn-wrap');
+  if(fb) fb.innerHTML=pro
+    ?'<button class="pricing-current-btn">Your previous plan</button>'
+    :'<button class="pricing-current-btn">✓ Current Plan</button>';
+  // Pro plan button
+  const pb=$('pricing-pro-btn-wrap');
+  if(pb) pb.innerHTML=pro
+    ?'<button class="pricing-manage-btn" onclick="openBillingPortal()">Manage Subscription</button>'
+    :`<button class="pricing-upgrade-btn" onclick="startCheckout()">Get Started with Pro — $8.99/month</button>
+      <div style="text-align:center;margin-top:.6rem;font-size:.75rem;color:var(--di)">Billed monthly · Cancel anytime</div>`;
+}
+
+// Override showUpgradeModal to go to pricing page instead of inline modal
+function showUpgradeModal(feature='this feature'){
+  openPricingPage();
+}
 function isPro(){return AuthUser?.plan==='pro';}
 
 async function startCheckout(){
@@ -1125,7 +1243,7 @@ function toggleUserMenu(e){
   const planBadge=isPro()?'<span class="pro-badge">PRO</span>':'';
   const planBtn=isPro()
     ?`<button class="um-btn" onclick="openBillingPortal()" style="margin-bottom:6px;color:var(--P);border-color:var(--P)">Manage Subscription</button>`
-    :`<button class="um-btn" onclick="showUpgradeModal('Pro features')" style="margin-bottom:6px;color:var(--P);border-color:var(--P)">⚡ Upgrade to Pro</button>`;
+    :`<button class="um-btn" onclick="openPricingPage()" style="margin-bottom:6px;color:var(--P);border-color:var(--P)">⚡ Upgrade to Pro</button>`;
   m.innerHTML=`<div class="um-name">${AuthUser?.name||'User'}${planBadge}</div><div class="um-email">${AuthUser?.email||''}</div><hr style="border-color:var(--b2);margin:.5rem 0"/>${planBtn}<button class="um-btn" onclick="signOut()">Sign out</button>`;
   document.body.appendChild(m);
   setTimeout(()=>document.addEventListener('click',()=>{const el=document.getElementById('user-menu');if(el)el.remove();},{once:true}),50);
