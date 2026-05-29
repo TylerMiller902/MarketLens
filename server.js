@@ -1086,33 +1086,6 @@ app.get('/api/debug/:symbol', async (req,res) => {
 
 // ── Top Stock Biggest Movers ──────────────────────────────
 // Fortune 500 movers — filtered to large-cap S&P 500 equivalent
-// Static name map for large-cap stocks — avoids extra API calls for market cap rank
-const STOCK_NAMES = {
-  'AAPL':'Apple','MSFT':'Microsoft','NVDA':'NVIDIA','GOOGL':'Alphabet','AMZN':'Amazon',
-  'META':'Meta','TSLA':'Tesla','AVGO':'Broadcom','WMT':'Walmart','JPM':'JPMorgan Chase',
-  'LLY':'Eli Lilly','V':'Visa','MA':'Mastercard','XOM':'Exxon Mobil','ORCL':'Oracle',
-  'COST':'Costco','UNH':'UnitedHealth','NFLX':'Netflix','JNJ':'Johnson & Johnson',
-  'HD':'Home Depot','AMD':'AMD','CRM':'Salesforce','BAC':'Bank of America','PG':'Procter & Gamble',
-  'ABBV':'AbbVie','PLTR':'Palantir','TMUS':'T-Mobile','KO':'Coca-Cola','PEP':'PepsiCo',
-  'ADBE':'Adobe','TXN':'Texas Instruments','ACN':'Accenture','MRK':'Merck','PM':'Philip Morris',
-  'WFC':'Wells Fargo','TMO':'Thermo Fisher','ABT':'Abbott','GE':'GE Aerospace','DHR':'Danaher',
-  'IBM':'IBM','VZ':'Verizon','CSCO':'Cisco','MCD':'McDonald\'s','INTU':'Intuit','AMGN':'Amgen',
-  'SPGI':'S&P Global','AXP':'American Express','HON':'Honeywell','ISRG':'Intuitive Surgical',
-  'BKNG':'Booking Holdings','LOW':'Lowe\'s','LMT':'Lockheed Martin','RTX':'RTX Corp',
-  'BLK':'BlackRock','CB':'Chubb','SYK':'Stryker','VRTX':'Vertex','ADI':'Analog Devices',
-  'REGN':'Regeneron','BMY':'Bristol-Myers','NOW':'ServiceNow','T':'AT&T','SCHW':'Charles Schwab',
-  'PLD':'Prologis','MU':'Micron','ELV':'Elevance Health','CI':'Cigna','ETN':'Eaton',
-  'PANW':'Palo Alto Networks','SBUX':'Starbucks','GILD':'Gilead','UPS':'UPS','MDT':'Medtronic',
-  'KLAC':'KLA Corp','DUK':'Duke Energy','SO':'Southern Company','PGR':'Progressive',
-  'MS':'Morgan Stanley','GS':'Goldman Sachs','C':'Citigroup','ADP':'ADP','ZTS':'Zoetis',
-  'EOG':'EOG Resources','TJX':'TJX Companies','COF':'Capital One','WM':'Waste Management',
-  'ITW':'Illinois Tool Works','LRCX':'Lam Research','CME':'CME Group','APD':'Air Products',
-  'NKE':'Nike','QCOM':'Qualcomm','WELL':'Welltower','DE':'John Deere','INTC':'Intel',
-  'TGT':'Target','AMT':'American Tower','COP':'ConocoPhillips','USB':'US Bancorp',
-  'ICE':'Intercontinental Exchange','MMC':'Marsh McLennan','PH':'Parker Hannifin','EMR':'Emerson',
-  'PYPL':'PayPal'
-};
-const TOP_STOCKS_SET = new Set(TOP_STOCKS);
 
 app.get('/api/voo-movers', async (req,res) => {
   const ck='voo-movers'; const hit=gc(ck); if(hit)return res.json(hit);
@@ -1178,6 +1151,9 @@ const TOP_STOCKS=['AAPL','MSFT','NVDA','GOOGL','AMZN','META','TSLA','AVGO','WMT'
   'MU','ELV','CI','ETN','PANW','SBUX','GILD','UPS','MDT','KLAC','DUK','SO','PGR','MS',
   'GS','C','ADP','ZTS','EOG','TJX','COF','WM','ITW','LRCX','CME','APD','NKE','QCOM',
   'WELL','DE','INTC','TGT','AMT','COP','USB','ICE','MMC','PH','EMR','PYPL'];
+
+const STOCK_NAMES={'AAPL':'Apple','MSFT':'Microsoft','NVDA':'NVIDIA','GOOGL':'Alphabet','AMZN':'Amazon','META':'Meta','TSLA':'Tesla','AVGO':'Broadcom','WMT':'Walmart','JPM':'JPMorgan Chase','LLY':'Eli Lilly','V':'Visa','MA':'Mastercard','XOM':'Exxon Mobil','ORCL':'Oracle','COST':'Costco','UNH':'UnitedHealth','NFLX':'Netflix','JNJ':'Johnson & Johnson','HD':'Home Depot','AMD':'AMD','CRM':'Salesforce','BAC':'Bank of America','PG':'Procter & Gamble','ABBV':'AbbVie','PLTR':'Palantir','TMUS':'T-Mobile','KO':'Coca-Cola','PEP':'PepsiCo','ADBE':'Adobe','TXN':'Texas Instruments','ACN':'Accenture','MRK':'Merck','PM':'Philip Morris','WFC':'Wells Fargo','TMO':'Thermo Fisher','ABT':'Abbott','GE':'GE Aerospace','DHR':'Danaher','IBM':'IBM','VZ':'Verizon','CSCO':'Cisco','MCD':"McDonald's",'INTU':'Intuit','AMGN':'Amgen','SPGI':'S&P Global','AXP':'American Express','HON':'Honeywell','ISRG':'Intuitive Surgical','BKNG':'Booking Holdings','LOW':"Lowe's",'LMT':'Lockheed Martin','RTX':'RTX Corp','BLK':'BlackRock','CB':'Chubb','SYK':'Stryker','VRTX':'Vertex','ADI':'Analog Devices','REGN':'Regeneron','BMY':'Bristol-Myers','NOW':'ServiceNow','T':'AT&T','SCHW':'Charles Schwab','PLD':'Prologis','MU':'Micron','ELV':'Elevance Health','CI':'Cigna','ETN':'Eaton','PANW':'Palo Alto Networks','SBUX':'Starbucks','GILD':'Gilead','UPS':'UPS','MDT':'Medtronic','KLAC':'KLA Corp','DUK':'Duke Energy','SO':'Southern Company','PGR':'Progressive','MS':'Morgan Stanley','GS':'Goldman Sachs','C':'Citigroup','ADP':'ADP','ZTS':'Zoetis','EOG':'EOG Resources','TJX':'TJX Companies','COF':'Capital One','WM':'Waste Management','ITW':'Illinois Tool Works','LRCX':'Lam Research','CME':'CME Group','APD':'Air Products','NKE':'Nike','QCOM':'Qualcomm','WELL':'Welltower','DE':'John Deere','INTC':'Intel','TGT':'Target','AMT':'American Tower','COP':'ConocoPhillips','USB':'US Bancorp','ICE':'Intercontinental Exchange','MMC':'Marsh McLennan','PH':'Parker Hannifin','EMR':'Emerson','PYPL':'PayPal'};
+const TOP_STOCKS_SET = new Set(TOP_STOCKS);
 
 app.get('/api/market-cap-rank', async (req,res) => {
   const ck='mkt-cap-rank'; const hit=gc(ck); if(hit)return res.json(hit);
