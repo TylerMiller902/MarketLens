@@ -1127,6 +1127,15 @@ app.get('/api/debug-screener', async (req,res) => {
   res.json(results);
 });
 
+// Debug raw FMP quote
+app.get('/api/debug-quote/:symbol', async(req,res)=>{
+  const{symbol}=req.params;
+  try{
+    const raw = await fmp('/quote',{symbol});
+    res.json({raw, type: typeof raw, isArray: Array.isArray(raw), length: Array.isArray(raw)?raw.length:'n/a', first: Array.isArray(raw)?raw[0]:raw});
+  }catch(e){res.json({error:e.message});}
+});
+
 // Market Cap Rank — batch quotes for top stocks sorted by live market cap
 const TOP_STOCKS=['AAPL','MSFT','NVDA','GOOGL','AMZN','META','TSLA','AVGO','WMT',
   'JPM','LLY','V','MA','XOM','ORCL','COST','UNH','NFLX','JNJ','HD','AMD','CRM','BAC',
