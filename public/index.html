@@ -1326,7 +1326,8 @@ async function renderNewsPage(){
       </div>
     </div>`;
     if(posList) posList.innerHTML=fakeHTML;
-    if(mktList) mktList.innerHTML='';
+    const mktBox=$('news-market-box');
+    if(mktBox) mktBox.style.display='none';
     return;
   }
   const pos=getPf().positions||[];
@@ -1337,6 +1338,8 @@ async function renderNewsPage(){
     pos.length?Promise.all(pos.map(p=>apiFetch(`/api/news/stock/${p.ticker}`).catch(()=>[]))):[],
     apiFetch('/api/news/market').catch(()=>[]),
   ]);
+  const mktBox=$('news-market-box');
+  if(mktBox) mktBox.style.display='';
 
   let totalVal=0;
   const enriched=pos.map((p,i)=>{
