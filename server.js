@@ -1085,32 +1085,43 @@ app.get('/api/debug/:symbol', async (req,res) => {
 
 
 // ── Top Stock Biggest Movers ──────────────────────────────
-// S&P 500 constituent list — cached daily, used to filter movers
-let sp500Cache = {symbols: new Set(), ts: 0};
-async function getSP500(){
-  if(Date.now()-sp500Cache.ts < 86_400_000 && sp500Cache.symbols.size) return sp500Cache.symbols;
-  try{
-    const data = await fmp('/sp500-constituent');
-    const syms = new Set(arr(data).map(s=>s.symbol).filter(Boolean));
-    if(syms.size) { sp500Cache = {symbols:syms, ts:Date.now()}; }
-    return syms;
-  }catch{ return sp500Cache.symbols; }
-}
+// Fortune 500 movers — filtered to large-cap S&P 500 equivalent
+// Static name map for large-cap stocks — avoids extra API calls for market cap rank
+const STOCK_NAMES = {
+  'AAPL':'Apple','MSFT':'Microsoft','NVDA':'NVIDIA','GOOGL':'Alphabet','AMZN':'Amazon',
+  'META':'Meta','TSLA':'Tesla','AVGO':'Broadcom','WMT':'Walmart','JPM':'JPMorgan Chase',
+  'LLY':'Eli Lilly','V':'Visa','MA':'Mastercard','XOM':'Exxon Mobil','ORCL':'Oracle',
+  'COST':'Costco','UNH':'UnitedHealth','NFLX':'Netflix','JNJ':'Johnson & Johnson',
+  'HD':'Home Depot','AMD':'AMD','CRM':'Salesforce','BAC':'Bank of America','PG':'Procter & Gamble',
+  'ABBV':'AbbVie','PLTR':'Palantir','TMUS':'T-Mobile','KO':'Coca-Cola','PEP':'PepsiCo',
+  'ADBE':'Adobe','TXN':'Texas Instruments','ACN':'Accenture','MRK':'Merck','PM':'Philip Morris',
+  'WFC':'Wells Fargo','TMO':'Thermo Fisher','ABT':'Abbott','GE':'GE Aerospace','DHR':'Danaher',
+  'IBM':'IBM','VZ':'Verizon','CSCO':'Cisco','MCD':'McDonald\'s','INTU':'Intuit','AMGN':'Amgen',
+  'SPGI':'S&P Global','AXP':'American Express','HON':'Honeywell','ISRG':'Intuitive Surgical',
+  'BKNG':'Booking Holdings','LOW':'Lowe\'s','LMT':'Lockheed Martin','RTX':'RTX Corp',
+  'BLK':'BlackRock','CB':'Chubb','SYK':'Stryker','VRTX':'Vertex','ADI':'Analog Devices',
+  'REGN':'Regeneron','BMY':'Bristol-Myers','NOW':'ServiceNow','T':'AT&T','SCHW':'Charles Schwab',
+  'PLD':'Prologis','MU':'Micron','ELV':'Elevance Health','CI':'Cigna','ETN':'Eaton',
+  'PANW':'Palo Alto Networks','SBUX':'Starbucks','GILD':'Gilead','UPS':'UPS','MDT':'Medtronic',
+  'KLAC':'KLA Corp','DUK':'Duke Energy','SO':'Southern Company','PGR':'Progressive',
+  'MS':'Morgan Stanley','GS':'Goldman Sachs','C':'Citigroup','ADP':'ADP','ZTS':'Zoetis',
+  'EOG':'EOG Resources','TJX':'TJX Companies','COF':'Capital One','WM':'Waste Management',
+  'ITW':'Illinois Tool Works','LRCX':'Lam Research','CME':'CME Group','APD':'Air Products',
+  'NKE':'Nike','QCOM':'Qualcomm','WELL':'Welltower','DE':'John Deere','INTC':'Intel',
+  'TGT':'Target','AMT':'American Tower','COP':'ConocoPhillips','USB':'US Bancorp',
+  'ICE':'Intercontinental Exchange','MMC':'Marsh McLennan','PH':'Parker Hannifin','EMR':'Emerson',
+  'PYPL':'PayPal'
+};
+const TOP_STOCKS_SET = new Set(TOP_STOCKS);
 
 app.get('/api/voo-movers', async (req,res) => {
   const ck='voo-movers'; const hit=gc(ck); if(hit)return res.json(hit);
   try{
-    const [gainers, losers, sp500] = await Promise.all([
+    const [gainers, losers] = await Promise.all([
       fmpSafe('/biggest-gainers'),
       fmpSafe('/biggest-losers'),
-      getSP500(),
     ]);
-    const isLargeCap = s => {
-      if(!s.symbol || s.price < 5) return false;
-      // Must be in S&P 500 OR in our TOP_STOCKS list
-      if(sp500.has(s.symbol) || TOP_STOCKS.includes(s.symbol)) return true;
-      return false;
-    };
+    const isLargeCap = s => s?.symbol && TOP_STOCKS_SET.has(s.symbol) && s.price > 5;
     const fmt = (list, type) => arr(list).filter(isLargeCap).slice(0,5).map(s=>({
       ticker: s.symbol,
       name: s.name || s.companyName || s.symbol,
@@ -1182,12 +1193,13 @@ app.get('/api/market-cap-rank', async (req,res) => {
       .sort((a,b) => capMap[b] - capMap[a])
       .slice(0, 100);
 
-    // Get profile for all ranked stocks to get names + daily change (cached for 1hr)
-    const allProfiles = await Promise.all(
-      sorted.map(sym => fmpSafe('/profile',{symbol:sym}))
+    // Get profile only for top 25 — rest use ticker symbol as name
+    // Profiles cached for 1hr so subsequent refreshes cost 0 extra calls
+    const top25Profiles = await Promise.all(
+      sorted.slice(0,25).map(sym => fmpSafe('/profile',{symbol:sym}))
     );
     const profileMap = {};
-    allProfiles.forEach(r => {
+    top25Profiles.forEach(r => {
       const p = arr(r)[0];
       if(p?.symbol) profileMap[p.symbol] = p;
     });
@@ -1197,7 +1209,7 @@ app.get('/api/market-cap-rank', async (req,res) => {
       return {
         rank: i+1,
         symbol: sym,
-        name: p?.companyName || p?.name || sym,
+        name: p?.companyName || p?.name || STOCK_NAMES[sym] || sym,
         marketCap: capMap[sym] || 0,
         price: p?.price || 0,
         change: +(p?.changePercentage ?? 0).toFixed(2),
