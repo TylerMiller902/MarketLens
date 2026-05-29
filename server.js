@@ -600,12 +600,11 @@ app.get('/api/stock/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
   try {
     console.log(`[stock] fetching ${symbol}`);
     const [
-      quoteRaw, profileRaw, incomeRaw, kmRaw,
+      profileRaw, incomeRaw, kmRaw,
       newsRaw, recsRaw, priceTargetRaw,
       earningsRaw, earningsCalRaw,
     ] = await Promise.all([
-      fmpSafe('/profile',                        { symbol }),  // profile has price, change, marketCap
-      fmpSafe('/profile',                        { symbol }),  // used for company info
+      fmpSafe('/profile',                        { symbol }),  // price + company info in one call
       fmpSafe('/income-statement',               { symbol, period: 'annual', limit: 1 }),
       fmpSafe('/key-metrics',                    { symbol, period: 'annual', limit: 1 }),
       fmpSafe('/news/stock',                     { symbols: symbol, limit: 10 }),
@@ -614,6 +613,7 @@ app.get('/api/stock/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
       fmpSafe('/earnings-surprises',             { symbol }),
       fmpSafe('/earnings-calendar',              { from: today(), to: dFwd(90), symbol }),
     ]);
+    const quoteRaw = profileRaw; // profile contains price+change — no separate quote call needed
     console.log(`[stock] ${symbol} fetched — quote:${!!quoteRaw} profile:${!!profileRaw} news:${!!newsRaw}`);
 
     const quoteData   = arr(quoteRaw)[0]   || null;
@@ -667,8 +667,8 @@ app.get('/api/peers/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
 
     // Fetch quotes (for today's change) + profiles (for sector matching)
     const [quotes, profiles] = await Promise.all([
-      Promise.allSettled(filtered.map(p => fmp('/profile',   { symbol: p.symbol }))),
       Promise.allSettled(filtered.map(p => fmpSafe('/profile', { symbol: p.symbol }))),
+      Promise.resolve([]),
     ]);
 
     let result = filtered.map((peer, i) => {
@@ -994,8 +994,8 @@ app.get('/api/news/market', async (req,res) => {
 app.get('/api/debug-news', async (req,res) => {
   try{
     const[spy,mkt]=await Promise.all([
-      fmpSafe('/stock-news',{tickers:'SPY',limit:2}),
-      fmpSafe('/stock-news',{limit:2}),
+      fmpSafe('/news/stock',{symbols:'SPY',limit:2}),
+      fmpSafe('/news/stock',{limit:2}),
     ]);
     res.json({spyNews:{type:typeof spy,isArray:Array.isArray(spy),length:Array.isArray(spy)?spy.length:null,sample:Array.isArray(spy)?spy[0]:spy},
               noTickerNews:{type:typeof mkt,isArray:Array.isArray(mkt),length:Array.isArray(mkt)?mkt.length:null,sample:Array.isArray(mkt)?mkt[0]:mkt}});
@@ -1007,7 +1007,7 @@ app.get('/api/fmp/insiders/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
   try{
     // Fetch from several major tickers individually (avoids comma-encoding issues)
     const tks=['SPY','QQQ','AAPL','MSFT','NVDA'];
-    const results=await Promise.all(tks.map(t=>fmpSafe('/stock-news',{tickers:t,limit:2})));
+    const results=await Promise.all(tks.map(t=>fmpSafe('/news/stock',{symbols:t,limit:2})));
     const raw=results.flatMap(d=>arr(d));
     // Deduplicate by URL and transform
     const seen=new Set();
@@ -1178,7 +1178,7 @@ app.get('/api/market-cap-rank', async (req,res) => {
       price:s.price||0,
       change:+(s.changePercentage??s.changesPercentage??0).toFixed(2),
     }));
-    sc(ck,result,900_000);
+    sc(ck,result,1_800_000);
     res.json(result);
   }catch(e){res.status(500).json({error:e.message});}
 });
