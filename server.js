@@ -512,13 +512,18 @@ app.get('/api/etf/holdings/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
   }
 });
 
-// Debug ETF holdings
+// Debug ETF holdings — try multiple endpoint names
 app.get('/api/debug-etf/:symbol([A-Z0-9.\\-^]+)', async(req,res)=>{
   const{symbol}=req.params;
-  try{
-    const data=await fmp('/etf-holder',{symbol});
-    res.json({symbol,count:arr(data).length,sample:arr(data).slice(0,3),keys:arr(data)[0]?Object.keys(arr(data)[0]):[]});
-  }catch(e){res.json({error:e.message});}
+  const results={};
+  const endpoints=['/etf-holder','/etf-holders','/etf-holdings','/etf-holding','/etf'];
+  for(const ep of endpoints){
+    try{
+      const d=await fmp(ep,{symbol});
+      results[ep]={count:arr(d).length,keys:arr(d)[0]?Object.keys(arr(d)[0]):[],sample:arr(d)[0]};
+    }catch(e){results[ep]={error:e.message};}
+  }
+  res.json(results);
 });
 
 // ══════════════════════════════════════════════════════════
