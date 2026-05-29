@@ -487,7 +487,7 @@ app.get('/api/etf/holdings/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
   const symbol = req.params.symbol.toUpperCase();
   const ck = `etf-hold:${symbol}`; const hit = gc(ck); if(hit) return res.json(hit);
   try{
-    const data = await fmp('/etf-holder', { symbol });
+    const data = await fmp('/etf/holdings', { symbol });
     const items = arr(data);
     if(!items.length) return res.json({holdings:[], source:'fmp'});
     const holdings = items
@@ -502,10 +502,9 @@ app.get('/api/etf/holdings/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
       .sort((a,b) => b.percent - a.percent)
       .slice(0, 25);
     const result = { holdings, source: 'fmp', updated: items[0]?.updated || null };
-    sc(ck, result, TTL.fmpFin); // 1hr cache
+    sc(ck, result, TTL.fmpFin);
     res.json(result);
   } catch(e) {
-    // Fallback to hardcoded cache if FMP fails
     const cached = ETF_HOLDINGS_CACHE[symbol];
     if(cached) return res.json({ holdings: cached, source: 'cache', cached: true });
     res.json({ holdings: [], source: 'fmp', error: e.message });
@@ -516,7 +515,7 @@ app.get('/api/etf/holdings/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
 app.get('/api/debug-etf/:symbol([A-Z0-9.\\-^]+)', async(req,res)=>{
   const{symbol}=req.params;
   const results={};
-  const endpoints=['/etf-holder','/etf-holders','/etf-holdings','/etf-holding','/etf'];
+  const endpoints=['/etf/holdings','/etf/info','/etf-holder','/etf-holders'];
   for(const ep of endpoints){
     try{
       const d=await fmp(ep,{symbol});
