@@ -411,6 +411,16 @@ button,input{font-family:var(--fb)}
 /* Position strip */
 .pf-strip{display:block;padding:14px 1rem;border-bottom:1px solid rgba(255,255,255,.05);transition:background .12s;cursor:pointer}
 .pf-strip:hover{background:rgba(255,255,255,.025)}
+.pos-boxes-6{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
+.pos-boxes-4{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
+.pos-box{background:var(--bg3);border-radius:8px;padding:8px 10px}
+.pos-box-lbl{font-size:10px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:3px;letter-spacing:.04em}
+.pos-box-val{font-size:14px;font-weight:700;font-family:var(--fm)}
+@media(max-width:600px){
+  .pos-boxes-6{grid-template-columns:repeat(3,1fr)!important}
+  .pos-boxes-4{grid-template-columns:repeat(2,1fr)!important}
+  .pos-box-val{font-size:12px!important}
+}
 @media(max-width:520px){.pf-strip{grid-template-columns:32px 1.5fr 1fr 1fr 24px}.pf-col-hold,.pf-col-pl{display:none}}
 .pf-strip-logo img{width:30px;height:30px;border-radius:6px;object-fit:contain;background:var(--bg3);padding:2px}
 .pf-sname{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1639,11 +1649,11 @@ async function renderDivPage(){
         <img src="${esc(p.logo)}" onerror="this.style.display='none'" style="width:30px;height:30px;border-radius:6px;object-fit:contain;background:var(--bg3)"/>
         <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">${esc(p.ticker)}</div><div style="font-size:10px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div></div>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
-        <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Est. Annual</div><div style="font-size:12px;font-weight:600;font-family:var(--fm);color:var(--G)">${fVal(p.annIncome)}</div></div>
-        <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Est. Monthly</div><div style="font-size:12px;font-weight:600;font-family:var(--fm);color:var(--G)">${fVal(p.annIncome/12)}</div></div>
-        <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Yield</div><div style="font-size:12px;font-weight:600;font-family:var(--fm)">${p.yld.toFixed(2)}%</div></div>
-        <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Div Growth</div><div style="font-size:12px;font-weight:600;font-family:var(--fm);color:${p.divGrowth!=null?(up?'var(--G)':'var(--R)'):'var(--mu)'}">${p.divGrowth!=null?(up?'+':'')+p.divGrowth.toFixed(2)+'%':'—'}</div></div>
+      <div class="pos-boxes-4">
+        <div class="pos-box"><div class="pos-box-lbl">Est. Annual</div><div class="pos-box-val" style="color:var(--G)">${fVal(p.annIncome)}</div></div>
+        <div class="pos-box"><div class="pos-box-lbl">Est. Monthly</div><div class="pos-box-val" style="color:var(--G)">${fVal(p.annIncome/12)}</div></div>
+        <div class="pos-box"><div class="pos-box-lbl">Yield</div><div class="pos-box-val">${p.yld.toFixed(2)}%</div></div>
+        <div class="pos-box"><div class="pos-box-lbl">Div Growth</div><div class="pos-box-val" style="color:${p.divGrowth!=null?(up?'var(--G)':'var(--R)'):'var(--mu)'}">${p.divGrowth!=null?(up?'+':'')+p.divGrowth.toFixed(2)+'%':'—'}</div></div>
       </div>
     </div>`;
   }).join('');
@@ -1729,7 +1739,7 @@ async function renderPfPage(){
     <div class="pf-sbi"><div class="pf-sbl">P/L</div><div class="pf-sbv" style="color:${tpl>=0?'var(--G)':'var(--R)'}">${tpl>=0?'+':''}${fVal(Math.abs(tpl))}</div></div>
     <div class="pf-sbi"><div class="pf-sbl">Return</div><div class="pf-sbv" style="color:${tplp>=0?'var(--G)':'var(--R)'}">${tplp>=0?'+':''}${tplp.toFixed(2)}%</div></div>`;
 
-  // Position cards (all screen sizes)
+  // Position cards
   $('pf-list').innerHTML=enriched.map((p,i)=>{
     const pp=totalVal>0?p.cv/totalVal*100:0;const up=p.pl>=0;
     const totalCostPos=p.costBasis*p.shares;
@@ -1739,13 +1749,13 @@ async function renderPfPage(){
         <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">${esc(p.ticker)}</div><div style="font-size:10px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div></div>
         <button class="pf-del" title="Remove" onclick="event.stopPropagation();removePfPos(${i},'${esc(p.ticker)}')">✕</button>
       </div>
-      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
-        <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Value</div><div style="font-size:12px;font-weight:600;font-family:var(--fm)">${fVal(p.cv)}</div></div>
-        <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Today</div><div style="font-size:12px;font-weight:600;font-family:var(--fm);color:${p.todayRet>=0?'var(--G)':'var(--R)'}">${p.todayRet>=0?'+':''}${p.todayPct.toFixed(2)}%</div></div>
-        <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">P/L %</div><div style="font-size:12px;font-weight:600;font-family:var(--fm);color:${up?'var(--G)':'var(--R)'}">${up?'+':''}${p.plp.toFixed(2)}%</div></div>
-        <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Shares</div><div style="font-size:12px;font-weight:600;font-family:var(--fm)">${p.shares}</div></div>
-        <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Weight</div><div style="font-size:12px;font-weight:600;font-family:var(--fm)">${pp.toFixed(1)}%</div></div>
-        <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Total Cost</div><div style="font-size:12px;font-weight:600;font-family:var(--fm)">${fVal(totalCostPos)}</div></div>
+      <div class="pos-boxes-6">
+        <div class="pos-box"><div class="pos-box-lbl">Value</div><div class="pos-box-val">${fVal(p.cv)}</div></div>
+        <div class="pos-box"><div class="pos-box-lbl">Today</div><div class="pos-box-val" style="color:${p.todayRet>=0?'var(--G)':'var(--R)'}">${p.todayRet>=0?'+':''}${p.todayPct.toFixed(2)}%</div></div>
+        <div class="pos-box"><div class="pos-box-lbl">P/L %</div><div class="pos-box-val" style="color:${up?'var(--G)':'var(--R)'}">${up?'+':''}${p.plp.toFixed(2)}%</div></div>
+        <div class="pos-box"><div class="pos-box-lbl">Shares</div><div class="pos-box-val">${p.shares}</div></div>
+        <div class="pos-box"><div class="pos-box-lbl">Weight</div><div class="pos-box-val">${pp.toFixed(1)}%</div></div>
+        <div class="pos-box"><div class="pos-box-lbl">Total Cost</div><div class="pos-box-val">${fVal(totalCostPos)}</div></div>
       </div>
     </div>`;
   }).join('');
