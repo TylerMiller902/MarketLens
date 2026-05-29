@@ -409,8 +409,8 @@ button,input{font-family:var(--fb)}
 .pf-add-pos-btn{background:var(--P);border:none;color:#fff;padding:6px 14px;border-radius:20px;cursor:pointer;font-size:12px;font-family:var(--fm)}
 .pf-add-pos-btn:hover{opacity:.85}
 /* Position strip */
-.pf-strip{display:grid;grid-template-columns:36px 2fr 1fr 1.3fr 1.1fr 1fr 1fr 52px;align-items:center;gap:0 7px;padding:14px 1.4rem 14px .9rem;border-bottom:1px solid rgba(255,255,255,.05);transition:background .12s;cursor:pointer}
-.pf-strip:hover{background:rgba(255,255,255,.025);border-radius:8px;padding-left:6px;padding-right:6px}
+.pf-strip{display:block;padding:14px 1rem;border-bottom:1px solid rgba(255,255,255,.05);transition:background .12s;cursor:pointer}
+.pf-strip:hover{background:rgba(255,255,255,.025)}
 @media(max-width:520px){.pf-strip{grid-template-columns:32px 1.5fr 1fr 1fr 24px}.pf-col-hold,.pf-col-pl{display:none}}
 .pf-strip-logo img{width:30px;height:30px;border-radius:6px;object-fit:contain;background:var(--bg3);padding:2px}
 .pf-sname{font-size:13px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
@@ -1634,12 +1634,17 @@ async function renderDivPage(){
   // Positions box
   $('div-list').innerHTML=enriched.map(p=>{
     const up=(p.divGrowth??0)>=0;
-    return`<div class="pf-strip" style="grid-template-columns:36px 1.4fr 1fr 0.9fr 1fr;gap:6px;padding:11px .9rem" onclick="navigatePfToStock('${esc(p.ticker)}')">
-      <div class="pf-strip-logo"><img src="${esc(p.logo)}" onerror="this.style.display='none'"/></div>
-      <div><div class="pf-sname">${esc(p.name)}</div><div class="pf-stick">${esc(p.ticker)}</div></div>
-      <div class="pf-col"><div class="pv">${fVal(p.annIncome)}</div><div class="pl">Est. Annual</div></div>
-      <div class="pf-col"><div class="pv">${p.yld.toFixed(2)}%</div><div class="pl">Yield</div></div>
-      <div class="pf-col"><div class="pv" style="color:${p.divGrowth!=null?(up?'var(--G)':'var(--R)'):'var(--mu)'}">${p.divGrowth!=null?(up?'+':'')+p.divGrowth.toFixed(2)+'%':'—'}</div><div class="pl">Div Growth YoY</div></div>
+    return`<div class="pf-strip" onclick="navigatePfToStock('${esc(p.ticker)}')">
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:.6rem">
+        <img src="${esc(p.logo)}" onerror="this.style.display='none'" style="width:30px;height:30px;border-radius:6px;object-fit:contain;background:var(--bg3)"/>
+        <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">${esc(p.ticker)}</div><div style="font-size:10px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div></div>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr;gap:5px">
+        <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Est. Annual</div><div style="font-size:12px;font-weight:600;font-family:var(--fm);color:var(--G)">${fVal(p.annIncome)}</div></div>
+        <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Est. Monthly</div><div style="font-size:12px;font-weight:600;font-family:var(--fm);color:var(--G)">${fVal(p.annIncome/12)}</div></div>
+        <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Yield</div><div style="font-size:12px;font-weight:600;font-family:var(--fm)">${p.yld.toFixed(2)}%</div></div>
+        <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Div Growth</div><div style="font-size:12px;font-weight:600;font-family:var(--fm);color:${p.divGrowth!=null?(up?'var(--G)':'var(--R)'):'var(--mu)'}">${p.divGrowth!=null?(up?'+':'')+p.divGrowth.toFixed(2)+'%':'—'}</div></div>
+      </div>
     </div>`;
   }).join('');
 
@@ -1724,36 +1729,24 @@ async function renderPfPage(){
     <div class="pf-sbi"><div class="pf-sbl">P/L</div><div class="pf-sbv" style="color:${tpl>=0?'var(--G)':'var(--R)'}">${tpl>=0?'+':''}${fVal(Math.abs(tpl))}</div></div>
     <div class="pf-sbi"><div class="pf-sbl">Return</div><div class="pf-sbv" style="color:${tplp>=0?'var(--G)':'var(--R)'}">${tplp>=0?'+':''}${tplp.toFixed(2)}%</div></div>`;
 
-  // Position strips
-  const isMobile=window.innerWidth<=600;
+  // Position cards (all screen sizes)
   $('pf-list').innerHTML=enriched.map((p,i)=>{
     const pp=totalVal>0?p.cv/totalVal*100:0;const up=p.pl>=0;
-    if(isMobile){
-      return`<div class="pf-strip" onclick="navigatePfToStock('${esc(p.ticker)}')">
-        <div style="display:flex;align-items:center;gap:8px;margin-bottom:.5rem">
-          <img src="${esc(p.logo)}" onerror="this.style.display='none'" style="width:28px;height:28px;border-radius:6px;object-fit:contain;background:var(--bg3)"/>
-          <div><div style="font-weight:700;font-size:13px">${esc(p.ticker)}</div><div style="font-size:10px;color:var(--mu)">${esc(p.name)}</div></div>
-          <button class="pf-del" style="margin-left:auto" title="Remove" onclick="event.stopPropagation();removePfPos(${i},'${esc(p.ticker)}')">✕</button>
-        </div>
-        <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:6px">
-          <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Value</div><div style="font-size:12px;font-weight:600;font-family:var(--fm)">${fVal(p.cv)}</div></div>
-          <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Today</div><div style="font-size:12px;font-weight:600;font-family:var(--fm);color:${p.todayRet>=0?'var(--G)':'var(--R)'}">${p.todayRet>=0?'+':''}${p.todayPct.toFixed(2)}%</div></div>
-          <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">P/L</div><div style="font-size:12px;font-weight:600;font-family:var(--fm);color:${up?'var(--G)':'var(--R)'}">${up?'+':''}${p.plp.toFixed(2)}%</div></div>
-          <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Shares</div><div style="font-size:12px;font-weight:600;font-family:var(--fm)">${p.shares}</div></div>
-          <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Weight</div><div style="font-size:12px;font-weight:600;font-family:var(--fm)">${pp.toFixed(1)}%</div></div>
-          <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Cost</div><div style="font-size:12px;font-weight:600;font-family:var(--fm)">${fVal(p.costBasis)}</div></div>
-        </div>
-      </div>`;
-    }
+    const totalCostPos=p.costBasis*p.shares;
     return`<div class="pf-strip" onclick="navigatePfToStock('${esc(p.ticker)}')">
-      <div class="pf-strip-logo"><img src="${esc(p.logo)}" onerror="this.style.display='none'"/></div>
-      <div><div class="pf-sname">${esc(p.name)}</div><div class="pf-stick">${esc(p.ticker)}</div></div>
-      <div class="pf-col"><div class="pv">${pp.toFixed(1)}%</div><div class="pl">of portfolio</div></div>
-      <div class="pf-col pf-col-hold"><div class="pv">${fVal(p.cv)}</div><div class="pl">${p.shares} Shares</div></div>
-      <div class="pf-col"><div class="pv" style="color:${p.todayRet>=0?'var(--G)':'var(--R)'}">${p.todayRet>=0?'+':''}${fVal(Math.abs(p.todayRet))}</div><div class="pl">Today ${p.todayRet>=0?'+':''}${p.todayPct.toFixed(2)}%</div></div>
-      <div class="pf-col pf-col-pl"><div class="pv" style="color:${up?'var(--G)':'var(--R)'}">${up?'+':''}${fVal(Math.abs(p.pl))}</div><div class="pl">P/L</div></div>
-      <div class="pf-col"><div class="pv" style="color:${up?'var(--G)':'var(--R)'}">${up?'▲':'▼'} ${Math.abs(p.plp).toFixed(2)}%</div><div class="pl">gain/loss</div></div>
-      <button class="pf-del" title="Remove" onclick="event.stopPropagation();removePfPos(${i},'${esc(p.ticker)}')">✕</button>
+      <div style="display:flex;align-items:center;gap:8px;margin-bottom:.6rem">
+        <img src="${esc(p.logo)}" onerror="this.style.display='none'" style="width:30px;height:30px;border-radius:6px;object-fit:contain;background:var(--bg3)"/>
+        <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">${esc(p.ticker)}</div><div style="font-size:10px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div></div>
+        <button class="pf-del" title="Remove" onclick="event.stopPropagation();removePfPos(${i},'${esc(p.ticker)}')">✕</button>
+      </div>
+      <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:5px">
+        <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Value</div><div style="font-size:12px;font-weight:600;font-family:var(--fm)">${fVal(p.cv)}</div></div>
+        <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Today</div><div style="font-size:12px;font-weight:600;font-family:var(--fm);color:${p.todayRet>=0?'var(--G)':'var(--R)'}">${p.todayRet>=0?'+':''}${p.todayPct.toFixed(2)}%</div></div>
+        <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">P/L %</div><div style="font-size:12px;font-weight:600;font-family:var(--fm);color:${up?'var(--G)':'var(--R)'}">${up?'+':''}${p.plp.toFixed(2)}%</div></div>
+        <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Shares</div><div style="font-size:12px;font-weight:600;font-family:var(--fm)">${p.shares}</div></div>
+        <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Weight</div><div style="font-size:12px;font-weight:600;font-family:var(--fm)">${pp.toFixed(1)}%</div></div>
+        <div style="background:var(--bg3);border-radius:8px;padding:6px 8px"><div style="font-size:9px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:2px">Total Cost</div><div style="font-size:12px;font-weight:600;font-family:var(--fm)">${fVal(totalCostPos)}</div></div>
+      </div>
     </div>`;
   }).join('');
 
