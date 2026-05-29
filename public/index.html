@@ -378,8 +378,8 @@ button,input{font-family:var(--fb)}
 @media(max-width:520px){.shdr,.analyst-grid{flex-direction:column}.sprice{text-align:left}.scontent{padding:.7rem}}
 
 /* ── Portfolio Page ──────────────────────────────────────── */
-#pfpage,#divpage,#newspage{position:fixed;top:68px;bottom:0;left:0;right:0;background:var(--bg);z-index:50;display:flex;flex-direction:column;overflow:hidden}
-#pfpage.gone,#divpage.gone,#newspage.gone{display:none}
+#pfpage,#divpage,#newspage,#pricingpage{position:fixed;top:68px;bottom:0;left:0;right:0;background:var(--bg);z-index:50;display:flex;flex-direction:column;overflow:hidden}
+#pfpage.gone,#divpage.gone,#newspage.gone,#pricingpage.gone{display:none}
 .pf-topbar{display:flex;flex-direction:column;align-items:center;gap:.45rem;padding:.6rem 1rem;border-bottom:1px solid var(--b1);background:var(--bg);flex-shrink:0}
 .pf-topbar-btns{display:flex;align-items:center;gap:6px;justify-content:center;flex-wrap:wrap}
 .page-nav-pills{display:flex;flex-direction:column;gap:3px;flex-shrink:0}
@@ -581,7 +581,7 @@ button,input{font-family:var(--fb)}
   .chips .chip:nth-child(n+8){display:none!important}
 
   /* Portfolio/Dividends/News: open below fixed nav */
-  #pfpage,#divpage,#newspage{top:62px!important}
+  #pfpage,#divpage,#newspage,#pricingpage{top:62px!important}
 
   /* Stats bar: single scrollable row */
   .pf-stats-bar{flex-wrap:nowrap!important;overflow-x:auto!important;-webkit-overflow-scrolling:touch;gap:0}
@@ -936,7 +936,7 @@ button,input{font-family:var(--fb)}
   </div>
 </div>
 <!-- ══ Pricing Page ══════════════════════════════════════════ -->
-<div id="pricingpage" class="gone" style="display:flex;flex-direction:column;overflow:hidden">
+<div id="pricingpage" class="gone">
   <!-- Title bar right below nav -->
   <div style="padding:.9rem 1.2rem;border-bottom:1px solid var(--b1);background:var(--bg2);display:flex;align-items:center;justify-content:space-between;flex-shrink:0">
     <div style="font-family:var(--fd);font-size:1.1rem;font-weight:800;color:#fff">Choose Your Plan</div>
@@ -1143,19 +1143,16 @@ async function checkAuth(){
 
 // ── Pricing Page ─────────────────────────────────────────────────────────────
 function openPricingPage(){
-  ['pfpage','divpage','newspage'].forEach(id=>{const e=$(id);if(e)e.classList.add('gone');});
+  ['pfpage','divpage','newspage','pricingpage'].forEach(id=>{const e=$(id);if(e)e.classList.add('gone');});
   $('home').classList.add('gone');
   $('spage').classList.remove('on');
-  const pp=$('pricingpage');
-  pp.classList.remove('gone');
-  pp.style.display='flex';
+  $('pricingpage').classList.remove('gone');
   renderPricingPage();
 }
 function closePricingPage(){
-  const pp=$('pricingpage');
-  pp.classList.add('gone');
-  pp.style.display='';
+  $('pricingpage').classList.add('gone');
   $('home').classList.remove('gone');
+  document.body.style.overflow='hidden';
 }
 function renderPricingPage(){
   const pro=isPro();
