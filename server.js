@@ -1130,10 +1130,22 @@ app.get('/api/debug-screener', async (req,res) => {
 // Debug raw FMP quote
 app.get('/api/debug-quote/:symbol', async(req,res)=>{
   const{symbol}=req.params;
-  try{
-    const raw = await fmp('/quote',{symbol});
-    res.json({raw, type: typeof raw, isArray: Array.isArray(raw), length: Array.isArray(raw)?raw.length:'n/a', first: Array.isArray(raw)?raw[0]:raw});
-  }catch(e){res.json({error:e.message});}
+  const results={};
+  const tests=[
+    ['/quote',{symbol}],
+    ['/quote-short',{symbol}],
+    ['/batch-quote',{symbols:symbol}],
+    ['/batch-quote-short',{symbols:symbol}],
+    ['/historical-price-eod/light',{symbol,limit:1}],
+    ['/profile',{symbol}],
+  ];
+  for(const[ep,qs] of tests){
+    try{
+      const d=await fmp(ep,qs);
+      results[ep]={ok:true,count:Array.isArray(d)?d.length:1,keys:Array.isArray(d)?Object.keys(d[0]||{}):Object.keys(d||{})};
+    }catch(e){results[ep]={error:e.message};}
+  }
+  res.json(results);
 });
 
 // Market Cap Rank — batch quotes for top stocks sorted by live market cap
