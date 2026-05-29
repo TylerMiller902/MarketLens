@@ -482,11 +482,43 @@ async function yahooEtfHoldings(symbol){
   return{holdings:[]};
 }
 
+// ── ETF Holdings via FMP Commercial API ───────────────────
+app.get('/api/etf/holdings/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
+  const symbol = req.params.symbol.toUpperCase();
+  const ck = `etf-hold:${symbol}`; const hit = gc(ck); if(hit) return res.json(hit);
+  try{
+    const data = await fmp('/etf-holder', { symbol });
+    const items = arr(data);
+    if(!items.length) return res.json({holdings:[], source:'fmp'});
+    const holdings = items
+      .filter(h => h.asset || h.symbol)
+      .map(h => ({
+        symbol:  h.asset || h.symbol,
+        name:    h.name || h.asset || h.symbol,
+        percent: +(h.weightPercentage ?? h.weight ?? 0).toFixed(2),
+        shares:  h.sharesNumber || null,
+        marketValue: h.marketValue || null,
+      }))
+      .sort((a,b) => b.percent - a.percent)
+      .slice(0, 25);
+    const result = { holdings, source: 'fmp', updated: items[0]?.updated || null };
+    sc(ck, result, TTL.fmpFin); // 1hr cache
+    res.json(result);
+  } catch(e) {
+    // Fallback to hardcoded cache if FMP fails
+    const cached = ETF_HOLDINGS_CACHE[symbol];
+    if(cached) return res.json({ holdings: cached, source: 'cache', cached: true });
+    res.json({ holdings: [], source: 'fmp', error: e.message });
+  }
+});
+
 // Debug ETF holdings
 app.get('/api/debug-etf/:symbol([A-Z0-9.\\-^]+)', async(req,res)=>{
   const{symbol}=req.params;
-  const result=await yahooEtfHoldings(symbol);
-  res.json({symbol,holdings:result.holdings.slice(0,3),total:result.holdings.length});
+  try{
+    const data=await fmp('/etf-holder',{symbol});
+    res.json({symbol,count:arr(data).length,sample:arr(data).slice(0,3),keys:arr(data)[0]?Object.keys(arr(data)[0]):[]});
+  }catch(e){res.json({error:e.message});}
 });
 
 // ══════════════════════════════════════════════════════════
@@ -1065,22 +1097,6 @@ app.get('/api/voo-movers', async (req,res) => {
   }catch(e){res.status(500).json({error:e.message});}
 });
 
-// ETF holdings/info not available on FMP Starter — return empty gracefully
-// Dedicated ETF holdings endpoint — own cache, not tied to stock response cache
-app.get('/api/etf/holdings/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
-  const sym = req.params.symbol.toUpperCase();
-  const ck = `etfh:${sym}`; const hit = gc(ck); if(hit) return res.json(hit);
-  try{
-    // Try Yahoo Finance live
-    let result = await yahooEtfHoldings(sym);
-    if(!result?.holdings?.length && ETF_HOLDINGS_CACHE[sym]){
-      result = {holdings: ETF_HOLDINGS_CACHE[sym], cached: true};
-    }
-    sc(ck, result, 60*60_000); // cache 1 hour
-    res.json(result);
-  }catch(e){ res.status(500).json({error:e.message}); }
-});
-
 app.get('/api/etf-holdings-returns/:symbol', (req,res) => res.json([]));
 app.get('/api/etf-info/:symbol',             (req,res) => res.json({}));
 app.get('/api/etf-sectors/:symbol',          (req,res) => res.json([]));
@@ -1177,6 +1193,7 @@ app.post('/api/stripe/checkout', async (req, res) => {
       customer_email: !customerId ? req.user.email||undefined : undefined,
       mode: 'subscription',
       line_items:[{ price: STRIPE_PRICE_ID, quantity: 1 }],
+      automatic_tax: { enabled: true },
       success_url: `${BASE_URL}/?upgraded=1`,
       cancel_url:  `${BASE_URL}/`,
       metadata:{ userId: String(req.user.id) },
