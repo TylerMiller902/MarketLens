@@ -1159,40 +1159,42 @@ const TOP_STOCKS=['AAPL','MSFT','NVDA','GOOGL','AMZN','META','TSLA','AVGO','WMT'
 app.get('/api/market-cap-rank', async (req,res) => {
   const ck='mkt-cap-rank'; const hit=gc(ck); if(hit)return res.json(hit);
   try{
-    // Single screener call — replaces 100 individual profile calls
-    const data = await fmp('/company-screener',{
-      marketCapMin: 10_000_000_000,
-      isActivelyTrading: true,
-      exchange: 'NYSE,NASDAQ',
-      limit: 100,
-      sort: 'marketCap',
-      order: 'desc',
+    // Single batch call for all market caps — then enrich top 25 with profile for names/change
+    const batchData = await fmp('/market-capitalization-batch', { symbols: TOP_STOCKS.join(',') });
+    const capMap = {};
+    arr(batchData).forEach(s=>{ if(s.symbol) capMap[s.symbol]=s.marketCap||0; });
+
+    // Sort symbols by market cap
+    const sorted = TOP_STOCKS
+      .filter(sym => capMap[sym] > 0)
+      .sort((a,b) => capMap[b] - capMap[a])
+      .slice(0, 100);
+
+    // Get profile for top 25 to get names + daily change (rest use ticker as name)
+    const top25Profiles = await Promise.all(
+      sorted.slice(0,25).map(sym => fmpSafe('/profile',{symbol:sym}))
+    );
+    const profileMap = {};
+    top25Profiles.forEach(r => {
+      const p = arr(r)[0];
+      if(p?.symbol) profileMap[p.symbol] = p;
     });
-    const items = arr(data);
-    if(!items.length) throw new Error('No screener data');
-    const result = items.map((s,i)=>({
-      rank: i+1,
-      symbol: s.symbol,
-      name: s.companyName || s.name || s.symbol,
-      marketCap: s.marketCap || 0,
-      price: s.price || 0,
-      change: +(s.changePercentage ?? s.change ?? 0).toFixed(2),
-    }));
+
+    const result = sorted.map((sym,i) => {
+      const p = profileMap[sym];
+      return {
+        rank: i+1,
+        symbol: sym,
+        name: p?.companyName || p?.name || sym,
+        marketCap: capMap[sym] || 0,
+        price: p?.price || 0,
+        change: +(p?.changePercentage ?? 0).toFixed(2),
+      };
+    });
     sc(ck, result, 1_800_000); // 30min cache
     res.json(result);
   } catch(e) {
-    // Fallback to individual profile calls if screener fails
-    try{
-      const quotes = await Promise.all(TOP_STOCKS.slice(0,50).map(sym=>fmpSafe('/profile',{symbol:sym})));
-      const all = quotes.map(r=>arr(r)[0]).filter(s=>s?.symbol&&(s?.marketCap||0)>0);
-      all.sort((a,b)=>(b.marketCap||0)-(a.marketCap||0));
-      const result = all.slice(0,50).map((s,i)=>({
-        rank:i+1, symbol:s.symbol, name:s.companyName||s.name||s.symbol,
-        marketCap:s.marketCap||0, price:s.price||0, change:+(s.changePercentage??0).toFixed(2),
-      }));
-      sc(ck,result,900_000);
-      res.json(result);
-    }catch(e2){ res.status(500).json({error:e2.message}); }
+    res.status(500).json({error: e.message});
   }
 });
 
