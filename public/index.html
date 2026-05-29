@@ -2253,18 +2253,20 @@ async function loadStock(ticker){
         const wrap=document.getElementById('etf-holdings-wrap');
         const badge=document.getElementById('etf-h-badge');
         if(wrap)wrap.innerHTML=buildEtfHoldings(h);
-        if(badge){badge.textContent=h.cached?'Approx · Cached':'Live · Yahoo';badge.className=`badge ${h.cached?'est':'live'}`;}
+        if(badge){badge.textContent=h.cached?'Cached':'Live · FMP';badge.className=`badge ${h.cached?'est':'live'}`;}
       }).catch(()=>{
         const badge=document.getElementById('etf-h-badge');
         if(badge){badge.textContent='Unavailable';badge.className='badge est';}
       });
     }
   }catch(e){
+    console.error('[loadStock] error:', e.message, e.stack);
     $('scontent').innerHTML=`
       <div class="not-found" style="padding:5rem 2rem">
         <div style="font-size:2.5rem;margin-bottom:1rem">🔍</div>
         <h3 style="font-size:1.3rem;margin-bottom:.5rem">&ldquo;${esc(ticker)}&rdquo; not found</h3>
-        <p style="margin-bottom:1.5rem;line-height:1.6">No stock or ETF matched that ticker.<br>Check the symbol and try again.</p>
+        <p style="margin-bottom:.5rem;line-height:1.6">No stock or ETF matched that ticker.<br>Check the symbol and try again.</p>
+        <p style="font-size:11px;color:var(--R);font-family:var(--fm);margin-bottom:1.5rem">${esc(e.message)}</p>
         <button class="gobtn" onclick="goHome()" style="padding:.65rem 1.4rem;font-size:.9rem">← Back to Home</button>
       </div>`;
   }
