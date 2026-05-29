@@ -412,14 +412,19 @@ button,input{font-family:var(--fb)}
 .pf-strip{display:block;padding:14px 1rem;border-bottom:1px solid rgba(255,255,255,.05);transition:background .12s;cursor:pointer}
 .pf-strip:hover{background:rgba(255,255,255,.025)}
 .pos-boxes-6{display:grid;grid-template-columns:repeat(6,1fr);gap:5px}
+.pos-boxes-7{display:grid;grid-template-columns:1fr 1fr 1fr 1fr 0.6fr 0.6fr 1fr;gap:5px}
 .pos-boxes-4{display:grid;grid-template-columns:repeat(4,1fr);gap:5px}
 .pos-box{background:var(--bg3);border-radius:8px;padding:8px 10px}
+.pos-box.sm{padding:6px 8px}
 .pos-box-lbl{font-size:10px;color:var(--di);font-family:var(--fm);text-transform:uppercase;margin-bottom:3px;letter-spacing:.04em}
 .pos-box-val{font-size:14px;font-weight:700;font-family:var(--fm)}
+.pos-box.sm .pos-box-lbl{font-size:9px}
+.pos-box.sm .pos-box-val{font-size:12px}
 @media(max-width:600px){
-  .pos-boxes-6{grid-template-columns:repeat(3,1fr)!important}
+  .pos-boxes-7{grid-template-columns:repeat(3,1fr)!important}
   .pos-boxes-4{grid-template-columns:repeat(2,1fr)!important}
   .pos-box-val{font-size:12px!important}
+  .pos-box.sm .pos-box-val{font-size:11px!important}
 }
 @media(max-width:520px){.pf-strip{grid-template-columns:32px 1.5fr 1fr 1fr 24px}.pf-col-hold,.pf-col-pl{display:none}}
 .pf-strip-logo img{width:30px;height:30px;border-radius:6px;object-fit:contain;background:var(--bg3);padding:2px}
@@ -1749,12 +1754,13 @@ async function renderPfPage(){
         <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">${esc(p.ticker)}</div><div style="font-size:10px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div></div>
         <button class="pf-del" title="Remove" onclick="event.stopPropagation();removePfPos(${i},'${esc(p.ticker)}')">✕</button>
       </div>
-      <div class="pos-boxes-6">
+      <div class="pos-boxes-7">
         <div class="pos-box"><div class="pos-box-lbl">Value</div><div class="pos-box-val">${fVal(p.cv)}</div></div>
         <div class="pos-box"><div class="pos-box-lbl">Today</div><div class="pos-box-val" style="color:${p.todayRet>=0?'var(--G)':'var(--R)'}">${p.todayRet>=0?'+':''}${p.todayPct.toFixed(2)}%</div></div>
         <div class="pos-box"><div class="pos-box-lbl">P/L %</div><div class="pos-box-val" style="color:${up?'var(--G)':'var(--R)'}">${up?'+':''}${p.plp.toFixed(2)}%</div></div>
-        <div class="pos-box"><div class="pos-box-lbl">Shares</div><div class="pos-box-val">${p.shares}</div></div>
-        <div class="pos-box"><div class="pos-box-lbl">Weight</div><div class="pos-box-val">${pp.toFixed(1)}%</div></div>
+        <div class="pos-box"><div class="pos-box-lbl">P/L $</div><div class="pos-box-val" style="color:${up?'var(--G)':'var(--R)'}">${up?'+':''}${fVal(Math.abs(p.pl))}</div></div>
+        <div class="pos-box sm"><div class="pos-box-lbl">Shares</div><div class="pos-box-val">${p.shares}</div></div>
+        <div class="pos-box sm"><div class="pos-box-lbl">Weight</div><div class="pos-box-val">${pp.toFixed(1)}%</div></div>
         <div class="pos-box"><div class="pos-box-lbl">Total Cost</div><div class="pos-box-val">${fVal(totalCostPos)}</div></div>
       </div>
     </div>`;
