@@ -1085,31 +1085,43 @@ app.get('/api/debug/:symbol', async (req,res) => {
 
 
 // ── Top Stock Biggest Movers ──────────────────────────────
+// S&P 500 constituent list — cached daily, used to filter movers
+let sp500Cache = {symbols: new Set(), ts: 0};
+async function getSP500(){
+  if(Date.now()-sp500Cache.ts < 86_400_000 && sp500Cache.symbols.size) return sp500Cache.symbols;
+  try{
+    const data = await fmp('/sp500-constituent');
+    const syms = new Set(arr(data).map(s=>s.symbol).filter(Boolean));
+    if(syms.size) { sp500Cache = {symbols:syms, ts:Date.now()}; }
+    return syms;
+  }catch{ return sp500Cache.symbols; }
+}
+
 app.get('/api/voo-movers', async (req,res) => {
   const ck='voo-movers'; const hit=gc(ck); if(hit)return res.json(hit);
   try{
-    const [gainers,losers]=await Promise.all([
+    const [gainers, losers, sp500] = await Promise.all([
       fmpSafe('/biggest-gainers'),
       fmpSafe('/biggest-losers'),
+      getSP500(),
     ]);
-    const isCompany=s=>{
-      if(!s.symbol||s.symbol.includes('.')||s.price<5)return false;
-      const n=(s.name||s.companyName||'').toLowerCase();
-      const bad=['etf','fund','trust',' 2x',' 3x','ultra','bear','bull','leveraged','inverse',
-                 'proshares','direxion','ishares','vanguard','spdr','invesco','fidelity',
-                 'barclays','wisdomtree','first trust',' lp,',' lp ',' llc'];
-      return !bad.some(w=>n.includes(w));
+    const isLargeCap = s => {
+      if(!s.symbol || s.price < 5) return false;
+      // Must be in S&P 500 OR in our TOP_STOCKS list
+      if(sp500.has(s.symbol) || TOP_STOCKS.includes(s.symbol)) return true;
+      return false;
     };
-    const fmt=(list,type)=>arr(list).filter(isCompany).slice(0,5).map(s=>({
-      ticker:s.symbol,
-      name:s.name||s.companyName||s.symbol,
-      price:s.price,change:s.change??0,
-      changePct:s.changesPercentage??s.changePercentage??0,
-      logo:`https://images.financialmodelingprep.com/symbol/${s.symbol}.png`,type,
+    const fmt = (list, type) => arr(list).filter(isLargeCap).slice(0,5).map(s=>({
+      ticker: s.symbol,
+      name: s.name || s.companyName || s.symbol,
+      price: s.price, change: s.change ?? 0,
+      changePct: s.changesPercentage ?? s.changePercentage ?? 0,
+      logo: `https://images.financialmodelingprep.com/symbol/${s.symbol}.png`, type,
     }));
-    const result=[...fmt(gainers,'gainer'),...fmt(losers,'loser')];
-    sc(ck,result,5*60_000); res.json(result);
-  }catch(e){res.status(500).json({error:e.message});}
+    const result = [...fmt(gainers,'gainer'), ...fmt(losers,'loser')];
+    sc(ck, result, 5*60_000);
+    res.json(result);
+  }catch(e){ res.status(500).json({error:e.message}); }
 });
 
 app.get('/api/etf-holdings-returns/:symbol', (req,res) => res.json([]));
