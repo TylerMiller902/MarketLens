@@ -290,11 +290,17 @@ function transformQuote(q) {
   return {
     c:  q.price,
     d:  q.change          ?? 0,
-    dp: q.changePercentage ?? 0,   // FMP uses changePercentage (not changesPercentage)
-    h:  q.dayHigh,
-    l:  q.dayLow,
-    o:  q.open,
-    pc: q.previousClose,
+    dp: q.changePercentage ?? q.changesPercentage ?? 0,
+    h:  q.dayHigh  ?? q.price,
+    l:  q.dayLow   ?? q.price,
+    o:  q.open     ?? q.price,
+    pc: q.previousClose ?? (q.price - (q.change ?? 0)),
+    marketCap: q.marketCap ?? null,
+    volume:    q.volume    ?? null,
+    avgVolume: q.averageVolume ?? null,
+    yearHigh:  q.yearHigh  ?? (q.range ? +q.range.split('-')[1] : null),
+    yearLow:   q.yearLow   ?? (q.range ? +q.range.split('-')[0] : null),
+    name:      q.companyName ?? null,
   };
 }
 
@@ -560,7 +566,7 @@ app.get('/api/search', async (req,res) => {
 app.get('/api/quote/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
   const { symbol } = req.params; const ck = `quote:${symbol}`; const hit = gc(ck); if(hit) return res.json(hit);
   try {
-    const data = await fmp('/quote', { symbol });
+    const data = await fmp('/profile', { symbol });
     const q = arr(data)[0];
     const result = transformQuote(q);
     sc(ck, result, TTL.quote);
@@ -573,9 +579,9 @@ app.get('/api/market-overview', async (req,res) => {
   const ck = 'market-overview'; const hit = gc(ck); if(hit) return res.json(hit);
   try {
     const [spy, qqq, dia] = await Promise.all([
-      fmp('/quote', { symbol: 'SPY' }),
-      fmp('/quote', { symbol: 'QQQ' }),
-      fmp('/quote', { symbol: 'DIA' }),
+      fmp('/profile', { symbol: 'SPY' }),
+      fmp('/profile', { symbol: 'QQQ' }),
+      fmp('/profile', { symbol: 'DIA' }),
     ]);
     const d = {
       SPY: transformQuote(arr(spy)[0]),
@@ -596,10 +602,10 @@ app.get('/api/stock/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
     const [
       quoteRaw, profileRaw, incomeRaw, kmRaw,
       newsRaw, recsRaw, priceTargetRaw,
-      earningsRaw, earningsCalRaw, etfRaw,
+      earningsRaw, earningsCalRaw,
     ] = await Promise.all([
-      fmpSafe('/quote',                          { symbol }),
-      fmpSafe('/profile',                        { symbol }),
+      fmpSafe('/profile',                        { symbol }),  // profile has price, change, marketCap
+      fmpSafe('/profile',                        { symbol }),  // used for company info
       fmpSafe('/income-statement',               { symbol, period: 'annual', limit: 1 }),
       fmpSafe('/key-metrics',                    { symbol, period: 'annual', limit: 1 }),
       fmpSafe('/news/stock',                     { symbols: symbol, limit: 10 }),
@@ -607,7 +613,6 @@ app.get('/api/stock/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
       fmpSafe('/price-target-consensus',         { symbol }),
       fmpSafe('/earnings-surprises',             { symbol }),
       fmpSafe('/earnings-calendar',              { from: today(), to: dFwd(90), symbol }),
-      isETF ? Promise.resolve(null) : Promise.resolve(null),
     ]);
     console.log(`[stock] ${symbol} fetched — quote:${!!quoteRaw} profile:${!!profileRaw} news:${!!newsRaw}`);
 
@@ -662,7 +667,7 @@ app.get('/api/peers/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
 
     // Fetch quotes (for today's change) + profiles (for sector matching)
     const [quotes, profiles] = await Promise.all([
-      Promise.allSettled(filtered.map(p => fmp('/quote',   { symbol: p.symbol }))),
+      Promise.allSettled(filtered.map(p => fmp('/profile',   { symbol: p.symbol }))),
       Promise.allSettled(filtered.map(p => fmpSafe('/profile', { symbol: p.symbol }))),
     ]);
 
@@ -1062,7 +1067,7 @@ app.get('/api/debug/:symbol', async (req,res) => {
   const { symbol } = req.params;
   try {
     const [q, p, i, k, peers] = await Promise.all([
-      fmpSafe('/quote',             { symbol }),
+      fmpSafe('/profile',             { symbol }),
       fmpSafe('/profile',           { symbol }),
       fmpSafe('/income-statement',  { symbol, period: 'annual', limit: 1 }),
       fmpSafe('/key-metrics',       { symbol, period: 'annual', limit: 1 }),
@@ -1162,7 +1167,7 @@ app.get('/api/market-cap-rank', async (req,res) => {
   const ck='mkt-cap-rank'; const hit=gc(ck); if(hit)return res.json(hit);
   try{
     // Individual parallel calls — FMP stable only supports one symbol at a time
-    const quotes=await Promise.all(TOP_STOCKS.map(sym=>fmpSafe('/quote',{symbol:sym})));
+    const quotes=await Promise.all(TOP_STOCKS.map(sym=>fmpSafe('/profile',{symbol:sym})));
     const all=quotes.map(r=>arr(r)[0]).filter(s=>s?.symbol&&(s?.marketCap||0)>0);
     all.sort((a,b)=>(b.marketCap||0)-(a.marketCap||0));
     const result=all.slice(0,100).map((s,i)=>({
