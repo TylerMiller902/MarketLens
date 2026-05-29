@@ -1170,12 +1170,12 @@ app.get('/api/market-cap-rank', async (req,res) => {
       .sort((a,b) => capMap[b] - capMap[a])
       .slice(0, 100);
 
-    // Get profile for top 25 to get names + daily change (rest use ticker as name)
-    const top25Profiles = await Promise.all(
-      sorted.slice(0,25).map(sym => fmpSafe('/profile',{symbol:sym}))
+    // Get profile for all ranked stocks to get names + daily change (cached for 1hr)
+    const allProfiles = await Promise.all(
+      sorted.map(sym => fmpSafe('/profile',{symbol:sym}))
     );
     const profileMap = {};
-    top25Profiles.forEach(r => {
+    allProfiles.forEach(r => {
       const p = arr(r)[0];
       if(p?.symbol) profileMap[p.symbol] = p;
     });
