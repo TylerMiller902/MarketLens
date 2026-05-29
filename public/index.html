@@ -1326,21 +1326,7 @@ async function renderNewsPage(){
       </div>
     </div>`;
     if(posList) posList.innerHTML=fakeHTML;
-    if(mktList){
-      mktList.innerHTML=`<div class="chart-locked-wrap" style="border-radius:16px">
-        <div style="opacity:.3;pointer-events:none;padding:.5rem 0">
-          ${fakeMarket.map(s=>`<div style="padding:.8rem 1rem;border-bottom:1px solid var(--b1)">
-            <div style="font-size:13px;font-weight:600;color:#fff;line-height:1.4;margin-bottom:4px">${s.headline}</div>
-            <div style="font-size:10px;color:var(--mu)">${s.source} · ${s.time}</div>
-          </div>`).join('')}
-        </div>
-        <div class="chart-lock-overlay" onclick="showUpgradeModal('Market News')">
-          <div class="chart-lock-icon">📰</div>
-          <div class="chart-lock-title">Market News</div>
-          <button class="chart-lock-btn">Upgrade to Pro — $8.99/month</button>
-        </div>
-      </div>`;
-    }
+    if(mktList) mktList.innerHTML='';
     return;
   }
   const pos=getPf().positions||[];
