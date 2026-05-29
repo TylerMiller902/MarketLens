@@ -1267,10 +1267,8 @@ function openPage(page){
   if(page==='portfolio'){
     $('home').classList.add('gone');$('pfpage').classList.remove('gone');renderPfPage();
   } else if(page==='dividends'){
-    if(!isPro()){showUpgradeModal('Dividends & Income Tracking');return;}
     $('home').classList.add('gone');$('divpage').classList.remove('gone');renderDivPage();
   } else if(page==='news'){
-    if(!isPro()){showUpgradeModal('Market News');return;}
     $('home').classList.add('gone');$('newspage').classList.remove('gone');renderNewsPage();
   } else {
     $('home').classList.remove('gone');
@@ -1289,6 +1287,62 @@ function timeAgo(ts){
 }
 
 async function renderNewsPage(){
+  if(!isPro()){
+    // Show fake news template with lock overlay
+    const fakeStories=[
+      {ticker:'AAPL',name:'Apple',headline:'Apple Surpasses $4 Trillion Market Cap as iPhone Sales Beat Expectations',source:'Bloomberg',time:'2h ago'},
+      {ticker:'NVDA',name:'Nvidia',headline:'Nvidia Announces Next-Generation GPU Architecture, Shares Rise 8%',source:'Reuters',time:'3h ago'},
+      {ticker:'MSFT',name:'Microsoft',headline:'Microsoft Azure Cloud Revenue Grows 32% Year-Over-Year in Latest Quarter',source:'WSJ',time:'4h ago'},
+      {ticker:'GOOGL',name:'Alphabet',headline:'Google Unveils New AI Model That Outperforms GPT-4 on Key Benchmarks',source:'CNBC',time:'5h ago'},
+      {ticker:'AMZN',name:'Amazon',headline:'Amazon Web Services Signs $10B Government Cloud Contract',source:'FT',time:'6h ago'},
+      {ticker:'META',name:'Meta',headline:'Meta Reports Record Ad Revenue as Threads Reaches 200 Million Users',source:'Bloomberg',time:'7h ago'},
+      {ticker:'TSLA',name:'Tesla',headline:'Tesla Cybertruck Deliveries Accelerate, Company Raises Full-Year Guidance',source:'Reuters',time:'8h ago'},
+      {ticker:'JPM',name:'JPMorgan',headline:'JPMorgan CEO Jamie Dimon Warns of Stagflation Risk Amid Trade Uncertainty',source:'WSJ',time:'9h ago'},
+    ];
+    const fakeMarket=[
+      {headline:'Fed Signals Rate Cut Possible in September as Inflation Cools to 2.3%',source:'Reuters',time:'1h ago'},
+      {headline:'S&P 500 Closes at Record High, Nasdaq Gains 1.4% on Tech Surge',source:'Bloomberg',time:'2h ago'},
+      {headline:'Oil Prices Slide as OPEC+ Increases Production Targets for Q3',source:'CNBC',time:'3h ago'},
+      {headline:'10-Year Treasury Yield Falls to 4.1% on Softer Jobs Data',source:'FT',time:'4h ago'},
+    ];
+    const posList=$('news-pos-list');
+    const mktList=$('news-mkt-list');
+    const fakeHTML=`<div class="chart-locked-wrap" style="border-radius:16px">
+      <div style="opacity:.3;pointer-events:none;padding:.5rem 0">
+        ${fakeStories.map(s=>`<div style="display:flex;align-items:flex-start;gap:.8rem;padding:.8rem 1rem;border-bottom:1px solid var(--b1)">
+          <img src="https://images.financialmodelingprep.com/symbol/${s.ticker}.png" style="width:28px;height:28px;border-radius:6px;flex-shrink:0;margin-top:2px"/>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:10px;font-weight:700;color:var(--P);margin-bottom:3px">${s.ticker} · ${s.name}</div>
+            <div style="font-size:13px;font-weight:600;color:#fff;line-height:1.4;margin-bottom:4px">${s.headline}</div>
+            <div style="font-size:10px;color:var(--mu)">${s.source} · ${s.time}</div>
+          </div>
+        </div>`).join('')}
+      </div>
+      <div class="chart-lock-overlay" onclick="showUpgradeModal('Market News')">
+        <div class="chart-lock-icon">📰</div>
+        <div class="chart-lock-title">Market News</div>
+        <div class="chart-lock-sub">Get real-time news for every stock in your portfolio plus broad market headlines.</div>
+        <button class="chart-lock-btn">Upgrade to Pro — $8.99/month</button>
+      </div>
+    </div>`;
+    if(posList) posList.innerHTML=fakeHTML;
+    if(mktList){
+      mktList.innerHTML=`<div class="chart-locked-wrap" style="border-radius:16px">
+        <div style="opacity:.3;pointer-events:none;padding:.5rem 0">
+          ${fakeMarket.map(s=>`<div style="padding:.8rem 1rem;border-bottom:1px solid var(--b1)">
+            <div style="font-size:13px;font-weight:600;color:#fff;line-height:1.4;margin-bottom:4px">${s.headline}</div>
+            <div style="font-size:10px;color:var(--mu)">${s.source} · ${s.time}</div>
+          </div>`).join('')}
+        </div>
+        <div class="chart-lock-overlay" onclick="showUpgradeModal('Market News')">
+          <div class="chart-lock-icon">📰</div>
+          <div class="chart-lock-title">Market News</div>
+          <button class="chart-lock-btn">Upgrade to Pro — $8.99/month</button>
+        </div>
+      </div>`;
+    }
+    return;
+  }
   const pos=getPf().positions||[];
 
   // Fetch quotes (for portfolio %) and Yahoo Finance news per position in parallel
@@ -1488,6 +1542,55 @@ function drawDivChart(enriched,totalAnn){
 }
 
 async function renderDivPage(){
+  if(!isPro()){
+    // Show fake dividend template with lock for free users
+    const divEl=$('div-empty');
+    if(divEl){divEl.style.display='none';}
+    const fakeDivHTML=`
+    <div class="chart-locked-wrap" style="margin:1rem;border-radius:16px">
+      <div style="padding:1rem;opacity:.35;pointer-events:none">
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:.8rem;margin-bottom:1rem">
+          ${[['Annual Income','$4,820'],['Avg Yield','3.2%'],['Next Payout','$401/mo']].map(([l,v])=>`
+          <div style="background:var(--bg2);border:1px solid var(--b1);border-radius:12px;padding:1rem;text-align:center">
+            <div style="font-size:10px;color:var(--di);font-family:var(--fm);margin-bottom:.4rem">${l}</div>
+            <div style="font-family:var(--fd);font-size:1.3rem;font-weight:700;color:#fff">${v}</div>
+          </div>`).join('')}
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--b1);border-radius:12px;padding:1rem;margin-bottom:1rem">
+          <div style="font-size:11px;font-family:var(--fm);color:var(--mu);margin-bottom:.8rem">DIVIDEND INCOME BY POSITION</div>
+          ${[['AAPL','Apple Inc.','$1,240','2.1%'],['JNJ','Johnson & Johnson','$980','3.4%'],['KO','Coca-Cola','$860','3.8%'],['VZ','Verizon','$740','6.2%']].map(([t,n,inc,yld])=>`
+          <div style="display:flex;align-items:center;gap:.7rem;padding:.5rem 0;border-bottom:1px solid var(--b1)">
+            <img src="https://images.financialmodelingprep.com/symbol/${t}.png" style="width:24px;height:24px;border-radius:5px"/>
+            <div style="flex:1"><div style="font-size:12px;font-weight:700">${t}</div><div style="font-size:10px;color:var(--mu)">${n}</div></div>
+            <div style="text-align:right"><div style="font-size:12px;font-weight:600;color:var(--G)">${inc}/yr</div><div style="font-size:10px;color:var(--mu)">Yield ${yld}</div></div>
+          </div>`).join('')}
+        </div>
+        <div style="background:var(--bg2);border:1px solid var(--b1);border-radius:12px;padding:1rem">
+          <div style="font-size:11px;font-family:var(--fm);color:var(--mu);margin-bottom:.8rem">UPCOMING DIVIDENDS</div>
+          ${[['AAPL','Jun 15','$0.25/share'],['JNJ','Jun 10','$1.19/share'],['KO','Jul 1','$0.485/share']].map(([t,d,a])=>`
+          <div style="display:flex;align-items:center;gap:.7rem;padding:.4rem 0;border-bottom:1px solid var(--b1)">
+            <img src="https://images.financialmodelingprep.com/symbol/${t}.png" style="width:20px;height:20px;border-radius:4px"/>
+            <span style="font-size:12px;font-weight:700;flex:1">${t}</span>
+            <span style="font-size:11px;color:var(--mu)">${d}</span>
+            <span style="font-size:11px;color:var(--G);font-weight:600">${a}</span>
+          </div>`).join('')}
+        </div>
+      </div>
+      <div class="chart-lock-overlay" onclick="showUpgradeModal('Dividends & Income Tracking')">
+        <div class="chart-lock-icon">💰</div>
+        <div class="chart-lock-title">Dividends & Income Tracking</div>
+        <div class="chart-lock-sub">Track dividend income across your entire portfolio, see upcoming payouts and yield history.</div>
+        <button class="chart-lock-btn" onclick="showUpgradeModal('Dividends & Income Tracking')">Upgrade to Pro — $8.99/month</button>
+      </div>
+    </div>`;
+    const divChartCard=$('div-chart-card');
+    if(divChartCard){divChartCard.style.display='none';}
+    const divPosBox=$('div-pos-box');
+    if(divPosBox){divPosBox.innerHTML=fakeDivHTML;divPosBox.style.display='block';}
+    const divUpcoming=$('div-upcoming-box');
+    if(divUpcoming){divUpcoming.style.display='none';}
+    return;
+  }
   const pos=getPf().positions||[];
   ['div-empty','div-chart-card','div-pos-box','div-upcoming-box'].forEach(id=>{const e=$(id);if(e)e.style.display='none';});
   if(!pos.length){$('div-empty').style.display='block';return;}
