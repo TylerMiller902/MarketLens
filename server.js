@@ -1117,18 +1117,24 @@ app.get('/api/etf-info/:symbol',             (req,res) => res.json({}));
 app.get('/api/etf-sectors/:symbol',          (req,res) => res.json([]));
 
 
-// Debug screener — try multiple FMP batch quote approaches
+// Debug screener — try bulk/batch endpoints
 app.get('/api/debug-screener', async (req,res) => {
   const results={};
-  // Test comma-separated stable quote
-  try{ const d=await fmp('/quote',{symbol:'AAPL,MSFT,NVDA'}); results.batchStable={count:arr(d).length,keys:arr(d)[0]?Object.keys(arr(d)[0]):[],sample:arr(d)[0]}; }
-  catch(e){ results.batchStable={error:e.message}; }
-  // Test v3 batch quote in URL path
-  try{ const d=await fmpV3fn('/quote/AAPL,MSFT,NVDA'); results.batchV3Path={count:arr(d).length,sample:arr(d)[0]?.symbol}; }
-  catch(e){ results.batchV3Path={error:e.message}; }
-  // Test stable quotes endpoint (plural)
-  try{ const d=await fmp('/quotes',{symbols:'AAPL,MSFT,NVDA'}); results.stableQuotes={count:arr(d).length}; }
-  catch(e){ results.stableQuotes={error:e.message}; }
+  const tests=[
+    ['/batch-quote-short',{symbols:'AAPL,MSFT,NVDA'}],
+    ['/profile/batch',{symbols:'AAPL,MSFT,NVDA'}],
+    ['/batch-profile',{symbols:'AAPL,MSFT,NVDA'}],
+    ['/bulk/profile',{part:'0'}],
+    ['/company-screener',{marketCapMin:100000000000,limit:10}],
+    ['/market-capitalization-batch',{symbols:'AAPL,MSFT,NVDA'}],
+    ['/prices/batch',{symbols:'AAPL,MSFT,NVDA'}],
+  ];
+  for(const[ep,qs] of tests){
+    try{
+      const d=await fmp(ep,qs);
+      results[ep]={ok:true,count:Array.isArray(d)?d.length:1,keys:(Array.isArray(d)?d[0]:d)?Object.keys(Array.isArray(d)?d[0]:d).slice(0,6):[]};
+    }catch(e){results[ep]={error:e.message};}
+  }
   res.json(results);
 });
 
