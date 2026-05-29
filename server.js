@@ -1117,25 +1117,12 @@ app.get('/api/etf-info/:symbol',             (req,res) => res.json({}));
 app.get('/api/etf-sectors/:symbol',          (req,res) => res.json([]));
 
 
-// Debug screener — try bulk/batch endpoints
+// Debug screener
 app.get('/api/debug-screener', async (req,res) => {
-  const results={};
-  const tests=[
-    ['/batch-quote-short',{symbols:'AAPL,MSFT,NVDA'}],
-    ['/profile/batch',{symbols:'AAPL,MSFT,NVDA'}],
-    ['/batch-profile',{symbols:'AAPL,MSFT,NVDA'}],
-    ['/bulk/profile',{part:'0'}],
-    ['/company-screener',{marketCapMin:100000000000,limit:10}],
-    ['/market-capitalization-batch',{symbols:'AAPL,MSFT,NVDA'}],
-    ['/prices/batch',{symbols:'AAPL,MSFT,NVDA'}],
-  ];
-  for(const[ep,qs] of tests){
-    try{
-      const d=await fmp(ep,qs);
-      results[ep]={ok:true,count:Array.isArray(d)?d.length:1,keys:(Array.isArray(d)?d[0]:d)?Object.keys(Array.isArray(d)?d[0]:d).slice(0,6):[]};
-    }catch(e){results[ep]={error:e.message};}
-  }
-  res.json(results);
+  try{
+    const d=await fmp('/company-screener',{marketCapMin:100000000000,limit:5,sort:'marketCap',order:'desc'});
+    res.json({count:arr(d).length,keys:arr(d)[0]?Object.keys(arr(d)[0]):[],top3:arr(d).slice(0,3).map(s=>({symbol:s.symbol,marketCap:s.marketCap}))});
+  }catch(e){res.json({error:e.message});}
 });
 
 // Debug raw FMP quote
@@ -1172,21 +1159,41 @@ const TOP_STOCKS=['AAPL','MSFT','NVDA','GOOGL','AMZN','META','TSLA','AVGO','WMT'
 app.get('/api/market-cap-rank', async (req,res) => {
   const ck='mkt-cap-rank'; const hit=gc(ck); if(hit)return res.json(hit);
   try{
-    // Individual parallel calls — FMP stable only supports one symbol at a time
-    const quotes=await Promise.all(TOP_STOCKS.map(sym=>fmpSafe('/profile',{symbol:sym})));
-    const all=quotes.map(r=>arr(r)[0]).filter(s=>s?.symbol&&(s?.marketCap||0)>0);
-    all.sort((a,b)=>(b.marketCap||0)-(a.marketCap||0));
-    const result=all.slice(0,100).map((s,i)=>({
-      rank:i+1,
-      symbol:s.symbol,
-      name:s.name||s.symbol,
-      marketCap:s.marketCap||0,
-      price:s.price||0,
-      change:+(s.changePercentage??s.changesPercentage??0).toFixed(2),
+    // Single screener call — replaces 100 individual profile calls
+    const data = await fmp('/company-screener',{
+      marketCapMin: 10_000_000_000,
+      isActivelyTrading: true,
+      exchange: 'NYSE,NASDAQ',
+      limit: 100,
+      sort: 'marketCap',
+      order: 'desc',
+    });
+    const items = arr(data);
+    if(!items.length) throw new Error('No screener data');
+    const result = items.map((s,i)=>({
+      rank: i+1,
+      symbol: s.symbol,
+      name: s.companyName || s.name || s.symbol,
+      marketCap: s.marketCap || 0,
+      price: s.price || 0,
+      change: +(s.changePercentage ?? s.change ?? 0).toFixed(2),
     }));
-    sc(ck,result,1_800_000);
+    sc(ck, result, 1_800_000); // 30min cache
     res.json(result);
-  }catch(e){res.status(500).json({error:e.message});}
+  } catch(e) {
+    // Fallback to individual profile calls if screener fails
+    try{
+      const quotes = await Promise.all(TOP_STOCKS.slice(0,50).map(sym=>fmpSafe('/profile',{symbol:sym})));
+      const all = quotes.map(r=>arr(r)[0]).filter(s=>s?.symbol&&(s?.marketCap||0)>0);
+      all.sort((a,b)=>(b.marketCap||0)-(a.marketCap||0));
+      const result = all.slice(0,50).map((s,i)=>({
+        rank:i+1, symbol:s.symbol, name:s.companyName||s.name||s.symbol,
+        marketCap:s.marketCap||0, price:s.price||0, change:+(s.changePercentage??0).toFixed(2),
+      }));
+      sc(ck,result,900_000);
+      res.json(result);
+    }catch(e2){ res.status(500).json({error:e2.message}); }
+  }
 });
 
 app.get('/api/debug-cashflow/:symbol', async (req,res) => {
