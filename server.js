@@ -592,7 +592,7 @@ app.get('/api/stock/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
   const { symbol } = req.params;
   const isETF = req.query.etf === '1';
   try {
-    // Fetch all data in parallel — includes income + key metrics for stats card
+    console.log(`[stock] fetching ${symbol}`);
     const [
       quoteRaw, profileRaw, incomeRaw, kmRaw,
       newsRaw, recsRaw, priceTargetRaw,
@@ -602,19 +602,21 @@ app.get('/api/stock/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
       fmpSafe('/profile',                        { symbol }),
       fmpSafe('/income-statement',               { symbol, period: 'annual', limit: 1 }),
       fmpSafe('/key-metrics',                    { symbol, period: 'annual', limit: 1 }),
-      fmpSafe('/stock-news',                     { tickers: symbol, limit: 10 }),
+      fmpSafe('/news/stock',                     { symbols: symbol, limit: 10 }),
       fmpSafe('/analyst-stock-recommendations',  { symbol, limit: 5 }),
       fmpSafe('/price-target-consensus',         { symbol }),
       fmpSafe('/earnings-surprises',             { symbol }),
       fmpSafe('/earnings-calendar',              { from: today(), to: dFwd(90), symbol }),
       isETF ? Promise.resolve(null) : Promise.resolve(null),
     ]);
+    console.log(`[stock] ${symbol} fetched — quote:${!!quoteRaw} profile:${!!profileRaw} news:${!!newsRaw}`);
 
     const quoteData   = arr(quoteRaw)[0]   || null;
     const profileData = arr(profileRaw)[0] || null;
     const incomeData  = arr(incomeRaw)[0]  || null;
     const kmData      = arr(kmRaw)[0]      || null;
 
+    console.log(`[stock] ${symbol} transforming...`);
     const quote       = transformQuote(quoteData);
     const profile     = transformProfile(profileData);
     const metrics     = buildMetrics(quoteData, profileData, incomeData, kmData);
@@ -623,10 +625,14 @@ app.get('/api/stock/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
     const priceTarget = transformPriceTarget(priceTargetRaw);
     const earnings    = transformEarnings(earningsRaw).slice(0, 8);
     const earningsCal = transformEarningsCalendar(earningsCalRaw);
-    const etfHoldings = null; // fetched client-side via /api/etf/holdings/:symbol
+    const etfHoldings = null;
 
+    console.log(`[stock] ${symbol} sending response`);
     res.json({ quote, profile, metrics, news, recs, priceTarget, earnings, earningsCal, etfHoldings });
-  } catch(e) { res.status(500).json({ error: e.message }); }
+  } catch(e) {
+    console.error(`[/api/stock/${symbol}] 500:`, e.message, '\n', e.stack);
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // ── Peers / Competitors ───────────────────────────────────
