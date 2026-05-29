@@ -1727,7 +1727,7 @@ async function renderPfPage(){
     const todayPct=(q?.pc&&q.pc>0)?(cp-q.pc)/q.pc*100:0;
     totalVal+=cv;totalCost+=cb;
     return{...p,name:pr?.name||p.name||p.ticker,logo:pr?.logo||p.logo||'',cp,cv,cb,pl,plp,todayRet,todayPct};
-  });
+  }).sort((a,b)=>b.cv-a.cv);
   const tpl=totalVal-totalCost,tplp=totalCost>0?tpl/totalCost*100:0;
 
   // Overview stats
