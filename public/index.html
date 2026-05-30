@@ -2280,7 +2280,7 @@ async function loadStock(ticker){
         </div>`;
       return;
     }
-    CurD={...stock,ticker,isETF};CurFMP=fmpFin;CurInsiders=insiders;
+    CurD={...stock,ticker,isETF,etfInfo:stock.etfInfo||null};CurFMP=fmpFin;CurInsiders=insiders;
     CurIntraday=intraday;CurDivHistory=divHistory;
     const m=stock?.metrics?.metric||{},price=stock?.quote?.c;
     const hasFMPPrices=fmpPrices&&Object.values(fmpPrices).some(r=>r?.prices?.length>2);
@@ -2366,12 +2366,16 @@ function renderPage(){
   const cons=score>0.8?'Strong Buy':score>0.5?'Buy':score>0.2?'Hold':'Sell',consCls=cons.includes('Buy')?'buy':cons==='Hold'?'hold':'sell';
   const upside=pt?.targetMean&&q?.c?((pt.targetMean-q.c)/q.c*100):null;
   const rBars=[{l:'Strong Buy',n:rec.strongBuy||0,c:G},{l:'Buy',n:rec.buy||0,c:'#4ade80'},{l:'Hold',n:rec.hold||0,c:B},{l:'Sell',n:rec.sell||0,c:'#f87171'},{l:'Str Sell',n:rec.strongSell||0,c:R}];
-  const mxB=Math.max(...rBars.map(b=>b.n),1),w52h=m['52WeekHigh'],w52l=m['52WeekLow'];
+  const mxB=Math.max(...rBars.map(b=>b.n),1);
+  const w52h=q?.yearHigh??m['52WeekHigh'],w52l=q?.yearLow??m['52WeekLow'];
+  const etfInfo=CurD?.etfInfo||null;
+  const expenseRatio=etfInfo?.expenseRatio!=null?fP(etfInfo.expenseRatio):(etfInfo?.netExpenseRatio!=null?fP(etfInfo.netExpenseRatio):'—');
+  const peRatio=etfInfo?.pe!=null?fN(etfInfo.pe):(m.peBasicExclExtraTTM!=null?fN(m.peBasicExclExtraTTM):'—');
   const earns=earnings||[],upcoming=(earningsCal?.earningsCalendar||[]).filter(e=>e.date>=today())[0],newsItems=(news||[]).slice(0,3);
   const hasDividend=CurDivHistory?.years?.length>0||CurFMP?.dividendPerShare?.some(x=>x>0)||(CurD?.metrics?.metric?.dividendPerShareAnnual>0)||(CurD?.metrics?.metric?.dividendYieldIndicatedAnnual>0);
   const hasInsiders=CurInsiders?.transactions?.length>0;
   const ALL_RANGES=['1D','1W','1M','3M','YTD','1Y','5Y','10Y','All'];
-  const stats=isETF?[{l:'Market Cap / AUM',v:fB((p?.marketCapitalization||0)*1e6)},{l:'Price',v:q?.c?f$(q.c):'—'},{l:'52W High',v:f$(w52h)},{l:'52W Low',v:f$(w52l)},{l:'Dividend Yield',v:m.dividendYieldIndicatedAnnual!=null?fP(m.dividendYieldIndicatedAnnual):'—'},{l:'Ann. Dividend/Sh',v:m.dividendPerShareAnnual!=null?f$(m.dividendPerShareAnnual):'—'},{l:'Beta (vs S&P)',v:fN(m.beta)},{l:'P/E Ratio',v:fN(m.peBasicExclExtraTTM)},{l:'Inception Date',v:p?.ipo||'—'},{l:'Exchange',v:p?.exchange||'—'},{l:'Category',v:p?.finnhubIndustry||'—'},{l:'Country',v:p?.country||'—'}]:[{l:'Market Cap',v:fB((p?.marketCapitalization||0)*1e6)},{l:'P/E Ratio',v:fN(m.peBasicExclExtraTTM)},{l:'EPS (TTM)',v:f$(m.epsTTM)},{l:'P/S Ratio',v:fN(m.psTTM)},{l:'Dividend Yield',v:m.dividendYieldIndicatedAnnual!=null?fP(m.dividendYieldIndicatedAnnual):'—'},{l:'Div Per Share (Ann)',v:m.dividendPerShareAnnual!=null?f$(m.dividendPerShareAnnual):'—'},{l:'Beta',v:fN(m.beta)},{l:'Current Ratio',v:fN(m.currentRatioAnnual)},{l:'Gross Margin',v:fP(m.grossMarginTTM)},{l:'Net Margin',v:fP(m.netProfitMarginTTM)},{l:'ROE',v:fP(m.roeTTM)},{l:'ROA',v:fP(m.roaTTM)}];
+  const stats=isETF?[{l:'Market Cap / AUM',v:fB((p?.marketCapitalization||0)*1e6)},{l:'Price',v:q?.c?f$(q.c):'—'},{l:'52W High',v:w52h?f$(w52h):'—'},{l:'52W Low',v:w52l?f$(w52l):'—'},{l:'Dividend Yield',v:m.dividendYieldIndicatedAnnual!=null?fP(m.dividendYieldIndicatedAnnual):'—'},{l:'Ann. Dividend/Sh',v:m.dividendPerShareAnnual!=null?f$(m.dividendPerShareAnnual):'—'},{l:'Beta (vs S&P)',v:fN(m.beta)},{l:'P/E Ratio',v:peRatio},{l:'Inception Date',v:p?.ipo||'—'},{l:'Expense Ratio',v:expenseRatio},{l:'Category',v:p?.finnhubIndustry||etfInfo?.category||'—'},{l:'Country',v:p?.country||'—'}]:[{l:'Market Cap',v:fB((p?.marketCapitalization||0)*1e6)},{l:'P/E Ratio',v:fN(m.peBasicExclExtraTTM)},{l:'EPS (TTM)',v:f$(m.epsTTM)},{l:'P/S Ratio',v:fN(m.psTTM)},{l:'Dividend Yield',v:m.dividendYieldIndicatedAnnual!=null?fP(m.dividendYieldIndicatedAnnual):'—'},{l:'Div Per Share (Ann)',v:m.dividendPerShareAnnual!=null?f$(m.dividendPerShareAnnual):'—'},{l:'Beta',v:fN(m.beta)},{l:'Current Ratio',v:fN(m.currentRatioAnnual)},{l:'Gross Margin',v:fP(m.grossMarginTTM)},{l:'Net Margin',v:fP(m.netProfitMarginTTM)},{l:'ROE',v:fP(m.roeTTM)},{l:'ROA',v:fP(m.roaTTM)}];
 
   $('scontent').innerHTML=`
     <div class="shdr"><div class="slogo"><img src="${esc(p?.logo||'')}" onerror="this.style.display='none'"/></div><div class="stitle"><div class="sname">${esc(p?.name||ticker)}</div><div class="smeta"><span class="stk">${esc(ticker)}</span>${p?.exchange?`<span class="sexch">${esc(p.exchange)}</span>`:''}${p?.finnhubIndustry?`<span class="ssect">&middot; ${esc(p.finnhubIndustry)}</span>`:''}${isETF?'<span class="etfbadge">ETF</span>':''}</div><div class="ohlc">${q?.o?`<div class="ohlci"><div class="ohlcl">Open</div><div class="ohlcv">${f$(q.o)}</div></div>`:''} ${q?.h?`<div class="ohlci"><div class="ohlcl">High</div><div class="ohlcv" style="color:var(--G)">${f$(q.h)}</div></div>`:''} ${q?.l?`<div class="ohlci"><div class="ohlcl">Low</div><div class="ohlcv" style="color:var(--R)">${f$(q.l)}</div></div>`:''} ${q?.pc?`<div class="ohlci"><div class="ohlcl">Prev Close</div><div class="ohlcv">${f$(q.pc)}</div></div>`:''}</div></div><div class="sprice"><div class="bigp">${q?.c?f$(q.c):'—'}</div><div class="pchg ${isUp?'up':'dn'}">${isUp?'▲':'▼'} ${sgn(q?.d||0)}${f$(Math.abs(q?.d||0)).slice(1)} (${sgn(q?.dp||0)}${Math.abs(q?.dp||0).toFixed(2)}%)</div><div style="font-size:10px;font-family:var(--fm);margin-top:2px;color:var(--G)">&#x25CF; Live</div></div></div>
