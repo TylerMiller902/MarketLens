@@ -1426,16 +1426,56 @@ function closeDividendPage(){
 function buildEtfHoldings(h){
   if(!h?.holdings?.length)return'<p style="color:var(--mu);font-size:12px;padding:.4rem 0">Holdings data unavailable.</p>';
   const maxPct=h.holdings[0]?.percent||1;
-  return h.holdings.slice(0,25).map((hh,i)=>{
-    const pct=+(hh.percent||0).toFixed(2);
-    return`<div class="etf-h-row-full" onclick="go('${esc(hh.symbol||'')}')">
-      <div class="etf-h-rank">${i+1}</div>
-      <img class="etf-h-logo" src="https://images.financialmodelingprep.com/symbol/${esc(hh.symbol||'')}.png" onerror="this.style.display='none'"/>
-      <div class="etf-h-info"><div class="etf-h-sym">${esc(hh.symbol||'—')}</div><div class="etf-h-name">${esc(hh.name||'—')}</div></div>
-      <div class="etf-h-visual"><div class="etf-h-bar"><div class="etf-h-fill" style="width:${Math.min(100,(pct/maxPct)*100).toFixed(1)}%"></div></div></div>
-      <div class="etf-h-pct">${pct}%</div>
+  const freeLimit=5;
+  const showAll=isPro();
+  const visibleHoldings=h.holdings.slice(0, showAll?25:freeLimit);
+  const fakeHoldings=[
+    {symbol:'BRK.B',name:'Berkshire Hathaway',percent:4.21},
+    {symbol:'UNH',name:'UnitedHealth Group',percent:3.87},
+    {symbol:'HD',name:'Home Depot',percent:3.44},
+    {symbol:'LLY',name:'Eli Lilly',percent:3.12},
+    {symbol:'ABBV',name:'AbbVie',percent:2.98},
+    {symbol:'MRK',name:'Merck',percent:2.76},
+    {symbol:'KO',name:'Coca-Cola',percent:2.54},
+    {symbol:'MCD',name:'McDonald\'s',percent:2.31},
+    {symbol:'CSCO',name:'Cisco',percent:2.18},
+    {symbol:'PEP',name:'PepsiCo',percent:2.05},
+    {symbol:'ABT',name:'Abbott Labs',percent:1.94},
+    {symbol:'TMO',name:'Thermo Fisher',percent:1.82},
+    {symbol:'ACN',name:'Accenture',percent:1.71},
+    {symbol:'DHR',name:'Danaher',percent:1.63},
+    {symbol:'TXN',name:'Texas Instruments',percent:1.54},
+    {symbol:'QCOM',name:'Qualcomm',percent:1.47},
+    {symbol:'HON',name:'Honeywell',percent:1.39},
+    {symbol:'AMGN',name:'Amgen',percent:1.32},
+    {symbol:'INTU',name:'Intuit',percent:1.24},
+    {symbol:'LOW',name:"Lowe's",percent:1.17},
+  ];
+
+  const rowHTML = (hh,i) => `<div class="etf-h-row-full" onclick="go('${esc(hh.symbol||'')}')">
+    <div class="etf-h-rank">${i+1}</div>
+    <img class="etf-h-logo" src="https://images.financialmodelingprep.com/symbol/${esc(hh.symbol||'')}.png" onerror="this.style.display='none'"/>
+    <div class="etf-h-info"><div class="etf-h-sym">${esc(hh.symbol||'—')}</div><div class="etf-h-name">${esc(hh.name||'—')}</div></div>
+    <div class="etf-h-visual"><div class="etf-h-bar"><div class="etf-h-fill" style="width:${Math.min(100,((hh.percent||0)/maxPct)*100).toFixed(1)}%"></div></div></div>
+    <div class="etf-h-pct">${(+(hh.percent||0).toFixed(2))}%</div>
+  </div>`;
+
+  let html = visibleHoldings.map((hh,i)=>rowHTML(hh,i)).join('');
+
+  if(!showAll){
+    // Show fake blurred holdings after the first 5
+    const fakeRows = fakeHoldings.slice(0,15).map((hh,i)=>rowHTML(hh,i+freeLimit)).join('');
+    html += `<div class="chart-locked-wrap" style="border-radius:12px;margin-top:4px">
+      <div style="opacity:.25;pointer-events:none">${fakeRows}</div>
+      <div class="chart-lock-overlay" style="border-radius:12px" onclick="showUpgradeModal('Full ETF Holdings')">
+        <div class="chart-lock-icon">🔒</div>
+        <div class="chart-lock-title">See All Holdings</div>
+        <div class="chart-lock-sub">Upgrade to Pro to view all ${h.holdings.length} holdings</div>
+        <button class="chart-lock-btn">Upgrade to Pro — $8.99/month</button>
+      </div>
     </div>`;
-  }).join('');
+  }
+  return html;
 }
 let DivChart=null;
 const DIV_COLORS=['#8b5cf6','#6d28d9','#a78bfa','#4f46e5','#7c3aed','#3b82f6','#60a5fa','#2563eb','#818cf8','#9333ea'];
