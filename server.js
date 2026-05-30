@@ -1085,27 +1085,29 @@ app.get('/api/debug/:symbol', async (req,res) => {
 
 
 // ── Top Stock Biggest Movers ──────────────────────────────
-// Fortune 500 movers — filtered to large-cap S&P 500 equivalent
-
+// Fortune 500 movers — find biggest movers within TOP_STOCKS using cached profiles
 app.get('/api/voo-movers', async (req,res) => {
   const ck='voo-movers'; const hit=gc(ck); if(hit)return res.json(hit);
   try{
-    const [gainers, losers] = await Promise.all([
-      fmpSafe('/biggest-gainers'),
-      fmpSafe('/biggest-losers'),
-    ]);
-    const isLargeCap = s => s?.symbol && TOP_STOCKS_SET.has(s.symbol) && s.price > 5;
-    const fmt = (list, type) => arr(list).filter(isLargeCap).slice(0,5).map(s=>({
+    // Parallel profile fetch — all cached 2hr after first load
+    const profiles = await Promise.all(TOP_STOCKS.map(sym=>fmpSafe('/profile',{symbol:sym})));
+    const stocks = profiles
+      .map(r=>arr(r)[0])
+      .filter(s=>s?.symbol && s?.price>0 && s?.changePercentage!=null);
+    const byChange = [...stocks].sort((a,b)=>b.changePercentage-a.changePercentage);
+    const gainers = byChange.slice(0,5);
+    const losers  = byChange.slice(-5).reverse();
+    const fmt = (list,type) => list.map(s=>({
       ticker: s.symbol,
-      name: s.name || s.companyName || s.symbol,
-      price: s.price, change: s.change ?? 0,
-      changePct: s.changesPercentage ?? s.changePercentage ?? 0,
+      name: s.companyName||s.name||s.symbol,
+      price: s.price, change: s.change??0,
+      changePct: s.changePercentage??0,
       logo: `https://images.financialmodelingprep.com/symbol/${s.symbol}.png`, type,
     }));
-    const result = [...fmt(gainers,'gainer'), ...fmt(losers,'loser')];
-    sc(ck, result, 600_000); // 10min — movers
+    const result=[...fmt(gainers,'gainer'),...fmt(losers,'loser')];
+    sc(ck,result,600_000);
     res.json(result);
-  }catch(e){ res.status(500).json({error:e.message}); }
+  }catch(e){res.status(500).json({error:e.message});}
 });
 
 app.get('/api/etf-holdings-returns/:symbol', (req,res) => res.json([]));
