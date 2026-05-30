@@ -2287,7 +2287,7 @@ async function loadStock(ticker){
     if(hasFMPPrices){CurPH={};CurDates={};for(const r of['1M','3M','YTD','1Y','5Y','10Y','All']){CurPH[r]=fmpPrices[r]?.prices||[];CurDates[r]=fmpPrices[r]?.dates||[];}CurD.priceDataSource='live';}
     else{const gen=generatePriceHistory(price,m['52WeekHigh'],m['52WeekLow'],m.beta);CurPH=gen.prices;CurDates=gen.dates;CurD.priceDataSource='estimated';}
     renderPage();loadPeers(ticker);
-    // For ETFs fetch holdings separately so they have their own cache and badge updates live
+    // For ETFs fetch holdings + returns separately
     if(isETF){
       apiFetch(`/api/etf/holdings/${ticker}`).then(h=>{
         if(!h?.holdings?.length)return;
@@ -2300,6 +2300,26 @@ async function loadStock(ticker){
         const badge=document.getElementById('etf-h-badge');
         if(badge){badge.textContent='Unavailable';badge.className='badge est';}
       });
+      // Fetch ETF average returns
+      apiFetch(`/api/etf/returns/${ticker}`).then(r=>{
+        const wrap=document.getElementById('etf-returns-wrap');
+        if(!wrap||!r||Object.keys(r).length===0)return;
+        const fmtRet=v=>v==null?'—':`${v>=0?'+':''}${v.toFixed(2)}%`;
+        const color=v=>v==null?'var(--mu)':v>=0?'var(--G)':'var(--R)';
+        wrap.innerHTML=`
+          <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:8px">
+            ${['3Y','5Y','10Y'].map(k=>`
+              <div class="pos-box"><div class="pos-box-lbl">${k} Ann. Return</div>
+              <div class="pos-box-val" style="color:${color(r[k])}">${fmtRet(r[k])}</div></div>`).join('')}
+            <div class="pos-box ${!isPro()?'chart-locked-wrap':''}">
+              ${!isPro()?`<div class="pos-box-lbl">All-Time Ann.</div><div class="pos-box-val" style="opacity:.2">+12.45%</div>
+              <div class="chart-lock-overlay" style="border-radius:8px;padding:.4rem" onclick="showUpgradeModal('All-Time Returns')">
+                <div style="font-size:.7rem;font-weight:700;color:#fff">🔒 Pro</div>
+              </div>`:`<div class="pos-box-lbl">All-Time Ann.</div><div class="pos-box-val" style="color:${color(r['All'])}">${fmtRet(r['All'])}</div>`}
+            </div>
+          </div>
+          <div style="font-size:10px;color:var(--di);font-family:var(--fm);margin-top:6px">Annualized returns · Since inception: ${r.inception||'—'}</div>`;
+      }).catch(()=>{});
     }
   }catch(e){
     console.error('[loadStock] error:', e.message, e.stack);
@@ -2316,10 +2336,12 @@ async function loadStock(ticker){
 
 async function loadPeers(ticker){
   try{
-    const peers=await apiFetch(`/api/peers/${ticker}`);const el=$('peers-row');if(!el)return;
-    if(!peers?.length){el.innerHTML='<p style="font-size:12px;color:var(--mu)">No competitor data available.</p>';return;}
+    const isEtf=CurD?.isETF;
+    const url=isEtf?`/api/etf/similar/${ticker}`:`/api/peers/${ticker}`;
+    const peers=await apiFetch(url);const el=$('peers-row');if(!el)return;
+    if(!peers?.length){el.innerHTML=`<p style="font-size:12px;color:var(--mu)">${isEtf?'No similar ETFs found.':'No competitor data available.'}</p>`;return;}
     el.innerHTML=peers.map(p=>{const q=p.quote,prof=p.profile,up=(q?.d||0)>=0,cap=prof?.marketCapitalization?(prof.marketCapitalization*1e6):null,dc=q?.d||0;
-      return`<div class="peer-card" onclick="go('${esc(p.ticker)}')"><div><div class="peer-top"><div class="peer-logo"><img src="${esc(prof?.logo||'')}" onerror="this.style.display='none'"/></div><span class="peer-ticker">${esc(p.ticker)}</span></div><span class="peer-name">${esc(prof?.name||p.ticker)}</span></div><div class="peer-bottom"><div class="peer-price-row"><span class="peer-px">${f$(q?.c)}</span><span class="peer-chg ${up?'up':'dn'}">${up?'▲':'▼'}${Math.abs(q?.dp||0).toFixed(2)}%</span></div><div class="peer-price-row"><span class="peer-dollar ${up?'up':'dn'}">${up?'+':''}${dc.toFixed(2)}</span><span class="peer-cap">${fB(cap)}</span></div></div></div>`;
+      return`<div class="peer-card" onclick="go('${esc(p.ticker)}')"><div><div class="peer-top"><div class="peer-logo"><img src="${esc(prof?.logo||`https://images.financialmodelingprep.com/symbol/${esc(p.ticker)}.png`)}" onerror="this.style.display='none'"/></div><span class="peer-ticker">${esc(p.ticker)}</span></div><span class="peer-name">${esc(prof?.name||p.ticker)}</span></div><div class="peer-bottom"><div class="peer-price-row"><span class="peer-px">${f$(q?.c)}</span><span class="peer-chg ${up?'up':'dn'}">${up?'▲':'▼'}${Math.abs(q?.dp||0).toFixed(2)}%</span></div><div class="peer-price-row"><span class="peer-dollar ${up?'up':'dn'}">${up?'+':''}${dc.toFixed(2)}</span><span class="peer-cap">${fB(cap)}</span></div></div></div>`;
     }).join('');
   }catch{const el=$('peers-row');if(el)el.innerHTML='';}
 }
@@ -2375,7 +2397,7 @@ function renderPage(){
   const hasDividend=CurDivHistory?.years?.length>0||CurFMP?.dividendPerShare?.some(x=>x>0)||(CurD?.metrics?.metric?.dividendPerShareAnnual>0)||(CurD?.metrics?.metric?.dividendYieldIndicatedAnnual>0);
   const hasInsiders=CurInsiders?.transactions?.length>0;
   const ALL_RANGES=['1D','1W','1M','3M','YTD','1Y','5Y','10Y','All'];
-  const stats=isETF?[{l:'Market Cap / AUM',v:fB((p?.marketCapitalization||0)*1e6)},{l:'Price',v:q?.c?f$(q.c):'—'},{l:'52W High',v:w52h?f$(w52h):'—'},{l:'52W Low',v:w52l?f$(w52l):'—'},{l:'Dividend Yield',v:m.dividendYieldIndicatedAnnual!=null?fP(m.dividendYieldIndicatedAnnual):'—'},{l:'Ann. Dividend/Sh',v:m.dividendPerShareAnnual!=null?f$(m.dividendPerShareAnnual):'—'},{l:'Beta (vs S&P)',v:fN(m.beta)},{l:'P/E Ratio',v:peRatio},{l:'Inception Date',v:p?.ipo||'—'},{l:'Expense Ratio',v:expenseRatio},{l:'Category',v:p?.finnhubIndustry||etfInfo?.category||'—'},{l:'Country',v:p?.country||'—'}]:[{l:'Market Cap',v:fB((p?.marketCapitalization||0)*1e6)},{l:'P/E Ratio',v:fN(m.peBasicExclExtraTTM)},{l:'EPS (TTM)',v:f$(m.epsTTM)},{l:'P/S Ratio',v:fN(m.psTTM)},{l:'Dividend Yield',v:m.dividendYieldIndicatedAnnual!=null?fP(m.dividendYieldIndicatedAnnual):'—'},{l:'Div Per Share (Ann)',v:m.dividendPerShareAnnual!=null?f$(m.dividendPerShareAnnual):'—'},{l:'Beta',v:fN(m.beta)},{l:'Current Ratio',v:fN(m.currentRatioAnnual)},{l:'Gross Margin',v:fP(m.grossMarginTTM)},{l:'Net Margin',v:fP(m.netProfitMarginTTM)},{l:'ROE',v:fP(m.roeTTM)},{l:'ROA',v:fP(m.roaTTM)}];
+  const stats=isETF?[{l:'AUM',v:etfInfo?.assetsUnderManagement?fB(etfInfo.assetsUnderManagement):(p?.marketCapitalization?fB((p.marketCapitalization||0)*1e6):'—')},{l:'NAV',v:etfInfo?.nav?f$(etfInfo.nav):(q?.c?f$(q.c):'—')},{l:'52W High',v:w52h?f$(w52h):'—'},{l:'52W Low',v:w52l?f$(w52l):'—'},{l:'Expense Ratio',v:expenseRatio},{l:'Holdings',v:etfInfo?.holdingsCount!=null?etfInfo.holdingsCount.toLocaleString():'—'},{l:'Avg Volume',v:etfInfo?.avgVolume?fB(etfInfo.avgVolume):'—'},{l:'Dividend Yield',v:m.dividendYieldIndicatedAnnual!=null?fP(m.dividendYieldIndicatedAnnual):'—'},{l:'Inception Date',v:etfInfo?.inceptionDate||p?.ipo||'—'},{l:'Issuer',v:etfInfo?.etfCompany||'—'},{l:'Asset Class',v:etfInfo?.assetClass||'—'},{l:'Domicile',v:etfInfo?.domicile||p?.country||'—'}]:[{l:'Market Cap',v:fB((p?.marketCapitalization||0)*1e6)},{l:'P/E Ratio',v:fN(m.peBasicExclExtraTTM)},{l:'EPS (TTM)',v:f$(m.epsTTM)},{l:'P/S Ratio',v:fN(m.psTTM)},{l:'Dividend Yield',v:m.dividendYieldIndicatedAnnual!=null?fP(m.dividendYieldIndicatedAnnual):'—'},{l:'Div Per Share (Ann)',v:m.dividendPerShareAnnual!=null?f$(m.dividendPerShareAnnual):'—'},{l:'Beta',v:fN(m.beta)},{l:'Current Ratio',v:fN(m.currentRatioAnnual)},{l:'Gross Margin',v:fP(m.grossMarginTTM)},{l:'Net Margin',v:fP(m.netProfitMarginTTM)},{l:'ROE',v:fP(m.roeTTM)},{l:'ROA',v:fP(m.roaTTM)}];
 
   $('scontent').innerHTML=`
     <div class="shdr"><div class="slogo"><img src="${esc(p?.logo||'')}" onerror="this.style.display='none'"/></div><div class="stitle"><div class="sname">${esc(p?.name||ticker)}</div><div class="smeta"><span class="stk">${esc(ticker)}</span>${p?.exchange?`<span class="sexch">${esc(p.exchange)}</span>`:''}${p?.finnhubIndustry?`<span class="ssect">&middot; ${esc(p.finnhubIndustry)}</span>`:''}${isETF?'<span class="etfbadge">ETF</span>':''}</div><div class="ohlc">${q?.o?`<div class="ohlci"><div class="ohlcl">Open</div><div class="ohlcv">${f$(q.o)}</div></div>`:''} ${q?.h?`<div class="ohlci"><div class="ohlcl">High</div><div class="ohlcv" style="color:var(--G)">${f$(q.h)}</div></div>`:''} ${q?.l?`<div class="ohlci"><div class="ohlcl">Low</div><div class="ohlcv" style="color:var(--R)">${f$(q.l)}</div></div>`:''} ${q?.pc?`<div class="ohlci"><div class="ohlcl">Prev Close</div><div class="ohlcv">${f$(q.pc)}</div></div>`:''}</div></div><div class="sprice"><div class="bigp">${q?.c?f$(q.c):'—'}</div><div class="pchg ${isUp?'up':'dn'}">${isUp?'▲':'▼'} ${sgn(q?.d||0)}${f$(Math.abs(q?.d||0)).slice(1)} (${sgn(q?.dp||0)}${Math.abs(q?.dp||0).toFixed(2)}%)</div><div style="font-size:10px;font-family:var(--fm);margin-top:2px;color:var(--G)">&#x25CF; Live</div></div></div>
@@ -2409,8 +2431,10 @@ function renderPage(){
     ${newsItems.length?`<div class="stitle-sm">Recent News <span class="badge live">Live</span></div>${newsItems.map(n=>{const dt=new Date((n.datetime||0)*1000),ts=isNaN(dt)?'':dt.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});return`<a class="ncard" href="${esc(n.url||'#')}" target="_blank"><div class="nhl">${esc(n.headline||'')}</div><div class="nmeta"><span class="nsrc">${esc(n.source||'')}</span><span class="ntime">${ts}</span></div></a>`;}).join('')}`:''}
 
     ${isETF?`
+    ${isETF?`<div class="stitle-sm" style="margin-top:.2rem">Average Annual Returns <span class="badge live">FMP</span></div>
+    <div class="card" style="padding:.9rem"><div id="etf-returns-wrap"><div style="color:var(--mu);font-size:12px;font-family:var(--fm)">Loading returns&hellip;</div></div></div>
     <div class="stitle-sm" style="margin-top:.2rem">Holdings <span id="etf-h-badge" class="badge est">Loading&hellip;</span></div>
-    <div class="etf-holdings-full" id="etf-holdings-wrap"><div style="padding:.8rem;color:var(--mu);font-size:12px;font-family:var(--fm)">Fetching holdings&hellip;</div></div>
+    <div class="etf-holdings-full" id="etf-holdings-wrap"><div style="padding:.8rem;color:var(--mu);font-size:12px;font-family:var(--fm)">Fetching holdings&hellip;</div></div>`:''}
     `:`
     <div class="stitle-sm" style="margin-top:.2rem">Financials <span class="badge ${hasFMP?'live':'est'}">${hasFMP?'Live':'No data'}</span></div>
     ${hasFMP?`<div class="ftabs"><button class="ftab on" data-tab="inc">Income</button><button class="ftab" data-tab="bal">Balance Sheet</button><button class="ftab" data-tab="cf">Cash Flow</button></div><div id="fin-inc" class="ftbl-wrap">${buildFinTable(CurFMP.tableIncome,CurFMP.tableYears)}</div><div id="fin-bal" class="ftbl-wrap" style="display:none">${buildFinTable(CurFMP.tableBalance,CurFMP.tableYears)}</div><div id="fin-cf" class="ftbl-wrap" style="display:none">${buildFinTable(CurFMP.tableCF,CurFMP.tableYears)}</div>`:'<p style="color:var(--mu);font-size:12px;padding:.4rem 0 .9rem">Financial statement data not available.</p>'}
