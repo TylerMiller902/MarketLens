@@ -247,17 +247,17 @@ app.post('/api/portfolio', async (req, res) => {
 // ── Cache ─────────────────────────────────────────────────
 const cache = new Map();
 const TTL = {
-  quote:    15_000,
-  profile:  3_600_000,
-  news:       300_000,
-  recs:     3_600_000,
-  earnings: 3_600_000,
-  search:     600_000,
-  etf:      3_600_000,
-  peers:    1_800_000,
-  fmpFin:   3_600_000,
-  fmpPrice:   300_000,
-  insiders: 1_800_000,
+  quote:    30_000,          // 30s  — price refreshes (using profile now)
+  profile:  7_200_000,       // 2hr  — company info changes rarely
+  news:       600_000,       // 10min — news freshness
+  recs:     7_200_000,       // 2hr  — analyst ratings
+  earnings: 7_200_000,       // 2hr  — earnings data
+  search:   1_800_000,       // 30min — search results
+  etf:      7_200_000,       // 2hr  — ETF holdings
+  peers:    7_200_000,       // 2hr  — peer companies
+  fmpFin:   7_200_000,       // 2hr  — financials
+  fmpPrice: 1_800_000,       // 30min — price history
+  insiders: 7_200_000,       // 2hr  — insider trading
 };
 const gc = k => { const e=cache.get(k); if(!e)return null; if(Date.now()>e.x){cache.delete(k);return null;} return e.d; };
 const sc = (k,d,ttl) => cache.set(k,{d,x:Date.now()+ttl});
@@ -1103,7 +1103,7 @@ app.get('/api/voo-movers', async (req,res) => {
       logo: `https://images.financialmodelingprep.com/symbol/${s.symbol}.png`, type,
     }));
     const result = [...fmt(gainers,'gainer'), ...fmt(losers,'loser')];
-    sc(ck, result, 5*60_000);
+    sc(ck, result, 600_000); // 10min — movers
     res.json(result);
   }catch(e){ res.status(500).json({error:e.message}); }
 });
@@ -1191,7 +1191,7 @@ app.get('/api/market-cap-rank', async (req,res) => {
         change: +(p?.changePercentage ?? 0).toFixed(2),
       };
     });
-    sc(ck, result, 1_800_000); // 30min cache
+    sc(ck, result, 14_400_000); // 4hr — market cap rank
     res.json(result);
   } catch(e) {
     res.status(500).json({error: e.message});
