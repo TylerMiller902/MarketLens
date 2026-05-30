@@ -1165,16 +1165,15 @@ app.get('/api/market-cap-rank', async (req,res) => {
     const capMap = {};
     arr(batchData).forEach(s=>{ if(s.symbol) capMap[s.symbol]=s.marketCap||0; });
 
-    // Sort symbols by market cap
+    // Sort symbols by market cap — top 25 only
     const sorted = TOP_STOCKS
       .filter(sym => capMap[sym] > 0)
       .sort((a,b) => capMap[b] - capMap[a])
-      .slice(0, 100);
+      .slice(0, 25);
 
-    // Get profile only for top 25 — rest use ticker symbol as name
-    // Profiles cached for 1hr so subsequent refreshes cost 0 extra calls
+    // Get profile for all 25 to get names + daily change
     const top25Profiles = await Promise.all(
-      sorted.slice(0,25).map(sym => fmpSafe('/profile',{symbol:sym}))
+      sorted.map(sym => fmpSafe('/profile',{symbol:sym}))
     );
     const profileMap = {};
     top25Profiles.forEach(r => {
