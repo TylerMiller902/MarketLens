@@ -693,7 +693,7 @@ app.get('/api/peers/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
         },
       };
     })
-    .filter(p => p.quote?.c);
+    ; // keep all peers regardless of price data
 
     // Sort: same industry first → same sector → by market cap
     result.sort((a, b) => {
@@ -705,8 +705,8 @@ app.get('/api/peers/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
       return (b.profile?.marketCapitalization||0) - (a.profile?.marketCapitalization||0);
     });
 
-    sc(ck, result.slice(0, 7), TTL.peers);
-    res.json(result.slice(0, 7));
+    sc(ck, result.slice(0, 4), TTL.peers);
+    res.json(result.slice(0, 4));
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
@@ -848,19 +848,45 @@ app.get('/api/fmp/prices/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
 // Similar ETFs — hardcoded map by category
 const SIMILAR_ETFS = {
   'SPY':['IVV','VOO','SPLG','VTI'],'IVV':['SPY','VOO','SPLG','VTI'],'VOO':['SPY','IVV','SPLG','VTI'],
+  'SPLG':['SPY','IVV','VOO','VTI'],'VTI':['ITOT','SCHB','SPY','IVV'],'ITOT':['VTI','SCHB','SPY','IVV'],
+  'SCHB':['VTI','ITOT','SPY','IVV'],'RSP':['SPY','VTI','DIA','QQEW'],
   'QQQ':['QQQM','VGT','XLK','FTEC'],'QQQM':['QQQ','VGT','XLK','FTEC'],
-  'VTI':['ITOT','SCHB','FSKAX','SPY'],'ITOT':['VTI','SCHB','FSKAX','SPY'],
-  'IWM':['VB','VTWO','SCHA','IJR'],'VB':['IWM','VTWO','SCHA','IJR'],
-  'GLD':['IAU','SGOL','GLDM','BAR'],'IAU':['GLD','SGOL','GLDM','BAR'],
-  'TLT':['IEF','BND','AGG','VGLT'],'BND':['AGG','TLT','VGLT','IEF'],
-  'AGG':['BND','TLT','IEF','VBND'],'IEF':['TLT','SHY','VGIT','AGG'],
-  'VGT':['QQQ','XLK','FTEC','IGV'],'XLK':['VGT','QQQ','FTEC','IGV'],
+  'VGT':['XLK','QQQ','FTEC','IGV'],'XLK':['VGT','QQQ','FTEC','SOXX'],
+  'SOXX':['SMH','XLK','VGT','SOXQ'],'SMH':['SOXX','XLK','VGT','SOXQ'],
+  'ARKK':['ARKQ','ARKF','QQQ','VGT'],
+  'IWM':['VB','SCHA','IJR','VTWO'],'VB':['IWM','SCHA','IJR','VTWO'],
+  'IJR':['IWM','SCHA','VB','VIOO'],'MDY':['IJH','IWR','VXF','VB'],'IJH':['MDY','IWR','VXF','VB'],
+  'EFA':['VEA','IDEV','SCHF','SPDW'],'VEA':['EFA','IDEV','SCHF','SPDW'],
+  'EEM':['VWO','IEMG','SPEM','SCHE'],'VWO':['EEM','IEMG','SPEM','SCHE'],
+  'IEMG':['EEM','VWO','SPEM','SCHE'],'VXUS':['VEA','VWO','EFA','IXUS'],
+  'VT':['ACWI','VTI','VXUS','EFA'],'ACWI':['VT','VTI','VXUS','EFA'],
+  'TLT':['VGLT','EDV','IEF','BND'],'IEF':['TLT','SHY','VGIT','AGG'],
+  'AGG':['BND','SCHZ','FBND','LQD'],'BND':['AGG','SCHZ','FBND','LQD'],
+  'SHY':['VGSH','BSV','SCHO','IEI'],'VGLT':['TLT','EDV','IEF','BND'],
+  'HYG':['JNK','USHY','FALN','PHB'],'JNK':['HYG','USHY','FALN','PHB'],
+  'LQD':['VCIT','IGIB','FLCO','SPIB'],
+  'VYM':['SCHD','HDV','DVY','DGRO'],'SCHD':['VYM','HDV','DVY','DGRO'],
+  'HDV':['VYM','SCHD','DVY','DGRO'],'DGRO':['VYM','SCHD','HDV','DVY'],
+  'JEPI':['JEPQ','DIVO','SCHD','VYM'],'JEPQ':['JEPI','DIVO','QQQ','SCHD'],
   'XLE':['VDE','FENY','IYE','OIH'],'VDE':['XLE','FENY','IYE','IXC'],
   'XLF':['VFH','KBE','KRE','IAI'],'VFH':['XLF','KBE','KRE','IAI'],
-  'XLV':['VHT','IYH','FHLC','IBB'],'VHT':['XLV','IYH','FHLC','IBB'],
-  'EFA':['VEA','IDEV','SCHF','SPDW'],'VEA':['EFA','IDEV','SCHF','SPDW'],
-  'EEM':['VWO','IEMG','SPEM','GEM'],'VWO':['EEM','IEMG','SPEM','DGS'],
-  'DIA':['SPY','VOO','RSP','DGRW'],'ARKK':['ARKG','ARKF','ARKQ','ARKW'],
+  'XLV':['VHT','IYH','FHLC','IBB'],'VHT':['XLV','IYH','FHLC','IBB'],'IBB':['XLV','VHT','IYH','FHLC'],
+  'XLI':['VIS','IYJ','FIDU','ITA'],'ITA':['XLI','VIS','PPA','DFEN'],
+  'XLU':['VPU','IDU','FUTY','RYU'],'VPU':['XLU','IDU','FUTY','RYU'],
+  'VNQ':['XLRE','IYR','SCHH','RWR'],'XLRE':['VNQ','IYR','SCHH','RWR'],
+  'XLY':['VCR','RTH','IEDI','FXD'],'XLP':['VDC','FSTA','KXI','PBJ'],
+  'XLC':['VOX','IYZ','FCOM','SNSR'],
+  'GLD':['IAU','SGOL','GLDM','BAR'],'IAU':['GLD','SGOL','GLDM','BAR'],
+  'SLV':['SIVR','PPLT','GLD','IAU'],'PDBC':['DBC','COMB','GSG','COMT'],
+  'DIA':['SPY','VOO','RSP','DGRW'],
+  'TQQQ':['SQQQ','SPXL','QQQ','UPRO'],'SQQQ':['TQQQ','QQQ','PSQ','SPXS'],
+  'SPXL':['UPRO','TQQQ','SPY','SPXS'],'UPRO':['SPXL','TQQQ','SPY','SPXS'],
+};
+const SIMILAR_ETFS_FALLBACK = {
+  'Equity':['SPY','QQQ','VTI','IWM'],
+  'Fixed Income':['AGG','BND','TLT','HYG'],
+  'Commodity':['GLD','SLV','USO','PDBC'],
+  'Alternative':['ARKK','VNQ','GLD','BND'],
 };
 
 // Similar ETFs endpoint
@@ -868,9 +894,13 @@ app.get('/api/etf/similar/:symbol([A-Z0-9.\\-^]+)', async(req,res)=>{
   const{symbol}=req.params;
   const ck=`etf-similar:${symbol}`;const hit=gc(ck);if(hit)return res.json(hit);
   try{
-    const similar=SIMILAR_ETFS[symbol]||[];
-    if(!similar.length)return res.json([]);
-    const profiles=await Promise.all(similar.map(s=>fmpSafe('/profile',{symbol:s})));
+    let similar=SIMILAR_ETFS[symbol]||[];
+    if(!similar.length){
+      const info=await fmpSafe('/etf/info',{symbol});
+      const assetClass=arr(info)[0]?.assetClass||'Equity';
+      similar=(SIMILAR_ETFS_FALLBACK[assetClass]||SIMILAR_ETFS_FALLBACK['Equity']).filter(s=>s!==symbol).slice(0,4);
+    }
+    const profiles=await Promise.all(similar.slice(0,4).map(s=>fmpSafe('/profile',{symbol:s})));
     const result=profiles.map(r=>arr(r)[0]).filter(Boolean).map(p=>({
       ticker:p.symbol,
       profile:{name:p.companyName,logo:p.image,exchange:p.exchange,marketCapitalization:p.marketCap?p.marketCap/1e6:null},
