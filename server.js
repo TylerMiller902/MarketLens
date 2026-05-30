@@ -526,11 +526,11 @@ app.get('/api/etf/holdings/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
 app.get('/api/debug-etf/:symbol([A-Z0-9.\\-^]+)', async(req,res)=>{
   const{symbol}=req.params;
   const results={};
-  const endpoints=['/etf/holdings','/etf/info','/etf-holder','/etf-holders'];
+  const endpoints=['/etf/holdings','/etf/info','/etf-summary','/etf-sector-weighting','/etf-country-weighting','/historical-price-eod/light'];
   for(const ep of endpoints){
     try{
-      const d=await fmp(ep,{symbol});
-      results[ep]={count:arr(d).length,keys:arr(d)[0]?Object.keys(arr(d)[0]):[],sample:arr(d)[0]};
+      const d=await fmp(ep,{symbol,limit:3});
+      results[ep]={count:Array.isArray(d)?d.length:1,keys:arr(d)[0]?Object.keys(arr(d)[0]).slice(0,12):[],sample:arr(d)[0]};
     }catch(e){results[ep]={error:e.message};}
   }
   res.json(results);
