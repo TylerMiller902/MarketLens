@@ -2421,7 +2421,7 @@ function renderPage(){
   $('scontent').addEventListener('click',e=>{const card=e.target.closest('.ccard');if(!card)return;const canvId=card.dataset.canv,title=card.querySelector('.cctitle')?.textContent?.trim()||'',sub=card.querySelector('.ccsub')?.textContent?.trim()||'';if(canvId&&Charts[canvId])openChartFS(canvId,title,sub);});
   drawPrice('1Y');
   if(earns.length)drawEarnCharts(earns);
-  if(hasFMP&&isPro())drawFinCharts();
+  if(hasFMP)drawFinCharts(); // revenue always shown; locked charts use fake data for free users
   if(hasInsiders&&isPro())drawInsiderChart();
   if(!isPro())setTimeout(drawFakeCharts,120);
 }
