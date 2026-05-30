@@ -1222,6 +1222,17 @@ app.get('/api/etf-info/:symbol',             (req,res) => res.json({}));
 app.get('/api/etf-sectors/:symbol',          (req,res) => res.json([]));
 
 
+// Debug peers
+app.get('/api/debug-peers/:symbol', async(req,res)=>{
+  const{symbol}=req.params;
+  const results={};
+  for(const ep of ['/stock-peers','/peers','/company-peers']){
+    try{ const d=await fmp(ep,{symbol}); results[ep]={count:arr(d).length,sample:arr(d).slice(0,3),keys:arr(d)[0]?Object.keys(arr(d)[0]):[]}; }
+    catch(e){ results[ep]={error:e.message}; }
+  }
+  res.json(results);
+});
+
 // Debug screener
 app.get('/api/debug-screener', async (req,res) => {
   try{
