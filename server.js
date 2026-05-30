@@ -287,6 +287,10 @@ const pct    = v  => v != null ? +(v * 100).toFixed(4) : null;  // decimal → p
 // ── Transform FMP quote → Finnhub-compatible format ───────
 function transformQuote(q) {
   if (!q) return null;
+  // Parse 52W range from profile — format "150.23-199.62" or "150.23 - 199.62"
+  const rangeMatch = (q.range||'').match(/([\d.]+)\s*-\s*([\d.]+)/);
+  const parsedLow  = rangeMatch ? +rangeMatch[1] : null;
+  const parsedHigh = rangeMatch ? +rangeMatch[2] : null;
   return {
     c:  q.price,
     d:  q.change          ?? 0,
@@ -295,12 +299,13 @@ function transformQuote(q) {
     l:  q.dayLow   ?? q.price,
     o:  q.open     ?? q.price,
     pc: q.previousClose ?? (q.price - (q.change ?? 0)),
-    marketCap: q.marketCap ?? null,
-    volume:    q.volume    ?? null,
-    avgVolume: q.averageVolume ?? null,
-    yearHigh:  q.yearHigh  ?? (q.range ? +q.range.split('-')[1] : null),
-    yearLow:   q.yearLow   ?? (q.range ? +q.range.split('-')[0] : null),
-    name:      q.companyName ?? null,
+    marketCap:  q.marketCap ?? null,
+    volume:     q.volume    ?? null,
+    avgVolume:  q.averageVolume ?? null,
+    yearHigh:   q.yearHigh  ?? parsedHigh,
+    yearLow:    q.yearLow   ?? parsedLow,
+    name:       q.companyName ?? null,
+    expenseRatio: q.annualHoldingsTurnover ?? null, // placeholder; enriched below for ETFs
   };
 }
 
@@ -602,9 +607,9 @@ app.get('/api/stock/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
     const [
       profileRaw, incomeRaw, kmRaw,
       newsRaw, recsRaw, priceTargetRaw,
-      earningsRaw, earningsCalRaw,
+      earningsRaw, earningsCalRaw, etfInfoRaw,
     ] = await Promise.all([
-      fmpSafe('/profile',                        { symbol }),  // price + company info in one call
+      fmpSafe('/profile',                        { symbol }),
       fmpSafe('/income-statement',               { symbol, period: 'annual', limit: 1 }),
       fmpSafe('/key-metrics',                    { symbol, period: 'annual', limit: 1 }),
       fmpSafe('/news/stock',                     { symbols: symbol, limit: 10 }),
@@ -612,8 +617,9 @@ app.get('/api/stock/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
       fmpSafe('/price-target-consensus',         { symbol }),
       fmpSafe('/earnings-surprises',             { symbol }),
       fmpSafe('/earnings-calendar',              { from: today(), to: dFwd(90), symbol }),
+      isETF ? fmpSafe('/etf/info',              { symbol }) : Promise.resolve(null),
     ]);
-    const quoteRaw = profileRaw; // profile contains price+change — no separate quote call needed
+    const quoteRaw = profileRaw;
     console.log(`[stock] ${symbol} fetched — quote:${!!quoteRaw} profile:${!!profileRaw} news:${!!newsRaw}`);
 
     const quoteData   = arr(quoteRaw)[0]   || null;
@@ -630,10 +636,11 @@ app.get('/api/stock/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
     const priceTarget = transformPriceTarget(priceTargetRaw);
     const earnings    = transformEarnings(earningsRaw).slice(0, 8);
     const earningsCal = transformEarningsCalendar(earningsCalRaw);
+    const etfInfo     = arr(etfInfoRaw)[0] || null;
     const etfHoldings = null;
 
     console.log(`[stock] ${symbol} sending response`);
-    res.json({ quote, profile, metrics, news, recs, priceTarget, earnings, earningsCal, etfHoldings });
+    res.json({ quote, profile, metrics, news, recs, priceTarget, earnings, earningsCal, etfHoldings, etfInfo });
   } catch(e) {
     console.error(`[/api/stock/${symbol}] 500:`, e.message, '\n', e.stack);
     res.status(500).json({ error: e.message });
