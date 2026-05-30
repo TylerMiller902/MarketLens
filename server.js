@@ -672,28 +672,25 @@ app.get('/api/peers/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
 
     if (!filtered.length) return res.json([]);
 
-    // Fetch quotes (for today's change) + profiles (for sector matching)
-    const [quotes, profiles] = await Promise.all([
-      Promise.allSettled(filtered.map(p => fmpSafe('/profile', { symbol: p.symbol }))),
-      Promise.resolve([]),
-    ]);
+    // Fetch profiles for each peer (price + sector + logo)
+    const peerProfiles = await Promise.allSettled(
+      filtered.map(p => fmpSafe('/profile', { symbol: p.symbol }))
+    );
 
     let result = filtered.map((peer, i) => {
-      const q    = arr(quotes[i].status   === 'fulfilled' ? quotes[i].value   : null)[0];
-      const prof = arr(profiles[i].status === 'fulfilled' ? profiles[i].value : null)[0] || {};
+      const prof = arr(peerProfiles[i].status === 'fulfilled' ? peerProfiles[i].value : null)[0] || {};
       return {
         ticker:   peer.symbol,
         sector:   prof.sector   || '',
         industry: prof.industry || '',
-        quote:    transformQuote(q || { price: peer.price, change: 0, changePercentage: 0 }),
+        quote:    transformQuote(prof.price ? prof : { price: peer.price, change: 0, changePercentage: 0 }),
         profile:  {
-          name:                 peer.companyName,
+          name:                 prof.companyName || peer.companyName,
           logo:                 `https://images.financialmodelingprep.com/symbol/${peer.symbol}.png`,
           marketCapitalization: peer.mktCap ? peer.mktCap / 1e6 : null,
         },
       };
-    })
-    ; // keep all peers regardless of price data
+    });
 
     // Sort: same industry first → same sector → by market cap
     result.sort((a, b) => {
