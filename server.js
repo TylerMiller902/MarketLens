@@ -845,6 +845,76 @@ app.get('/api/fmp/prices/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
   } catch(e) { res.status(500).json({ error: e.message }); }
 });
 
+// Similar ETFs — hardcoded map by category
+const SIMILAR_ETFS = {
+  'SPY':['IVV','VOO','SPLG','VTI'],'IVV':['SPY','VOO','SPLG','VTI'],'VOO':['SPY','IVV','SPLG','VTI'],
+  'QQQ':['QQQM','VGT','XLK','FTEC'],'QQQM':['QQQ','VGT','XLK','FTEC'],
+  'VTI':['ITOT','SCHB','FSKAX','SPY'],'ITOT':['VTI','SCHB','FSKAX','SPY'],
+  'IWM':['VB','VTWO','SCHA','IJR'],'VB':['IWM','VTWO','SCHA','IJR'],
+  'GLD':['IAU','SGOL','GLDM','BAR'],'IAU':['GLD','SGOL','GLDM','BAR'],
+  'TLT':['IEF','BND','AGG','VGLT'],'BND':['AGG','TLT','VGLT','IEF'],
+  'AGG':['BND','TLT','IEF','VBND'],'IEF':['TLT','SHY','VGIT','AGG'],
+  'VGT':['QQQ','XLK','FTEC','IGV'],'XLK':['VGT','QQQ','FTEC','IGV'],
+  'XLE':['VDE','FENY','IYE','OIH'],'VDE':['XLE','FENY','IYE','IXC'],
+  'XLF':['VFH','KBE','KRE','IAI'],'VFH':['XLF','KBE','KRE','IAI'],
+  'XLV':['VHT','IYH','FHLC','IBB'],'VHT':['XLV','IYH','FHLC','IBB'],
+  'EFA':['VEA','IDEV','SCHF','SPDW'],'VEA':['EFA','IDEV','SCHF','SPDW'],
+  'EEM':['VWO','IEMG','SPEM','GEM'],'VWO':['EEM','IEMG','SPEM','DGS'],
+  'DIA':['SPY','VOO','RSP','DGRW'],'ARKK':['ARKG','ARKF','ARKQ','ARKW'],
+};
+
+// Similar ETFs endpoint
+app.get('/api/etf/similar/:symbol([A-Z0-9.\\-^]+)', async(req,res)=>{
+  const{symbol}=req.params;
+  const ck=`etf-similar:${symbol}`;const hit=gc(ck);if(hit)return res.json(hit);
+  try{
+    const similar=SIMILAR_ETFS[symbol]||[];
+    if(!similar.length)return res.json([]);
+    const profiles=await Promise.all(similar.map(s=>fmpSafe('/profile',{symbol:s})));
+    const result=profiles.map(r=>arr(r)[0]).filter(Boolean).map(p=>({
+      ticker:p.symbol,
+      profile:{name:p.companyName,logo:p.image,exchange:p.exchange,marketCapitalization:p.marketCap?p.marketCap/1e6:null},
+      quote:{c:p.price,d:p.change||0,dp:p.changePercentage||0},
+    }));
+    sc(ck,result,TTL.peers);
+    res.json(result);
+  }catch(e){res.json([]);}
+});
+
+// ETF average returns endpoint
+app.get('/api/etf/returns/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
+  const { symbol } = req.params;
+  const ck = `etf-returns:${symbol}`; const hit = gc(ck); if(hit) return res.json(hit);
+  try {
+    const data = await fmp('/historical-price-eod/light', { symbol, from: '1990-01-01', limit: 10000 });
+    const hist = Array.isArray(data) ? data.sort((a,b)=>a.date.localeCompare(b.date)) : [];
+    if(!hist.length) return res.json({});
+    const latest = hist[hist.length-1]?.price||0;
+    const calcReturn = (years) => {
+      const cutoff = new Date(Date.now()-years*365*86_400_000).toISOString().slice(0,10);
+      const old = hist.find(d=>d.date>=cutoff);
+      if(!old?.price||old.price<=0) return null;
+      return +((((latest/old.price)**(1/years))-1)*100).toFixed(2); // annualized
+    };
+    const calcTotal = () => {
+      const old = hist[0];
+      if(!old?.price||old.price<=0) return null;
+      const years=(Date.now()-new Date(old.date))/(365*86_400_000);
+      return +((((latest/old.price)**(1/years))-1)*100).toFixed(2); // annualized since inception
+    };
+    const result = {
+      '3Y': calcReturn(3),
+      '5Y': calcReturn(5),
+      '10Y': calcReturn(10),
+      'All': calcTotal(),
+      inception: hist[0]?.date,
+      currentPrice: latest,
+    };
+    sc(ck, result, TTL.fmpPrice);
+    res.json(result);
+  } catch(e) { res.status(500).json({error:e.message}); }
+});
+
 // Insider transactions
 // Historical dividend payments → annual yield history
 app.get('/api/fmp/dividend-history/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
