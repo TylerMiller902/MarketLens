@@ -665,14 +665,15 @@ app.get('/api/peers/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
     // FMP returns: [{symbol, companyName, price, mktCap}, ...]
     const peerObjects = Array.isArray(peersRaw) ? peersRaw : [];
 
-    // Filter out tiny / irrelevant companies (> $1B mktCap)
+    // Filter and take only what we need BEFORE fetching profiles
     const filtered = peerObjects
       .filter(p => p.symbol && p.symbol !== symbol && (p.mktCap||0) > 1_000_000_000)
-      .slice(0, 9);
+      .sort((a,b) => (b.mktCap||0) - (a.mktCap||0)) // pre-sort by market cap
+      .slice(0, 4); // only fetch profiles for 4 we'll actually show
 
     if (!filtered.length) return res.json([]);
 
-    // Fetch profiles for each peer (price + sector + logo)
+    // Fetch profiles for only these 4 peers
     const peerProfiles = await Promise.allSettled(
       filtered.map(p => fmpSafe('/profile', { symbol: p.symbol }))
     );
