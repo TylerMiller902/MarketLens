@@ -1350,18 +1350,31 @@ app.post('/api/stripe/checkout', async (req, res) => {
   if(!stripe) return res.status(500).json({error:'Stripe not configured — check STRIPE_SECRET_KEY'});
   try{
     let customerId = req.user.stripe_customer_id;
-    if(!customerId && db){
+
+    // Validate existing customer ID exists in live mode
+    if(customerId){
+      try{ await stripe.customers.retrieve(customerId); }
+      catch(e){
+        // Customer is from test mode — clear it and create a new live customer
+        console.log('[stripe/checkout] Clearing invalid customer ID:', customerId);
+        customerId = null;
+        if(db) await db.query('UPDATE users SET stripe_customer_id=NULL, stripe_subscription_id=NULL WHERE id=$1',[req.user.id]);
+      }
+    }
+
+    // Create new live customer if needed
+    if(!customerId){
       const customer = await stripe.customers.create({
         email: req.user.email||undefined,
         name:  req.user.name||undefined,
         metadata:{ userId: String(req.user.id) }
       });
       customerId = customer.id;
-      await db.query('UPDATE users SET stripe_customer_id=$1 WHERE id=$2',[customerId,req.user.id]);
+      if(db) await db.query('UPDATE users SET stripe_customer_id=$1 WHERE id=$2',[customerId,req.user.id]);
     }
+
     const session = await stripe.checkout.sessions.create({
-      customer: customerId||undefined,
-      customer_email: !customerId ? req.user.email||undefined : undefined,
+      customer: customerId,
       mode: 'subscription',
       line_items:[{ price: STRIPE_PRICE_ID, quantity: 1 }],
       automatic_tax: { enabled: true },
@@ -1383,6 +1396,8 @@ app.post('/api/stripe/portal', async (req, res) => {
   if(!stripe) return res.status(500).json({error:'Stripe not configured'});
   if(!req.user.stripe_customer_id) return res.status(400).json({error:'No Stripe customer found — please upgrade first'});
   try{
+    // Validate customer exists in live mode
+    await stripe.customers.retrieve(req.user.stripe_customer_id);
     const session = await stripe.billingPortal.sessions.create({
       customer: req.user.stripe_customer_id,
       return_url: BASE_URL,
@@ -1390,6 +1405,11 @@ app.post('/api/stripe/portal', async (req, res) => {
     res.json({ url: session.url });
   }catch(e){
     console.error('[stripe/portal]', e.message);
+    if(e.message.includes('No such customer')){
+      // Clear stale test customer ID
+      if(db) await db.query('UPDATE users SET stripe_customer_id=NULL, stripe_subscription_id=NULL, plan=\'free\' WHERE id=$1',[req.user.id]);
+      return res.status(400).json({error:'Subscription not found in live mode. Please upgrade again.'});
+    }
     res.status(500).json({error: e.message});
   }
 });
