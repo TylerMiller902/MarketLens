@@ -206,16 +206,6 @@ app.get('/auth/google/callback',
     });
   }
 );
-app.get('/api/auth/debug', (req, res) => {
-  res.json({
-    googleConfigured: !!(GOOGLE_CLIENT_ID && GOOGLE_CLIENT_SECRET),
-    clientIdPrefix: GOOGLE_CLIENT_ID ? GOOGLE_CLIENT_ID.slice(0,8)+'...' : 'NOT SET',
-    baseUrl: BASE_URL,
-    dbConnected: !!db,
-    sessionActive: !!req.session,
-    user: req.user ? { name: req.user.name, email: req.user.email } : null,
-  });
-});
 
 app.post('/auth/logout', (req, res) => {
   req.logout(err => { if(err) return res.status(500).json({error:'logout failed'}); res.json({ok:true}); });
@@ -526,18 +516,6 @@ app.get('/api/etf/holdings/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
 });
 
 // Debug ETF holdings — try multiple endpoint names
-app.get('/api/debug-etf/:symbol([A-Z0-9.\\-^]+)', async(req,res)=>{
-  const{symbol}=req.params;
-  const results={};
-  const endpoints=['/etf/holdings','/etf/info','/etf-summary','/etf-sector-weighting','/etf-country-weighting','/historical-price-eod/light'];
-  for(const ep of endpoints){
-    try{
-      const d=await fmp(ep,{symbol,limit:3});
-      results[ep]={count:Array.isArray(d)?d.length:1,keys:arr(d)[0]?Object.keys(arr(d)[0]).slice(0,12):[],sample:arr(d)[0]};
-    }catch(e){results[ep]={error:e.message};}
-  }
-  res.json(results);
-});
 
 // ══════════════════════════════════════════════════════════
 //  ROUTES
@@ -1099,16 +1077,6 @@ app.get('/api/news/market', async (req,res) => {
 });
 
 // Debug news — check what FMP returns
-app.get('/api/debug-news', async (req,res) => {
-  try{
-    const[spy,mkt]=await Promise.all([
-      fmpSafe('/news/stock',{symbols:'SPY',limit:2}),
-      fmpSafe('/news/stock',{limit:2}),
-    ]);
-    res.json({spyNews:{type:typeof spy,isArray:Array.isArray(spy),length:Array.isArray(spy)?spy.length:null,sample:Array.isArray(spy)?spy[0]:spy},
-              noTickerNews:{type:typeof mkt,isArray:Array.isArray(mkt),length:Array.isArray(mkt)?mkt.length:null,sample:Array.isArray(mkt)?mkt[0]:mkt}});
-  }catch(e){res.json({error:e.message});}
-});
 
 app.get('/api/fmp/insiders/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
   const ck='market-news';const hit=gc(ck);if(hit)return res.json(hit);
@@ -1157,39 +1125,7 @@ app.get('/api/fmp/insiders/:symbol', async (req,res) => {
 
 // Debug — inspect raw FMP field names for any endpoint
 // Debug intraday — exposes raw FMP v3 response so we can see what's coming back
-app.get('/api/debug-intraday/:symbol', async (req,res) => {
-  const { symbol } = req.params;
-  try{
-    const [m5, h1] = await Promise.all([
-      fmpV3Safe(`/historical-chart/5min/${symbol}`),
-      fmpV3Safe(`/historical-chart/1hour/${symbol}`),
-    ]);
-    res.json({
-      fiveMin:  { type: typeof m5,  isArray: Array.isArray(m5),  length: Array.isArray(m5)?m5.length:null,  first: Array.isArray(m5)?m5.slice(-3):m5 },
-      oneHour:  { type: typeof h1,  isArray: Array.isArray(h1),  length: Array.isArray(h1)?h1.length:null,  first: Array.isArray(h1)?h1.slice(-3):h1 },
-    });
-  }catch(e){ res.status(500).json({error:e.message}); }
-});
 
-app.get('/api/debug/:symbol', async (req,res) => {
-  const { symbol } = req.params;
-  try {
-    const [q, p, i, k, peers] = await Promise.all([
-      fmpSafe('/profile',             { symbol }),
-      fmpSafe('/profile',           { symbol }),
-      fmpSafe('/income-statement',  { symbol, period: 'annual', limit: 1 }),
-      fmpSafe('/key-metrics',       { symbol, period: 'annual', limit: 1 }),
-      fmpSafe('/stock-peers',       { symbol }),
-    ]);
-    res.json({
-      quote:      { fields: Object.keys(arr(q)[0]||{}), sample: arr(q)[0] },
-      profile:    { fields: Object.keys(arr(p)[0]||{}), sample: arr(p)[0] },
-      income:     { fields: Object.keys(arr(i)[0]||{}), sample: arr(i)[0] },
-      keyMetrics: { fields: Object.keys(arr(k)[0]||{}), sample: arr(k)[0] },
-      peers:      { raw: peers },
-    });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
 
 
 // ── Top Stock Biggest Movers ──────────────────────────────
@@ -1224,44 +1160,10 @@ app.get('/api/etf-sectors/:symbol',          (req,res) => res.json([]));
 
 
 // Debug peers
-app.get('/api/debug-peers/:symbol', async(req,res)=>{
-  const{symbol}=req.params;
-  const results={};
-  for(const ep of ['/stock-peers','/peers','/company-peers']){
-    try{ const d=await fmp(ep,{symbol}); results[ep]={count:arr(d).length,sample:arr(d).slice(0,3),keys:arr(d)[0]?Object.keys(arr(d)[0]):[]}; }
-    catch(e){ results[ep]={error:e.message}; }
-  }
-  res.json(results);
-});
 
 // Debug screener
-app.get('/api/debug-screener', async (req,res) => {
-  try{
-    const d=await fmp('/company-screener',{marketCapMin:100000000000,limit:5,sort:'marketCap',order:'desc'});
-    res.json({count:arr(d).length,keys:arr(d)[0]?Object.keys(arr(d)[0]):[],top3:arr(d).slice(0,3).map(s=>({symbol:s.symbol,marketCap:s.marketCap}))});
-  }catch(e){res.json({error:e.message});}
-});
 
 // Debug raw FMP quote
-app.get('/api/debug-quote/:symbol', async(req,res)=>{
-  const{symbol}=req.params;
-  const results={};
-  const tests=[
-    ['/quote',{symbol}],
-    ['/quote-short',{symbol}],
-    ['/batch-quote',{symbols:symbol}],
-    ['/batch-quote-short',{symbols:symbol}],
-    ['/historical-price-eod/light',{symbol,limit:1}],
-    ['/profile',{symbol}],
-  ];
-  for(const[ep,qs] of tests){
-    try{
-      const d=await fmp(ep,qs);
-      results[ep]={ok:true,count:Array.isArray(d)?d.length:1,keys:Array.isArray(d)?Object.keys(d[0]||{}):Object.keys(d||{})};
-    }catch(e){results[ep]={error:e.message};}
-  }
-  res.json(results);
-});
 
 // Market Cap Rank — batch quotes for top stocks sorted by live market cap
 const TOP_STOCKS=['AAPL','MSFT','NVDA','GOOGL','AMZN','META','TSLA','AVGO','WMT',
@@ -1318,25 +1220,13 @@ app.get('/api/market-cap-rank', async (req,res) => {
   }
 });
 
-app.get('/api/debug-cashflow/:symbol', async (req,res) => {
-  const { symbol } = req.params;
-  try {
-    const cf = await fmp('/cash-flow-statement', { symbol, period: 'annual', limit: 2 });
-    const row = arr(cf)[0] || {};
-    // Return all fields so we can see exactly what FMP sends
-    res.json({
-      symbol,
-      allFields: Object.keys(row),
-      dividendRelated: Object.entries(row).filter(([k]) => k.toLowerCase().includes('div') || k.toLowerCase().includes('payment') || k.toLowerCase().includes('sharehold')),
-      raw: row
-    });
-  } catch(e) { res.status(500).json({ error: e.message }); }
-});
 
 app.get('/api/admin/clear-cache', (req, res) => {
+  const key = req.query.key;
+  if(!key || key !== process.env.ADMIN_KEY) return res.status(401).json({error:'Unauthorized'});
   const size = cache.size;
   cache.clear();
-  res.json({ ok: true, cleared: size });
+  res.json({cleared: size});
 });
 
 app.get('/health', (req,res) => res.json({ status: 'ok', version: '3.0', provider: 'FMP only', cached: cache.size, uptime: process.uptime() }));
