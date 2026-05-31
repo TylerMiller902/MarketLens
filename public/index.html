@@ -1202,14 +1202,15 @@ function isPro(){return AuthUser?.plan==='pro';}
 
 async function startCheckout(){
   if(!AuthUser){window.location.href='/auth/google';return;}
-  const btn=document.querySelector('.upgrade-btn');
+  const btn=document.querySelector('.upgrade-btn,.pricing-upgrade-btn');
   if(btn){btn.textContent='Redirecting…';btn.disabled=true;}
   try{
     const r=await fetch('/api/stripe/checkout',{method:'POST',credentials:'include'});
     const d=await r.json();
     if(d.url) window.location.href=d.url;
-    else showToast('Could not start checkout — try again','err');
+    else showToast(d.error||'Could not start checkout — try again','err');
   }catch(e){showToast('Could not start checkout — try again','err');}
+  finally{if(btn){btn.textContent='Upgrade to Pro — $8.99/month';btn.disabled=false;}}
 }
 
 async function openBillingPortal(){
