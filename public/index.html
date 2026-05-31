@@ -1213,9 +1213,12 @@ async function startCheckout(){
 }
 
 async function openBillingPortal(){
-  const r=await fetch('/api/stripe/portal',{method:'POST',credentials:'include'});
-  const d=await r.json();
-  if(d.url) window.open(d.url,'_blank');
+  try{
+    const r=await fetch('/api/stripe/portal',{method:'POST',credentials:'include'});
+    const d=await r.json();
+    if(d.url) window.open(d.url,'_blank');
+    else showToast('Could not open billing portal — try again','err');
+  }catch(e){showToast('Could not open billing portal — try again','err');}
 }
 
 function showUpgradeModal(feature='this feature'){
