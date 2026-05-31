@@ -651,10 +651,10 @@ button,input{font-family:var(--fb)}
 .pf-feat.yes::before{content:'✓';color:var(--G);font-weight:700;flex-shrink:0;width:16px}
 .pf-feat.no::before{content:'✕';color:var(--di);font-weight:700;flex-shrink:0;width:16px}
 .pf-feat.no{color:var(--di)}
-.pricing-upgrade-btn{background:var(--P);color:#fff;border:none;width:100%;padding:.9rem;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;font-family:var(--fd);transition:opacity .15s}
+.pricing-upgrade-btn{background:var(--P);color:#fff;border:none;width:100%;padding:.9rem;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer;font-family:var(--fd);transition:opacity .15s;min-height:52px}
 .pricing-upgrade-btn:hover{opacity:.9}
-.pricing-current-btn{background:var(--bg3);color:var(--mu);border:1px solid var(--b2);width:100%;padding:.9rem;border-radius:12px;font-size:.95rem;font-weight:600;cursor:default;font-family:var(--fd)}
-.pricing-manage-btn{background:none;color:var(--P);border:1px solid var(--P);width:100%;padding:.9rem;border-radius:12px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:var(--fd);transition:background .15s}
+.pricing-current-btn{background:var(--bg3);color:var(--mu);border:1px solid var(--b2);width:100%;padding:.9rem;border-radius:12px;font-size:.95rem;font-weight:600;cursor:default;font-family:var(--fd);min-height:52px}
+.pricing-manage-btn{background:none;color:var(--P);border:1px solid var(--P);width:100%;padding:.9rem;border-radius:12px;font-size:.95rem;font-weight:600;cursor:pointer;font-family:var(--fd);transition:background .15s;min-height:52px}
 .pricing-manage-btn:hover{background:rgba(124,92,252,.1)}
 .upgrade-overlay{position:fixed;inset:0;background:rgba(0,0,0,.7);backdrop-filter:blur(6px);z-index:1000;display:flex;align-items:center;justify-content:center}
 .upgrade-modal{background:var(--bg2);border:1px solid var(--P);border-radius:20px;padding:2.5rem 2rem;max-width:380px;width:90%;text-align:center;box-shadow:0 0 60px rgba(124,92,252,.25)}
@@ -979,7 +979,7 @@ button,input{font-family:var(--fb)}
       <div class="pricing-card" style="display:flex;flex-direction:column">
         <div class="pricing-tier">Free</div>
         <div class="pricing-price">$0<span class="pricing-per">/mo</span></div>
-        <div id="pricing-free-btn-wrap" style="margin:.9rem 0"></div>
+        <div id="pricing-free-btn-wrap" style="margin:.9rem 0;min-height:52px;display:flex;align-items:center"></div>
         <div class="pricing-divider"></div>
         <div class="pricing-features" style="flex:1">
           <div class="pf-feat yes">Unlimited searches</div>
@@ -1005,7 +1005,7 @@ button,input{font-family:var(--fb)}
         <div class="pricing-tier" style="color:var(--P)">Pro</div>
         <div class="pricing-price">$8.99<span class="pricing-per">/mo</span></div>
         <div style="font-size:.72rem;color:var(--di);margin-top:3px">+ applicable taxes</div>
-        <div id="pricing-pro-btn-wrap" style="margin:.9rem 0"></div>
+        <div id="pricing-pro-btn-wrap" style="margin:.9rem 0;min-height:52px;display:flex;align-items:center;flex-direction:column;justify-content:center"></div>
         <div class="pricing-divider"></div>
         <div class="pricing-features" style="flex:1">
           <div class="pf-feat yes">Everything in Free</div>
