@@ -1375,14 +1375,17 @@ app.post('/api/stripe/checkout', async (req, res) => {
 app.post('/api/stripe/portal', async (req, res) => {
   if(!req.user) return res.status(401).json({error:'Not logged in'});
   if(!stripe) return res.status(500).json({error:'Stripe not configured'});
-  if(!req.user.stripe_customer_id) return res.status(400).json({error:'No subscription found'});
+  if(!req.user.stripe_customer_id) return res.status(400).json({error:'No Stripe customer found — please upgrade first'});
   try{
     const session = await stripe.billingPortal.sessions.create({
       customer: req.user.stripe_customer_id,
       return_url: BASE_URL,
     });
     res.json({ url: session.url });
-  }catch(e){ res.status(500).json({error:e.message}); }
+  }catch(e){
+    console.error('[stripe/portal]', e.message);
+    res.status(500).json({error: e.message});
+  }
 });
 
 // Stripe webhook
