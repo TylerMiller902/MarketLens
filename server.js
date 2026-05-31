@@ -66,12 +66,15 @@ async function initDB(){
   `);
   // Migrate existing users table to add plan columns if not present
   if(db){
-    await db.query(`
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'free';
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT;
-      ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_expires_at TIMESTAMPTZ;
-    `).catch(()=>{});
+    const migrations = [
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS plan TEXT NOT NULL DEFAULT 'free'`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_customer_id TEXT`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS stripe_subscription_id TEXT`,
+      `ALTER TABLE users ADD COLUMN IF NOT EXISTS plan_expires_at TIMESTAMPTZ`,
+    ];
+    for(const sql of migrations){
+      await db.query(sql).catch(e=>console.log('[migration]',e.message));
+    }
   }
   console.log('[DB] Tables ready');
 }
@@ -1344,7 +1347,7 @@ app.get('/health', (req,res) => res.json({ status: 'ok', version: '3.0', provide
 // Create checkout session
 app.post('/api/stripe/checkout', async (req, res) => {
   if(!req.user) return res.status(401).json({error:'Not logged in'});
-  if(!stripe) return res.status(500).json({error:'Stripe not configured'});
+  if(!stripe) return res.status(500).json({error:'Stripe not configured — check STRIPE_SECRET_KEY'});
   try{
     let customerId = req.user.stripe_customer_id;
     if(!customerId && db){
@@ -1368,7 +1371,10 @@ app.post('/api/stripe/checkout', async (req, res) => {
       allow_promotion_codes: true,
     });
     res.json({ url: session.url });
-  }catch(e){ res.status(500).json({error:e.message}); }
+  }catch(e){
+    console.error('[stripe/checkout]', e.message, 'priceId:', STRIPE_PRICE_ID);
+    res.status(500).json({error: e.message});
+  }
 });
 
 // Customer portal
