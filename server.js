@@ -1375,6 +1375,7 @@ app.post('/api/stripe/checkout', async (req, res) => {
 
     const session = await stripe.checkout.sessions.create({
       customer: customerId,
+      customer_update: { address: 'auto' },
       mode: 'subscription',
       line_items:[{ price: STRIPE_PRICE_ID, quantity: 1 }],
       automatic_tax: { enabled: true },
