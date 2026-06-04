@@ -8,6 +8,18 @@
 <link rel="icon" type="image/png" href="/StockScope_Logo.png"/>
 <link rel="apple-touch-icon" href="/StockScope_Logo.png"/>
 <meta property="og:title" content="StockScope — Markets, Decoded."/>
+<script>
+// Load AdSense only for free users — not for Pro subscribers
+function loadAdSense(){
+  if(typeof isPro==='function'&&isPro()) return;
+  const s=document.createElement('script');
+  s.async=true;
+  s.src='https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-2363417170532828';
+  s.crossOrigin='anonymous';
+  document.head.appendChild(s);
+}
+window.addEventListener('load', loadAdSense);
+</script>
 <meta property="og:description" content="Real-time stock analysis, portfolio tracking, dividend income, and market news."/>
 <meta property="og:image" content="https://thestockscope.com/StockScope_Logo.png"/>
 <meta property="og:url" content="https://thestockscope.com"/>
