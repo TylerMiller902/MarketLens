@@ -1133,11 +1133,26 @@ app.get('/api/fmp/insiders/:symbol', async (req,res) => {
 app.get('/api/voo-movers', async (req,res) => {
   const ck='voo-movers'; const hit=gc(ck); if(hit)return res.json(hit);
   try{
-    // Parallel profile fetch — all cached 2hr after first load
-    const profiles = await Promise.all(TOP_STOCKS.map(sym=>fmpSafe('/profile',{symbol:sym})));
-    const stocks = profiles
-      .map(r=>arr(r)[0])
-      .filter(s=>s?.symbol && s?.price>0 && s?.changePercentage!=null);
+    // Use market cap rank cache if warm — zero extra API calls
+    const mktHit = gc('mkt-cap-rank');
+    let stocks = [];
+
+    if(mktHit && mktHit.length){
+      // Build from cached market cap rank data (already has price + change)
+      stocks = mktHit.map(s=>({
+        symbol: s.symbol, companyName: s.name,
+        price: s.price, change: 0,
+        changePercentage: s.change,
+      })).filter(s=>s.price>0 && s.changePercentage!=null);
+    } else {
+      // Cold cache — only fetch top 30 profiles (not all 103)
+      const profiles = await Promise.all(
+        TOP_STOCKS.slice(0,30).map(sym=>fmpSafe('/profile',{symbol:sym}))
+      );
+      stocks = profiles.map(r=>arr(r)[0])
+        .filter(s=>s?.symbol && s?.price>0 && s?.changePercentage!=null);
+    }
+
     const byChange = [...stocks].sort((a,b)=>b.changePercentage-a.changePercentage);
     const gainers = byChange.slice(0,5);
     const losers  = byChange.slice(-5).reverse();
@@ -1213,7 +1228,20 @@ app.get('/api/market-cap-rank', async (req,res) => {
         change: +(p?.changePercentage ?? 0).toFixed(2),
       };
     });
-    sc(ck, result, 14_400_000); // 4hr — market cap rank
+    sc(ck, result, 14_400_000); // 4hr cache
+    // Also warm the voo-movers cache using this profile data (no extra calls)
+    const cachedMovers = gc('voo-movers');
+    if(!cachedMovers){
+      const moverStocks = result.map(s=>({
+        symbol:s.symbol, companyName:s.name, price:s.price, change:0, changePercentage:s.change
+      })).filter(s=>s.price>0);
+      const byChange=[...moverStocks].sort((a,b)=>b.changePercentage-a.changePercentage);
+      const fmt=(list,type)=>list.map(s=>({
+        ticker:s.symbol,name:s.companyName||s.symbol,price:s.price,change:0,
+        changePct:s.changePercentage,logo:`https://images.financialmodelingprep.com/symbol/${s.symbol}.png`,type
+      }));
+      sc('voo-movers',[...fmt(byChange.slice(0,5),'gainer'),...fmt(byChange.slice(-5).reverse(),'loser')],600_000);
+    }
     res.json(result);
   } catch(e) {
     res.status(500).json({error: e.message});
