@@ -1084,6 +1084,7 @@ const ETFS=['SPY','QQQ','IVV','VOO','VTI','EFA','AGG','GLD','VNQ','ARKK','VGT','
 Chart.defaults.color='#7e7e96';Chart.defaults.borderColor='rgba(255,255,255,0.05)';Chart.defaults.font.family='DM Mono';Chart.defaults.font.size=10;
 let PriceChart=null,RSIChart=null,EarnLineChart=null,EarnBarChart=null,FSChart=null,Charts={};
 let CurD=null,CurPH=null,CurDates=null,CurIntraday=null,CurDivHistory=null,CurFMP=null,CurInsiders=null,CurPR='1Y',CurGP=10;
+const isMob = () => window.innerWidth <= 600;
 let AuthUser=null; // set by checkAuth()
 let searchTimer=null,holdTimers={};
 
@@ -1862,8 +1863,7 @@ async function drawPfChart(r){
   const labels=buildLabels(dates,r,isIntra);
   const up=prices[prices.length-1]>=prices[0],color=up?G:R;
   const tension={'1D':0,'1W':0,'1M':0.1,'3M':0.2,'YTD':0.3,'1Y':0.35,'5Y':0.4,'10Y':0.4,'All':0.4}[r]??0.35;
-  const isMob=window.innerWidth<=600;
-  PfChart=new Chart(canvas,{type:'line',data:{labels,datasets:[{data:prices,borderColor:color,borderWidth:1.5,fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,400);g.addColorStop(0,rgba(color,.15));g.addColorStop(1,rgba(color,0));return g;},pointRadius:0,tension}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},layout:{padding:{right:isMob?2:20,left:isMob?2:4}},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{title:ctx=>dates[ctx[0]?.dataIndex]||'',label:ctx=>fVal(ctx.raw)}}},scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:isMob?8:9},maxRotation:0,autoSkip:true,maxTicksLimit:isMob?4:10}},y:{display:!isMob,grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:10},callback:v=>fVal(v)}}}}});
+  PfChart=new Chart(canvas,{type:'line',data:{labels,datasets:[{data:prices,borderColor:color,borderWidth:1.5,fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,400);g.addColorStop(0,rgba(color,.15));g.addColorStop(1,rgba(color,0));return g;},pointRadius:0,tension}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},layout:{padding:{right:isMob()?2:20,left:isMob()?2:4}},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{title:ctx=>dates[ctx[0]?.dataIndex]||'',label:ctx=>fVal(ctx.raw)}}},scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:isMob()?8:9},maxRotation:0,autoSkip:true,maxTicksLimit:isMob()?4:10}},y:{display:!isMob(),grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:10},callback:v=>fVal(v)}}}}});
   const diff=prices[prices.length-1]-prices[0],pct=diff/prices[0]*100;
   const pe=$('pf-perf');if(pe){pe.className=`pcperf ${up?'up':'dn'}`;pe.textContent=`${up?'▲':'▼'} ${up?'+':''}${fVal(Math.abs(diff))} (${up?'+':''}${pct.toFixed(2)}%)`;}
 }
@@ -2615,7 +2615,7 @@ function drawPrice(r){
   const tension={'1D':0,'1W':0,'1M':isIntra?0.1:0.1,'3M':isIntra?0.15:0.2,'YTD':0.3,'1Y':0.35,'5Y':0.4,'10Y':0.4,'All':0.4}[r]??0.3;
   const isUp=prices[prices.length-1]>=prices[0],color=isUp?G:R;
 
-  PriceChart=new Chart(canvas,{type:'line',data:{labels,datasets:[{data:prices,borderColor:color,borderWidth:1.5,fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,260);g.addColorStop(0,rgba(color,.15));g.addColorStop(1,rgba(color,0));return g;},pointRadius:0,tension}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},layout:{padding:{right:20,left:4}},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{title:ctx=>{const idx=ctx[0]?.dataIndex;return rawDates[idx]?formatTimeLabel(rawDates[idx],r,isIntra):'';},label:ctx=>`$${Number(ctx.raw).toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:isMob?8:9},maxRotation:0,autoSkip:true,maxTicksLimit:isMob?4:8}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:10},callback:v=>`$${Number(v).toFixed(2)}`}}}}});
+  PriceChart=new Chart(canvas,{type:'line',data:{labels,datasets:[{data:prices,borderColor:color,borderWidth:1.5,fill:true,backgroundColor:ctx=>{const g=ctx.chart.ctx.createLinearGradient(0,0,0,260);g.addColorStop(0,rgba(color,.15));g.addColorStop(1,rgba(color,0));return g;},pointRadius:0,tension}]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:300},layout:{padding:{right:20,left:4}},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{title:ctx=>{const idx=ctx[0]?.dataIndex;return rawDates[idx]?formatTimeLabel(rawDates[idx],r,isIntra):'';},label:ctx=>`$${Number(ctx.raw).toFixed(2)}`}}},scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:isMob()?8:9},maxRotation:0,autoSkip:true,maxTicksLimit:isMob()?4:8}},y:{grid:{color:'rgba(255,255,255,0.04)'},ticks:{color:'#7e7e96',font:{size:10},callback:v=>`$${Number(v).toFixed(2)}`}}}}});
 
   const diff=prices[prices.length-1]-prices[0],pct=diff/prices[0]*100,up=diff>=0;
   const el=$('pcperf');if(el){el.className=`pcperf ${up?'up':'dn'}`;el.textContent=`${up?'▲':'▼'} ${up?'+':''}$${Math.abs(diff).toFixed(2)} (${up?'+':''}${pct.toFixed(2)}%)`;}
@@ -2641,7 +2641,7 @@ function drawRSI(r){
     {data:rsiVals.map(()=>70),borderColor:rgba(R,.4),borderWidth:1,borderDash:[4,4],pointRadius:0,fill:false},
     {data:rsiVals.map(()=>30),borderColor:rgba(G,.4),borderWidth:1,borderDash:[4,4],pointRadius:0,fill:false},
     {data:rsiVals.map(()=>50),borderColor:rgba('#ffffff',.08),borderWidth:1,pointRadius:0,fill:false},
-  ]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:200},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{title:ctx=>{const idx=ctx[0]?.dataIndex;return rawDates[idx]||'';},label:ctx=>ctx.datasetIndex===0?`RSI: ${Number(ctx.raw).toFixed(1)}`:null,filter:i=>i.datasetIndex===0}}},scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:8},maxRotation:0,autoSkip:true,maxTicksLimit:isMob?3:8}},y:{min:0,max:100,grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#7e7e96',font:{size:8},callback:v=>`${v}`}}}}});
+  ]},options:{responsive:true,maintainAspectRatio:false,animation:{duration:200},plugins:{legend:{display:false},tooltip:{mode:'index',intersect:false,callbacks:{title:ctx=>{const idx=ctx[0]?.dataIndex;return rawDates[idx]||'';},label:ctx=>ctx.datasetIndex===0?`RSI: ${Number(ctx.raw).toFixed(1)}`:null,filter:i=>i.datasetIndex===0}}},scales:{x:{grid:{display:false},ticks:{color:'#7e7e96',font:{size:8},maxRotation:0,autoSkip:true,maxTicksLimit:isMob()?3:8}},y:{min:0,max:100,grid:{color:'rgba(255,255,255,0.03)'},ticks:{color:'#7e7e96',font:{size:8},callback:v=>`${v}`}}}}});
 }
 
 function drawEarnCharts(earns){
