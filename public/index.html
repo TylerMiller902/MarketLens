@@ -1869,19 +1869,21 @@ async function drawPfChart(r){
 }
 function setPfRange(r){PfRangeActive=r;drawPfChart(r);}
 
-let pfDelIdx=null;
-function removePfPos(idx,name){
-  pfDelIdx=idx;
-  $('pf-del-msg').textContent=`Remove ${name||'this position'}?`;
+let pfDelTicker=null;
+function removePfPos(idx,ticker){
+  pfDelTicker=ticker;
+  $('pf-del-msg').textContent=`Remove ${ticker||'this position'}?`;
   $('pf-del-yes').onclick=()=>confirmPfDel();
   $('pf-del-bar').style.display='flex';
 }
 function confirmPfDel(){
-  if(pfDelIdx===null)return;
-  const pf=getPf();pf.positions.splice(pfDelIdx,1);savePf(pf);
+  if(!pfDelTicker)return;
+  const pf=getPf();
+  pf.positions=pf.positions.filter(p=>p.ticker!==pfDelTicker);
+  savePf(pf);
   cancelPfDel();renderPfPage();
 }
-function cancelPfDel(){pfDelIdx=null;$('pf-del-bar').style.display='none';}
+function cancelPfDel(){pfDelTicker=null;$('pf-del-bar').style.display='none';}
 
 // ── Add Position Modal ─────────────────────────────────────
 const MAG7_CHIPS=[
