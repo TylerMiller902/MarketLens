@@ -446,6 +446,9 @@ button,input{font-family:var(--fb)}
 .pf-col .pv{font-size:13px;font-family:var(--fm);font-weight:600}
 .pf-col .pl{font-size:10px;color:var(--mu);margin-top:2px}
 .pf-del{background:none;border:none;color:var(--mu);cursor:pointer;font-size:14px;padding:4px 8px;border-radius:4px;margin-left:4px}
+.pf-edit{background:none;border:none;color:var(--mu);cursor:pointer;font-size:13px;padding:4px 8px;border-radius:4px}
+.pf-edit:hover{color:var(--P);background:rgba(124,92,252,.1)}
+.pf-del:hover{color:var(--R);background:rgba(239,68,68,.1)}
 .div-upcoming-row{display:flex;justify-content:space-between;align-items:center;padding:11px 1rem;border-bottom:1px solid rgba(255,255,255,.05);cursor:pointer;transition:background .12s;gap:8px}
 .div-upcoming-row:hover{background:rgba(255,255,255,.03)}
 .div-upcoming-row:last-child{border-bottom:none}
@@ -905,6 +908,18 @@ button,input{font-family:var(--fb)}
     <div class="pf-del-bar-acts">
       <button class="pf-del-yes" id="pf-del-yes">Yes, Remove</button>
       <button class="pf-del-no" onclick="cancelPfDel()">Cancel</button>
+    </div>
+  </div>
+  <!-- Edit Position Modal -->
+  <div class="pf-modal-bg" id="pf-edit-modal-bg" style="display:none">
+    <div class="pf-modal-box">
+      <div class="pf-modal-ttl">Edit Position — <span id="pf-edit-ticker-lbl" style="color:var(--P)"></span></div>
+      <div class="pf-mrow"><label>Shares</label><input class="pf-minp" id="pf-edit-shares" type="number" min="0.001" step="any" placeholder="0"/></div>
+      <div class="pf-mrow"><label>Cost Basis / Share ($)</label><input class="pf-minp" id="pf-edit-cost" type="number" min="0.01" step="any" placeholder="0.00"/></div>
+      <div style="display:flex;gap:8px;margin-top:.5rem">
+        <button class="pf-badd" id="pf-edit-confirm-btn" style="flex:1">Save Changes</button>
+        <button class="pf-bcanc" onclick="closeEditModal()" style="flex:1">Cancel</button>
+      </div>
     </div>
   </div>
   <!-- Add Position Modal -->
@@ -1810,6 +1825,7 @@ async function renderPfPage(){
       <div style="display:flex;align-items:center;gap:8px;margin-bottom:.6rem">
         <img src="${esc(p.logo)}" onerror="this.style.display='none'" style="width:30px;height:30px;border-radius:6px;object-fit:contain;background:var(--bg3)"/>
         <div style="flex:1;min-width:0"><div style="font-weight:700;font-size:13px">${esc(p.ticker)}</div><div style="font-size:10px;color:var(--mu);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(p.name)}</div></div>
+        <button class="pf-edit" title="Edit" onclick="event.stopPropagation();editPfPos('${esc(p.ticker)}',${p.shares},${p.costBasis})">✎</button>
         <button class="pf-del" title="Remove" onclick="event.stopPropagation();removePfPos(${i},'${esc(p.ticker)}')">✕</button>
       </div>
       <div class="pos-boxes-7">
@@ -1884,6 +1900,26 @@ function confirmPfDel(){
   cancelPfDel();renderPfPage();
 }
 function cancelPfDel(){pfDelTicker=null;$('pf-del-bar').style.display='none';}
+
+let pfEditTicker=null;
+function editPfPos(ticker,shares,cost){
+  pfEditTicker=ticker;
+  $('pf-edit-ticker-lbl').textContent=ticker;
+  $('pf-edit-shares').value=shares;
+  $('pf-edit-cost').value=cost;
+  $('pf-edit-modal-bg').style.display='flex';
+  $('pf-edit-confirm-btn').onclick=()=>{
+    const newShares=+$('pf-edit-shares').value;
+    const newCost=+$('pf-edit-cost').value;
+    if(!newShares||newShares<=0||!newCost||newCost<=0)return showToast('Enter valid shares and cost basis','err');
+    const pf=getPf();
+    const pos=pf.positions.find(p=>p.ticker===pfEditTicker);
+    if(pos){pos.shares=newShares;pos.costBasis=newCost;}
+    savePf(pf);closeEditModal();renderPfPage();
+    showToast(`${pfEditTicker} updated ✓`,'ok');
+  };
+}
+function closeEditModal(){pfEditTicker=null;$('pf-edit-modal-bg').style.display='none';}
 
 // ── Add Position Modal ─────────────────────────────────────
 const MAG7_CHIPS=[
