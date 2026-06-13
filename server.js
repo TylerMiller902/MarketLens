@@ -523,23 +523,45 @@ app.get('/api/etf/holdings/:symbol([A-Z0-9.\\-^]+)', async (req,res) => {
 
 // Search
 app.get('/api/search', async (req,res) => {
-  const q = req.query.q || '';
+  const q = (req.query.q || '').trim().toUpperCase();
   if(!q) return res.json({result:[]});
   const ck = `search:${q.toLowerCase()}`; const hit = gc(ck); if(hit) return res.json(hit);
   try {
-    const data = await fmp('/search', { query: q, limit: 20 });
+    // Fetch more results so we can re-sort intelligently
+    const data = await fmp('/search', { query: q, limit: 50 });
     const items = Array.isArray(data) ? data : (data?.result || data?.results || []);
-    const result = {
-      result: items
-        .filter(r => r.symbol && !r.symbol.match(/\.[A-Z]{2,}$/) && r.symbol.length <= 6)
-        .map(r => ({
-          symbol:      r.symbol,
-          description: r.name || r.companyName || r.description || r.symbol,
-          type:        r.type || 'Stock',
+
+    const scored = items
+      .filter(r => r.symbol && r.symbol.length <= 6)
+      // Filter out foreign exchanges (keep US + major ETFs)
+      .filter(r => {
+        const ex = (r.exchangeShortName || r.exchange || '').toUpperCase();
+        return !ex || ['NYSE','NASDAQ','AMEX','ETF','NYSEARCA','BATS','OTC'].includes(ex);
+      })
+      .map(r => {
+        const sym  = (r.symbol || '').toUpperCase();
+        const name = (r.name || r.companyName || r.description || '').toUpperCase();
+        let score = 0;
+        if (sym === q)                    score = 100; // exact ticker match
+        else if (sym.startsWith(q))       score = 80;  // ticker starts with
+        else if (name.startsWith(q))      score = 60;  // name starts with
+        else if (name.includes(` ${q}`))  score = 40;  // name word starts with
+        else if (sym.includes(q))         score = 20;  // ticker contains
+        else if (name.includes(q))        score = 10;  // name contains
+        return {
+          symbol:        r.symbol,
+          description:   r.name || r.companyName || r.description || r.symbol,
+          type:          r.type || r.exchangeShortName || 'Stock',
           displaySymbol: r.symbol,
-        }))
-        .slice(0, 10)
-    };
+          _score:        score,
+        };
+      })
+      .filter(r => r._score > 0)
+      .sort((a, b) => b._score - a._score)
+      .slice(0, 10)
+      .map(({ _score, ...r }) => r);
+
+    const result = { result: scored };
     sc(ck, result, TTL.search);
     res.json(result);
   } catch(e) {
