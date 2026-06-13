@@ -36,6 +36,7 @@ window.addEventListener('load', loadAdSense);
   gtag('config', 'G-KQ6C6W1016');
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.0/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/fuse.js/7.0.0/fuse.min.js"></script>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Syne:wght@700;800&family=DM+Mono:wght@400;500&family=DM+Sans:wght@300;400;500&display=swap');
 *{box-sizing:border-box;margin:0;padding:0}
@@ -1100,6 +1101,209 @@ Chart.defaults.color='#7e7e96';Chart.defaults.borderColor='rgba(255,255,255,0.05
 let PriceChart=null,RSIChart=null,EarnLineChart=null,EarnBarChart=null,FSChart=null,Charts={};
 let CurD=null,CurPH=null,CurDates=null,CurIntraday=null,CurDivHistory=null,CurFMP=null,CurInsiders=null,CurPR='1Y',CurGP=10;
 const isMob = () => window.innerWidth <= 600;
+
+// ── Local stock index for instant fuzzy search ──────────────
+const POPULAR_STOCKS = [
+  {s:'AAPL',n:'Apple Inc.'},
+  {s:'MSFT',n:'Microsoft Corporation'},
+  {s:'NVDA',n:'NVIDIA Corporation'},
+  {s:'GOOGL',n:'Alphabet Inc.'},
+  {s:'GOOG',n:'Alphabet Inc. Class C'},
+  {s:'AMZN',n:'Amazon.com Inc.'},
+  {s:'META',n:'Meta Platforms Inc.'},
+  {s:'TSLA',n:'Tesla Inc.'},
+  {s:'AVGO',n:'Broadcom Inc.'},
+  {s:'LLY',n:'Eli Lilly and Company'},
+  {s:'WMT',n:'Walmart Inc.'},
+  {s:'JPM',n:'JPMorgan Chase & Co.'},
+  {s:'V',n:'Visa Inc.'},
+  {s:'MA',n:'Mastercard Incorporated'},
+  {s:'UNH',n:'UnitedHealth Group'},
+  {s:'XOM',n:'Exxon Mobil Corporation'},
+  {s:'ORCL',n:'Oracle Corporation'},
+  {s:'COST',n:'Costco Wholesale Corporation'},
+  {s:'HD',n:'Home Depot Inc.'},
+  {s:'PG',n:'Procter & Gamble Co.'},
+  {s:'NFLX',n:'Netflix Inc.'},
+  {s:'JNJ',n:'Johnson & Johnson'},
+  {s:'ABBV',n:'AbbVie Inc.'},
+  {s:'BAC',n:'Bank of America Corporation'},
+  {s:'CRM',n:'Salesforce Inc.'},
+  {s:'AMD',n:'Advanced Micro Devices Inc.'},
+  {s:'MRK',n:'Merck & Co. Inc.'},
+  {s:'KO',n:'Coca-Cola Company'},
+  {s:'PEP',n:'PepsiCo Inc.'},
+  {s:'PLTR',n:'Palantir Technologies'},
+  {s:'TMUS',n:'T-Mobile US Inc.'},
+  {s:'MS',n:'Morgan Stanley'},
+  {s:'GS',n:'Goldman Sachs Group Inc.'},
+  {s:'GE',n:'GE Aerospace'},
+  {s:'IBM',n:'International Business Machines'},
+  {s:'PM',n:'Philip Morris International'},
+  {s:'TXN',n:'Texas Instruments Inc.'},
+  {s:'QCOM',n:'QUALCOMM Incorporated'},
+  {s:'RTX',n:'RTX Corporation'},
+  {s:'WFC',n:'Wells Fargo & Company'},
+  {s:'C',n:'Citigroup Inc.'},
+  {s:'AXP',n:'American Express Company'},
+  {s:'ADBE',n:'Adobe Inc.'},
+  {s:'NOW',n:'ServiceNow Inc.'},
+  {s:'HON',n:'Honeywell International'},
+  {s:'ISRG',n:'Intuitive Surgical Inc.'},
+  {s:'BKNG',n:'Booking Holdings Inc.'},
+  {s:'TMO',n:'Thermo Fisher Scientific'},
+  {s:'AMGN',n:'Amgen Inc.'},
+  {s:'LOW',n:"Lowe's Companies Inc."},
+  {s:'LMT',n:'Lockheed Martin Corporation'},
+  {s:'BLK',n:'BlackRock Inc.'},
+  {s:'SCHW',n:'Charles Schwab Corporation'},
+  {s:'SPGI',n:'S&P Global Inc.'},
+  {s:'DHR',n:'Danaher Corporation'},
+  {s:'VRTX',n:'Vertex Pharmaceuticals'},
+  {s:'REGN',n:'Regeneron Pharmaceuticals'},
+  {s:'PANW',n:'Palo Alto Networks'},
+  {s:'MU',n:'Micron Technology Inc.'},
+  {s:'KLAC',n:'KLA Corporation'},
+  {s:'LRCX',n:'Lam Research Corporation'},
+  {s:'SOXX',n:'iShares Semiconductor ETF'},
+  {s:'AMAT',n:'Applied Materials Inc.'},
+  {s:'INTU',n:'Intuit Inc.'},
+  {s:'SBUX',n:'Starbucks Corporation'},
+  {s:'VZ',n:'Verizon Communications'},
+  {s:'T',n:'AT&T Inc.'},
+  {s:'CSCO',n:'Cisco Systems Inc.'},
+  {s:'MCD',n:"McDonald's Corporation"},
+  {s:'TGT',n:'Target Corporation'},
+  {s:'NKE',n:'Nike Inc.'},
+  {s:'PYPL',n:'PayPal Holdings Inc.'},
+  {s:'UBER',n:'Uber Technologies Inc.'},
+  {s:'ABNB',n:'Airbnb Inc.'},
+  {s:'COIN',n:'Coinbase Global Inc.'},
+  {s:'SNOW',n:'Snowflake Inc.'},
+  {s:'SHOP',n:'Shopify Inc.'},
+  {s:'SQ',n:'Block Inc.'},
+  {s:'ROKU',n:'Roku Inc.'},
+  {s:'DKNG',n:'DraftKings Inc.'},
+  {s:'RBLX',n:'Roblox Corporation'},
+  {s:'RIVN',n:'Rivian Automotive Inc.'},
+  {s:'LCID',n:'Lucid Group Inc.'},
+  {s:'NIO',n:'NIO Inc.'},
+  {s:'BABA',n:'Alibaba Group Holding'},
+  {s:'JD',n:'JD.com Inc.'},
+  {s:'PDD',n:'PDD Holdings Inc.'},
+  {s:'TSM',n:'Taiwan Semiconductor Manufacturing'},
+  {s:'ASML',n:'ASML Holding N.V.'},
+  {s:'ARM',n:'Arm Holdings plc'},
+  {s:'SMCI',n:'Super Micro Computer Inc.'},
+  {s:'DELL',n:'Dell Technologies Inc.'},
+  {s:'HPQ',n:'HP Inc.'},
+  {s:'INTC',n:'Intel Corporation'},
+  {s:'MO',n:'Altria Group Inc.'},
+  {s:'CVX',n:'Chevron Corporation'},
+  {s:'COP',n:'ConocoPhillips'},
+  {s:'XLE',n:'Energy Select Sector SPDR'},
+  {s:'OXY',n:'Occidental Petroleum Corporation'},
+  {s:'DVN',n:'Devon Energy Corporation'},
+  {s:'F',n:'Ford Motor Company'},
+  {s:'GM',n:'General Motors Company'},
+  {s:'UAL',n:'United Airlines Holdings'},
+  {s:'DAL',n:'Delta Air Lines Inc.'},
+  {s:'AAL',n:'American Airlines Group'},
+  {s:'BA',n:'Boeing Company'},
+  {s:'CAT',n:'Caterpillar Inc.'},
+  {s:'DE',n:'Deere & Company'},
+  {s:'MMM',n:'3M Company'},
+  {s:'UPS',n:'United Parcel Service'},
+  {s:'FDX',n:'FedEx Corporation'},
+  {s:'DIS',n:'Walt Disney Company'},
+  {s:'CMCSA',n:'Comcast Corporation'},
+  {s:'NFLX',n:'Netflix Inc.'},
+  {s:'WBD',n:'Warner Bros. Discovery'},
+  {s:'PARA',n:'Paramount Global'},
+  {s:'PFE',n:'Pfizer Inc.'},
+  {s:'MRNA',n:'Moderna Inc.'},
+  {s:'BNTX',n:'BioNTech SE'},
+  {s:'BMY',n:'Bristol-Myers Squibb Company'},
+  {s:'ABT',n:'Abbott Laboratories'},
+  {s:'MDT',n:'Medtronic plc'},
+  {s:'SYK',n:'Stryker Corporation'},
+  {s:'ELV',n:'Elevance Health Inc.'},
+  {s:'CI',n:'Cigna Group'},
+  {s:'HUM',n:'Humana Inc.'},
+  {s:'CVS',n:'CVS Health Corporation'},
+  {s:'WBA',n:'Walgreens Boots Alliance'},
+  {s:'AMT',n:'American Tower Corporation'},
+  {s:'PLD',n:'Prologis Inc.'},
+  {s:'VNQ',n:'Vanguard Real Estate ETF'},
+  {s:'O',n:'Realty Income Corporation'},
+  // ETFs
+  {s:'SPY',n:'SPDR S&P 500 ETF Trust'},
+  {s:'QQQ',n:'Invesco QQQ Trust'},
+  {s:'VTI',n:'Vanguard Total Stock Market ETF'},
+  {s:'IVV',n:'iShares Core S&P 500 ETF'},
+  {s:'VOO',n:'Vanguard S&P 500 ETF'},
+  {s:'VEA',n:'Vanguard FTSE Developed Markets ETF'},
+  {s:'VWO',n:'Vanguard FTSE Emerging Markets ETF'},
+  {s:'EFA',n:'iShares MSCI EAFE ETF'},
+  {s:'EEM',n:'iShares MSCI Emerging Markets ETF'},
+  {s:'GLD',n:'SPDR Gold Shares'},
+  {s:'IAU',n:'iShares Gold Trust'},
+  {s:'SLV',n:'iShares Silver Trust'},
+  {s:'TLT',n:'iShares 20+ Year Treasury Bond ETF'},
+  {s:'AGG',n:'iShares Core U.S. Aggregate Bond ETF'},
+  {s:'BND',n:'Vanguard Total Bond Market ETF'},
+  {s:'HYG',n:'iShares iBoxx High Yield Corporate Bond ETF'},
+  {s:'IWM',n:'iShares Russell 2000 ETF'},
+  {s:'DIA',n:'SPDR Dow Jones Industrial Average ETF'},
+  {s:'XLF',n:'Financial Select Sector SPDR Fund'},
+  {s:'XLK',n:'Technology Select Sector SPDR Fund'},
+  {s:'XLV',n:'Health Care Select Sector SPDR Fund'},
+  {s:'XLE',n:'Energy Select Sector SPDR Fund'},
+  {s:'XLI',n:'Industrial Select Sector SPDR Fund'},
+  {s:'XLY',n:'Consumer Discretionary Select Sector SPDR'},
+  {s:'XLP',n:'Consumer Staples Select Sector SPDR Fund'},
+  {s:'ARKK',n:'ARK Innovation ETF'},
+  {s:'SCHD',n:'Schwab US Dividend Equity ETF'},
+  {s:'VYM',n:'Vanguard High Dividend Yield ETF'},
+  {s:'JEPI',n:'JPMorgan Equity Premium Income ETF'},
+  {s:'JEPQ',n:'JPMorgan Nasdaq Equity Premium Income ETF'},
+  {s:'QQQM',n:'Invesco NASDAQ 100 ETF'},
+  {s:'VGT',n:'Vanguard Information Technology ETF'},
+  {s:'SMH',n:'VanEck Semiconductor ETF'},
+  {s:'TQQQ',n:'ProShares UltraPro QQQ'},
+  {s:'SQQQ',n:'ProShares UltraPro Short QQQ'},
+  {s:'SPLG',n:'SPDR Portfolio S&P 500 ETF'},
+];
+
+let fuseIndex = null;
+function initFuse(){
+  if(fuseIndex) return;
+  fuseIndex = new Fuse(POPULAR_STOCKS, {
+    keys: [
+      {name:'s', weight:0.6},
+      {name:'n', weight:0.4}
+    ],
+    threshold: 0.35,
+    distance: 100,
+    minMatchCharLength: 1,
+    includeScore: true,
+  });
+}
+
+function localSearch(q){
+  if(!fuseIndex) initFuse();
+  const upper = q.toUpperCase();
+  // Exact ticker match first
+  const exact = POPULAR_STOCKS.find(s=>s.s===upper);
+  if(exact) return [{symbol:exact.s,description:exact.n,type:'Stock',displaySymbol:exact.s}];
+  // Fuse fuzzy search
+  return fuseIndex.search(q, {limit:8}).map(r=>({
+    symbol:r.item.s,
+    description:r.item.n,
+    type:'Stock',
+    displaySymbol:r.item.s,
+  }));
+}
 let AuthUser=null; // set by checkAuth()
 let searchTimer=null,holdTimers={};
 
@@ -2188,39 +2392,37 @@ const LOCAL_STOCKS=[
   ['VO','Vanguard Mid-Cap ETF'],['VOE','Vanguard Mid-Cap Value ETF'],
   ['MGK','Vanguard Mega Cap Growth ETF'],['MGV','Vanguard Mega Cap Value ETF'],
 ];
-function localSearch(q){const ql=q.toLowerCase();return LOCAL_STOCKS.filter(([s,n])=>s.toLowerCase().startsWith(ql)||n.toLowerCase().startsWith(ql)||n.toLowerCase().includes(ql)).slice(0,5).map(([s,n])=>({symbol:s,description:n}));}
 function showSuggestions(items,sugg){
   sugg.innerHTML=items.map(it=>`<div class="sugg-item" data-sym="${esc(it.symbol)}"><img class="sugg-logo" src="https://images.financialmodelingprep.com/symbol/${esc(it.symbol)}.png" onerror="this.style.display='none'"/><div class="sugg-info"><span class="sugg-sym">${esc(it.symbol)}</span><span class="sugg-name">${esc(it.description||it.symbol)}</span></div><div class="sugg-right" id="sqr-${esc(it.symbol)}"></div></div>`).join('');
   sugg.querySelectorAll('.sugg-item').forEach(el=>el.addEventListener('click',()=>{go(el.dataset.sym);sugg.classList.remove('open');}));
-  // Cap height to avoid going off screen
   const rect=sugg.parentElement?.getBoundingClientRect();
   if(rect){const avail=window.innerHeight-rect.bottom-16;sugg.style.maxHeight=Math.min(340,Math.max(120,avail))+'px';}
   sugg.classList.add('open');
   items.forEach(it=>{apiFetch(`/api/quote/${it.symbol}`).then(qt=>{const el=$(`sqr-${it.symbol}`);if(!el||!qt?.c)return;const up=(qt.dp||0)>=0;el.innerHTML=`<div class="sugg-price">${f$(qt.c)}</div><div class="sugg-chg ${up?'up':'dn'}">${up?'▲':'▼'}${Math.abs(qt.dp||0).toFixed(2)}%</div>`;}).catch(()=>{});});
 }
 function setupSearch(inp,sugg){
+  initFuse(); // warm up the index
   inp.addEventListener('input',()=>{
     clearTimeout(searchTimer);
     if(sugg)sugg.classList.remove('open');
     const q=inp.value.trim();
     if(!q||!sugg)return;
-    // Show local results instantly
+    // Show local Fuse results instantly — no network needed
     const local=localSearch(q);
     if(local.length)showSuggestions(local,sugg);
-    // Fetch FMP results with short debounce
+    // Fetch FMP results with debounce to catch anything not in local index
     searchTimer=setTimeout(async()=>{
       try{
         const d=await apiFetch(`/api/search?q=${encodeURIComponent(q)}`);
         const fi=(d?.result||[]).filter(r=>r.symbol&&!r.symbol.match(/\.[A-Z]{2,}$/)).slice(0,8);
         if(!fi.length)return;
-        // Merge: FMP results first, deduplicate, show up to 8
-        const seen=new Set();
-        const merged=[];
-        for(const r of fi){if(!seen.has(r.symbol)){seen.add(r.symbol);merged.push(r);}}
-        for(const r of local){if(!seen.has(r.symbol)&&merged.length<8){seen.add(r.symbol);merged.push(r);}}
+        // Merge: local results first (they're more relevant), then FMP extras
+        const seen=new Set(local.map(r=>r.symbol));
+        const merged=[...local];
+        for(const r of fi){if(!seen.has(r.symbol)&&merged.length<8){seen.add(r.symbol);merged.push(r);}}
         showSuggestions(merged,sugg);
       }catch{}
-    },200);
+    },300);
   });
   inp.addEventListener('keydown',e=>{
     if(e.key==='Enter'){
